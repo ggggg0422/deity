@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>狼人殺上帝專用小幫手 (優化整合版)</title>
+    <style>
+        /* CSS 變數模組化 */
+        :root {
+            --bg-main: #1e1e1e;
+            --text-main: #f0f0f0;
+            --panel-bg: #2a2a2a;
+            --border-color: #444;
+            --color-wolf: #ff4d4d;
+            --color-god: #c879ff;
+            --color-villager: #ffcc00;
+            --color-good: #4da6ff;
+            --color-unknown: #888;
+            --btn-primary: #2196F3;
+            --btn-success: #4CAF50;
+            --btn-danger: #ff4d4d;
+            --btn-warning: #ff9800;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg-main); 
+            color: var(--text-main); 
+            padding: 15px; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            line-height: 1.5; 
+        }
+        h1, h2 { text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 5px; }
+        
+        .action-row { margin-bottom: 15px; background: var(--panel-bg); padding: 18px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        
+        select, button { padding: 12px 16px; font-size: 16px; border-radius: 6px; border: none; margin: 6px 0; outline: none; }
+        select { background-color: #333; color: white; border: 1px solid #555; width: 100%; max-width: 100%; box-sizing: border-box; }
+        button { background-color: var(--btn-success); color: white; cursor: pointer; width: 100%; margin-top: 15px; font-weight: bold; transition: opacity 0.2s; }
+        button:hover, button:active { opacity: 0.8; }
+        
+        .color-wolf { color: var(--color-wolf); font-weight: bold; }
+        .color-god { color: var(--color-god); font-weight: bold; }
+        .color-villager { color: var(--color-villager); font-weight: bold; }
+        .color-good { color: var(--color-good); font-weight: bold; }
+        .color-unknown { color: var(--color-unknown); }
+        
+        .hidden { display: none !important; }
+        .result-box { background: #333; padding: 12px; border-left: 4px solid var(--btn-success); margin-top: 10px; border-radius: 4px; }
+        .dead { text-decoration: line-through; opacity: 0.4; filter: grayscale(100%); }
+        
+        .setup-box { background: #3a3a3a; padding: 12px; border-radius: 6px; border: 1px dashed #666; margin-bottom: 15px; }
+        .setup-box p { margin-top: 0; font-weight: bold; color: #aaa; margin-bottom: 8px; }
+        .log-entry { margin-bottom: 15px; border-bottom: 1px dotted #555; padding-bottom: 15px; background: #222; padding: 12px; border-radius: 6px; }
+        
+        .witch-alert-active { background: #442222; padding: 12px; border-radius: 6px; border: 1px solid var(--color-wolf); margin-bottom: 10px; }
+        .witch-alert-used { background: #333; padding: 12px; border-radius: 6px; border: 1px solid #666; margin-bottom: 10px; color: #aaa; }
+        .bear-alert { background: #332244; padding: 12px; border-radius: 6px; border: 1px solid var(--color-god); margin-top: 15px; text-align: center; }
+        
+        .role-check-label { display: inline-block; width: 48%; margin: 10px 0; font-size: 16px; cursor: pointer; }
+        .role-check-label input { width: 18px; height: 18px; margin-right: 8px; cursor: pointer; vertical-align: middle; accent-color: var(--color-god); }
+        
+        .status-badge { background: #333; padding: 6px 10px; border-radius: 6px; border: 1px solid #555; display: inline-block; white-space: nowrap; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <h1>🐺 狼人殺上帝控制台 🌙</h1>
+
+    <!-- 遊戲設定介面 -->
+    <div id="setup-screen" style="text-align:center; padding: 10px 0;">
+        <button id="btn-resume" onclick="resumeGame()" class="hidden" style="background-color: var(--btn-warning); font-size: 18px; margin-bottom: 20px; color: #000;">🔄 發現未完成的對局，點此恢復</button>
+
+        <h2>遊戲參數設定</h2>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="font-size: 18px; font-weight: bold;">玩家人數：</label>
+            <select id="player-count-select" style="font-size: 18px; width: auto; display: inline-block;">
+                <option value="9">9 人局</option>
+                <option value="10">10 人局</option>
+                <option value="11">11 人局</option>
+                <option value="12" selected>12 人局</option>
+            </select>
+        </div>
+
+        <div style="background: var(--panel-bg); padding: 20px; border-radius: 8px; display: inline-block; text-align: left; max-width: 340px; box-sizing: border-box; width: 100%;">
+            <h3 style="margin-top: 0; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-god);">配置神職陣營</h3>
+            <label class="role-check-label"><input type="checkbox" id="cfg-prophet" checked> 👁️ 預言家</label>
+            <label class="role-check-label"><input type="checkbox" id="cfg-witch" checked> 🧪 女巫</label>
+            <label class="role-check-label"><input type="checkbox" id="cfg-hunter" checked> 🏹 獵人</label>
+            <label class="role-check-label"><input type="checkbox" id="cfg-bear"> 🐻 熊</label>
+            <label class="role-check-label" style="width: 100%;"><input type="checkbox" id="cfg-dreamer"> 💤 攝夢人</label>
+            
+            <h3 style="margin-top: 15px; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-wolf);">配置特殊狼人</h3>
+            <label class="role-check-label"><input type="checkbox" id="cfg-bwk"> 🐺 黑狼王</label>
+            <label class="role-check-label"><input type="checkbox" id="cfg-wb"> 💋 狼美人</label>
+            
+            <div style="font-size: 13px; color: #aaa; margin-top: 15px; line-height: 1.5; background: #222; padding: 10px; border-radius: 5px;">
+                * 基礎狼人與平民為內建預設。<br>
+                * 狼美人與黑狼王將合併至狼人階段睜眼。<br>
+                * 已實裝下拉選單防呆與自動儲存機制。
+            </div>
+        </div>
+        <br>
+        <button onclick="startGame()" style="width: 100%; max-width: 340px; font-size: 20px; background-color: var(--btn-primary); padding: 14px;">進入上帝控制台</button>
+    </div>
+
+    <!-- 遊戲進行介面 -->
+    <div id="game-screen" class="hidden">
+        
+        <!-- 頂部資訊與復原按鈕區 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+            <h2 id="day-counter" style="margin: 0; border: none; padding: 0;">第 1 天 夜晚</h2>
+            <button onclick="undoAction()" id="btn-undo" class="hidden" style="width: auto; background-color: var(--btn-danger); padding: 8px 12px; margin: 0; font-size: 14px;">🔙 回到上一步</button>
+        </div>
+
+        <div id="alive-status" style="margin-bottom: 20px; text-align: center;"></div>
+
+        <!-- 攝夢人階段 -->
+        <div id="phase-dreamer" class="action-row hidden">
+            <h3 class="color-god">💤 攝夢人請睜眼</h3>
+            <div id="d1-dreamer-setup" class="setup-box hidden">
+                <p>【首夜設定】請選擇攝夢人號碼：</p>
+                <select id="dreamer-id"></select>
+            </div>
+            <p id="dreamer-history-msg" class="hidden" style="color:var(--color-god); background:#332244; padding:10px; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid var(--color-god); margin-bottom: 15px;"></p>
+            
+            <p>請選擇今晚要攝的玩家 (不能攝自己，連兩晚同目標致死)：</p>
+            <select id="dreamer-target"></select>
+            <button onclick="processDreamer()">確認並請攝夢人閉眼</button>
+        </div>
+
+        <!-- 狼人與狼美人階段合併 -->
+        <div id="phase-wolf" class="action-row hidden">
+            <h3 class="color-wolf">🐺 狼人<span id="title-bwk">、黑狼王</span><span id="title-wb">與狼美人</span>請睜眼</h3>
+            <div id="d1-wolf-setup" class="setup-box hidden">
+                <p>【首夜設定】請選擇狼人 (無則留空)：</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <select id="w1"></select> <select id="w2"></select> 
+                    <select id="w3"></select> <select id="w4"></select>
+                </div>
+                
+                <div id="bwk-setup-container">
+                    <p style="margin-top: 15px;">【首夜設定】請選擇黑狼王 (無則留空)：</p>
+                    <select id="bwk-id"></select>
+                </div>
+
+                <div id="wb-setup-container">
+                    <p style="margin-top: 15px;">【首夜設定】請選擇狼美人 (無則留空)：</p>
+                    <select id="wb-id"></select>
+                </div>
+            </div>
+            
+            <p>狼陣營今晚要擊殺誰？</p>
+            <select id="wolf-target"></select>
+
+            <div id="wb-action-container" class="hidden" style="margin-top:15px; padding-top:15px; border-top:1px dashed #666;">
+                <p style="color:var(--color-wolf); font-weight:bold;">💋 狼美人請選擇魅惑玩家 (出局時隨之殉情)：</p>
+                <select id="wb-target"></select>
+                <p id="wb-dead-msg" class="hidden" style="color:#aaa;">狼美人已陣亡，無法魅惑。</p>
+            </div>
+
+            <button onclick="processWolf()">確認動作並請狼陣營閉眼</button>
+        </div>
+
+        <!-- 女巫階段 -->
+        <div id="phase-witch" class="action-row hidden">
+            <h3 class="color-god">🧪 女巫請睜眼</h3>
+            
+            <div id="d1-witch-setup" class="setup-box hidden">
+                <p style="margin: 0;">
+                    【首夜設定】請選擇女巫號碼：<br><select id="witch-id"></select>
+                    <div id="d1-witch-kill-hint" style="margin-top: 10px; color: var(--color-wolf); font-weight: bold; font-size: 18px; text-align: center;"></div>
+                </p>
+            </div>
+
+            <div id="witch-action-area">
+                <div id="witch-dead-msg" class="hidden" style="color:var(--color-wolf); font-weight:bold; margin-bottom:10px;">
+                    女巫已陣亡，無法執行動作。請假裝等待後點擊閉眼。
+                </div>
+                
+                <div id="witch-action-controls">
+                    <div id="witch-info"></div>
+                    <div id="witch-actions" style="margin-top: 15px; background: #222; padding: 15px; border-radius: 6px;">
+                        <label style="display: block; margin-bottom: 10px; font-size: 18px;"><input type="radio" name="witch-action" value="heal" id="radio-heal" style="width:20px; height:20px; vertical-align:middle;"> 使用解藥</label>
+                        
+                        <!-- 毒藥選項與提示區 -->
+                        <label id="label-poison" style="display: block; margin-bottom: 10px; font-size: 18px;">
+                            <input type="radio" name="witch-action" value="poison" id="radio-poison" style="width:20px; height:20px; vertical-align:middle;"> 使用毒藥 ➔ 
+                            <select id="witch-target" disabled style="width: auto; display: inline-block; padding: 8px;"></select>
+                            <span id="poison-status-msg" class="hidden" style="color:var(--color-wolf); font-weight:bold; margin-left:8px; font-size: 16px;">(已使用)</span>
+                        </label>
+
+                        <label style="display: block; font-size: 18px;"><input type="radio" name="witch-action" value="none" id="radio-none" checked style="width:20px; height:20px; vertical-align:middle;"> 不使用藥物</label>
+                    </div>
+                </div>
+            </div>
+            <button onclick="processWitch()">確認操作並請女巫閉眼</button>
+        </div>
+
+        <!-- 獵人階段 -->
+        <div id="phase-hunter" class="action-row hidden">
+            <h3 class="color-god">🏹 獵人請睜眼</h3>
+            <div id="d1-hunter-setup" class="setup-box hidden">
+                <p>【首夜設定】請選擇獵人號碼 (無則留空)：</p>
+                <select id="hunter-id"></select>
+            </div>
+            <div class="result-box">
+                <p style="margin-top:0;">上帝請給出手勢 (獵人狀態)：</p>
+                <h2 id="hunter-status" style="text-align: center; margin: 0;">等待判定...</h2>
+            </div>
+            <button onclick="processHunter()">請獵人閉眼</button>
+        </div>
+
+        <!-- 熊階段 -->
+        <div id="phase-bear" class="action-row hidden">
+            <h3 class="color-god">🐻 熊請睜眼</h3>
+            <div id="d1-bear-setup" class="setup-box hidden">
+                <p>【首夜設定】請選擇熊的號碼 (無則留空)：</p>
+                <select id="bear-id"></select>
+            </div>
+            <p>請上帝確認熊的身分並給予相對應的手勢確認。</p>
+            <button onclick="processBear()">請熊閉眼</button>
+        </div>
+
+        <!-- 預言家階段 -->
+        <div id="phase-prophet" class="action-row hidden">
+            <h3 class="color-god">👁️ 預言家請睜眼</h3>
+            <div id="d1-prophet-setup" class="setup-box hidden">
+                <p>【首夜設定】請選擇預言家號碼 (無則留空)：</p>
+                <select id="prophet-id"></select>
+            </div>
+            <div id="prophet-action-area">
+                <p>請選擇要查驗的玩家：</p>
+                <select id="prophet-target"></select>
+                <button onclick="checkProphetTarget()" id="btn-prophet-check" style="background-color: var(--btn-primary);">確認查驗</button>
+            </div>
+            
+            <div id="prophet-result" class="result-box hidden">
+                <h2 id="prophet-result-text" style="text-align: center; margin: 0; font-size: 24px;"></h2>
+            </div>
+            <button onclick="processProphet()" id="btn-prophet-next" class="hidden">請預言家閉眼並進入白天</button>
+        </div>
+
+        <!-- 白天結算與投票階段 -->
+        <div id="phase-morning" class="action-row hidden">
+            <h2>☀️ 天亮了</h2>
+            <div class="result-box" id="morning-result"></div>
+            
+            <!-- 開槍區塊 -->
+            <div id="phase-shoot" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--color-wolf); padding-top: 15px; background: #332222; padding: 15px; border-radius: 8px;">
+                <h3 id="shoot-title" style="margin-top: 0;">出局，請開槍</h3>
+                <p>請選擇要帶走的玩家：</p>
+                <select id="shoot-target"></select>
+                <button onclick="submitShoot()" style="background-color: var(--btn-danger);">確認帶走並繼續</button>
+            </div>
+
+            <!-- 投票區塊 -->
+            <div id="vote-section" class="hidden" style="margin-top: 20px; border-top: 1px solid #555; padding-top: 15px;">
+                <h3>🗳️ 白天投票環節</h3>
+                <p>請選擇被投票出局的玩家：</p>
+                <select id="vote-target"></select>
+                <button onclick="processVote()" style="background-color: var(--btn-warning); color: #000;">確認出局結算</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 遊戲結束介面 -->
+    <div id="end-screen" class="hidden">
+        <h1 id="win-title" style="color: var(--color-villager); font-size: 28px; line-height: 1.4;"></h1>
+        <div style="background: var(--panel-bg); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <h2 style="margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px;">📖 遊戲彩色歷程紀錄</h2>
+            <div id="game-log" style="text-align: left; font-size: 15px; line-height: 1.6;"></div>
+        </div>
+        <button onclick="exportLog()" style="background-color: var(--btn-primary); margin-bottom: 10px;">📋 複製純文字賽報</button>
+        <button onclick="clearSaveAndReload()" style="background-color: var(--btn-danger);">重新開始新局 (清除紀錄)</button>
+    </div>
+
+    <script>
+        let playerCount = 12;
+        let players = [];
+        let day = 1;
+        let potions = { heal: true, poison: true };
+        
+        let nightData = { wolfKill: 0, witchHeal: false, witchPoison: 0, prophetCheck: 0, dreamerTarget: 0, wbTarget: 0 };
+        let historyData = { lastDreamTarget: 0 };
+        let state = { charmedPlayer: 0, morningResultHtml: "" };
+        
+        let gameHistory = [];
+        let shootQueue = []; 
+        let currentPhase = 'night'; 
+        
+        let gameConfig = { prophet: true, witch: true, hunter: true, bear: false, bwk: false, dreamer: false, wb: false };
+
+        let snapshots = []; // 歷史快照陣列
+
+        // 頁面載入時檢查是否有暫存檔
+        window.onload = () => {
+            if (localStorage.getItem('werewolf_save')) {
+                document.getElementById('btn-resume').classList.remove('hidden');
+            }
+            bindSetupEvents();
+        };
+
+        function bindSetupEvents() {
+            const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id', 'bear-id', 'prophet-id', 'dreamer-id', 'wb-id'];
+            allSetupIds.forEach(id => {
+                let el = document.getElementById(id);
+                if(el) {
+                    el.removeEventListener('change', handleSetupChange); 
+                    el.addEventListener('change', handleSetupChange);
+                }
+            });
+            
+            document.querySelectorAll('input[name="witch-action"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const poisonSelect = document.getElementById('witch-target');
+                    poisonSelect.disabled = (this.value !== 'poison' || !potions.poison);
+                });
+            });
+        }
+
+        function handleSetupChange() {
+            updateSetupSelects();
+            if (this.id === 'hunter-id') updateHunterStatus();
+            if (this.id === 'dreamer-id') updateDreamerTarget();
+            if (this.id === 'wb-id') updateWbTarget();
+        }
+
+        // ====== 狀態快照 (Undo) 與 Auto-Save 系統 ======
+        function takeSnapshot() {
+            const snap = JSON.stringify({
+                playerCount, players, day, potions, nightData, historyData, state, gameHistory, shootQueue, currentPhase, gameConfig
+            });
+            snapshots.push(snap);
+            if (snapshots.length > 30) snapshots.shift(); // 保留最近 30 步
+            localStorage.setItem('werewolf_snapshots', JSON.stringify(snapshots));
+            document.getElementById('btn-undo').classList.remove('hidden');
+        }
+
+        function undoAction() {
+            if (snapshots.length === 0) return alert("已經是第一步，無法再退回！");
+            
+            let lastStateStr = snapshots.pop();
+            let saved = JSON.parse(lastStateStr);
+            
+            // 恢復所有變數
+            ({ playerCount, players, day, potions, nightData, historyData, state, gameHistory, shootQueue, currentPhase, gameConfig } = saved);
+            
+            localStorage.setItem('werewolf_snapshots', JSON.stringify(snapshots));
+            autoSave();
+            
+            // 重建畫面
+            document.getElementById('end-screen').classList.add('hidden');
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            
+            document.getElementById('bwk-setup-container').classList.toggle('hidden', !gameConfig.bwk);
+            document.getElementById('title-bwk').classList.toggle('hidden', !gameConfig.bwk);
+            document.getElementById('wb-setup-container').classList.toggle('hidden', !gameConfig.wb);
+            document.getElementById('title-wb').classList.toggle('hidden', !gameConfig.wb);
+            document.getElementById('wb-action-container').classList.toggle('hidden', !gameConfig.wb);
+
+            updateAliveStatus();
+            restoreUI();
+        }
+
+        function restoreUI() {
+            document.querySelectorAll('.action-row').forEach(el => el.classList.add('hidden'));
+            document.getElementById('phase-shoot').classList.add('hidden');
+            document.getElementById('vote-section').classList.add('hidden');
+            
+            let isNight = ['dreamer','wolf','witch','hunter','bear','prophet'].includes(currentPhase);
+            document.getElementById('day-counter').innerText = `第 ${day} 天 ${isNight ? '夜晚' : '白天'}`;
+            
+            if (['shoot', 'vote'].includes(currentPhase)) {
+                document.getElementById('phase-morning').classList.remove('hidden');
+                document.getElementById('morning-result').innerHTML = state.morningResultHtml || "";
+            } else {
+                document.getElementById('phase-morning').classList.add('hidden');
+            }
+
+            if (currentPhase === 'dreamer') prepareDreamer();
+            else if (currentPhase === 'wolf') prepareWolf();
+            else if (currentPhase === 'witch') prepareWitch();
+            else if (currentPhase === 'hunter') prepareHunter();
+            else if (currentPhase === 'bear') prepareBear();
+            else if (currentPhase === 'prophet') prepareProphet();
+            else if (currentPhase === 'shoot') {
+                let shooter = shootQueue[0];
+                let titleArea = document.getElementById('shoot-title');
+                titleArea.innerHTML = `💥 <span class="${shooter.class}">${shooter.role} (${shooter.id}號)</span> 出局，請選擇開槍目標`;
+                populateAliveSelect('shoot-target', true, "放棄開槍 (不帶走人)");
+                document.getElementById('phase-shoot').classList.remove('hidden');
+            } else if (currentPhase === 'vote') {
+                populateAliveSelect('vote-target', true, "無人出局 (棄票/平票)");
+                document.getElementById('vote-section').classList.remove('hidden');
+            }
+            
+            if(snapshots.length === 0) document.getElementById('btn-undo').classList.add('hidden');
+        }
+
+        function autoSave() {
+            const saveData = { playerCount, players, day, potions, nightData, historyData, state, gameHistory, shootQueue, currentPhase, gameConfig };
+            localStorage.setItem('werewolf_save', JSON.stringify(saveData));
+        }
+
+        function clearSaveAndReload() {
+            localStorage.removeItem('werewolf_save');
+            localStorage.removeItem('werewolf_snapshots');
+            location.reload();
+        }
+
+        function resumeGame() {
+            const saved = JSON.parse(localStorage.getItem('werewolf_save'));
+            if (!saved) return;
+            
+            ({ playerCount, players, day, potions, nightData, historyData, state, gameHistory, shootQueue, currentPhase, gameConfig } = saved);
+
+            if (localStorage.getItem('werewolf_snapshots')) {
+                snapshots = JSON.parse(localStorage.getItem('werewolf_snapshots'));
+            }
+
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            
+            document.getElementById('bwk-setup-container').classList.toggle('hidden', !gameConfig.bwk);
+            document.getElementById('title-bwk').classList.toggle('hidden', !gameConfig.bwk);
+            document.getElementById('wb-setup-container').classList.toggle('hidden', !gameConfig.wb);
+            document.getElementById('title-wb').classList.toggle('hidden', !gameConfig.wb);
+            document.getElementById('wb-action-container').classList.toggle('hidden', !gameConfig.wb);
+
+            updateAliveStatus();
+            restoreUI();
+        }
+
+        // ====== 匯出純文字紀錄 ======
+        function exportLog() {
+            const logEl = document.getElementById('game-log');
+            let clone = logEl.cloneNode(true);
+            clone.querySelectorAll('li').forEach(li => li.innerText = "• " + li.innerText + "\n");
+            clone.querySelectorAll('.log-entry div:first-child').forEach(div => div.innerText = "\n" + div.innerText + "\n");
+            
+            let text = clone.innerText.replace(/\n\s*\n/g, '\n\n').trim();
+            
+            navigator.clipboard.writeText(text).then(() => {
+                alert("✅ 已成功複製文字紀錄！可以貼到 LINE 或記事本了。");
+            }).catch(err => {
+                alert("❌ 複製失敗，請手動圈選下方文字複製。");
+            });
+        }
+
+        // ====== 遊戲主邏輯 ======
+        function startGame() {
+            playerCount = parseInt(document.getElementById('player-count-select').value);
+            gameConfig.prophet = document.getElementById('cfg-prophet').checked;
+            gameConfig.witch = document.getElementById('cfg-witch').checked;
+            gameConfig.hunter = document.getElementById('cfg-hunter').checked;
+            gameConfig.bear = document.getElementById('cfg-bear').checked;
+            gameConfig.bwk = document.getElementById('cfg-bwk').checked;
+            gameConfig.dreamer = document.getElementById('cfg-dreamer').checked;
+            gameConfig.wb = document.getElementById('cfg-wb').checked;
+
+            if (!gameConfig.bwk) {
+                document.getElementById('bwk-setup-container').classList.add('hidden');
+                document.getElementById('title-bwk').classList.add('hidden');
+            } else {
+                document.getElementById('title-bwk').classList.remove('hidden');
+            }
+            if (!gameConfig.wb) {
+                document.getElementById('wb-setup-container').classList.add('hidden');
+                document.getElementById('title-wb').classList.add('hidden');
+                document.getElementById('wb-action-container').classList.add('hidden');
+            } else {
+                document.getElementById('title-wb').classList.remove('hidden');
+            }
+
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            
+            players = Array.from({length: playerCount}, (_, i) => ({ id: i+1, role: '?', class: 'color-unknown', alive: true }));
+            
+            snapshots = [];
+            localStorage.removeItem('werewolf_snapshots');
+            document.getElementById('btn-undo').classList.add('hidden');
+
+            updateSetupSelects();
+            startNight(false);
+            autoSave();
+        }
+
+        function getActiveSetupIds() {
+            let ids = ['w1', 'w2', 'w3', 'w4'];
+            if (gameConfig.bwk) ids.push('bwk-id');
+            if (gameConfig.witch) ids.push('witch-id');
+            if (gameConfig.hunter) ids.push('hunter-id');
+            if (gameConfig.bear) ids.push('bear-id');
+            if (gameConfig.prophet) ids.push('prophet-id');
+            if (gameConfig.dreamer) ids.push('dreamer-id');
+            if (gameConfig.wb) ids.push('wb-id');
+            return ids;
+        }
+
+        function updateSetupSelects() {
+            const activeIds = getActiveSetupIds();
+            let selectedVals = activeIds.map(id => document.getElementById(id)?.value).filter(v => v && v !== "none");
+            
+            activeIds.forEach(id => {
+                let select = document.getElementById(id);
+                if (!select) return;
+                let currentVal = select.value;
+                select.innerHTML = '<option value="" disabled selected>請選擇號碼</option>';
+                select.innerHTML += '<option value="none" style="color:#aaa;">無 / 不選擇</option>';
+                for (let i = 1; i <= playerCount; i++) {
+                    let iStr = i.toString();
+                    if (selectedVals.includes(iStr) && currentVal !== iStr) continue;
+                    select.innerHTML += `<option value="${iStr}" ${currentVal === iStr ? 'selected' : ''}>${iStr} 號</option>`;
+                }
+            });
+        }
+
+        function populateAliveSelect(selectId, includeZero = false, zeroText = "無 / 不選擇", requireTarget = false, excludeId = null) {
+            const select = document.getElementById(selectId);
+            if(!select) return;
+            select.innerHTML = "";
+            if (!requireTarget && includeZero) {
+                select.innerHTML = `<option value="0">${zeroText}</option>`;
+            } else if (requireTarget) {
+                select.innerHTML = `<option value="" disabled selected>請選擇目標...</option>`;
+            }
+            
+            players.filter(p => p.alive && p.id !== excludeId).forEach(p => {
+                let roleInfo = p.role === '?' ? '' : ` (${p.role})`;
+                select.innerHTML += `<option value="${p.id}" class="${p.class}">${p.id} 號${roleInfo}</option>`;
+            });
+        }
+
+        function updateAliveStatus() {
+            let html = '<strong>玩家狀態板：</strong><div style="margin-top:10px; display:flex; flex-wrap:wrap; justify-content:center; gap:8px;">';
+            players.forEach(p => {
+                let status = p.alive ? '' : ' dead';
+                let roleTxt = p.role === '?' ? '未定' : p.role;
+                html += `<span class="status-badge ${p.class}${status}">[${p.id}號] ${roleTxt}</span>`;
+            });
+            html += '</div>';
+            document.getElementById('alive-status').innerHTML = html;
+        }
+
+        function getRoleStr(roleName) {
+            if (['預言家', '女巫', '獵人', '熊', '攝夢人'].includes(roleName)) return `<span style="color:var(--color-god); font-weight:bold;">${roleName}</span>`;
+            if (['狼人', '黑狼王', '狼美人'].includes(roleName)) return `<span style="color:var(--color-wolf); font-weight:bold;">${roleName}</span>`;
+            if (roleName === '平民') return `<span style="color:var(--color-villager); font-weight:bold;">${roleName}</span>`;
+            return roleName;
+        }
+
+        function getPlayerStr(id, isNightDead = false) {
+            if (!id || id === 0) return "無人";
+            let p = players.find(x => x.id === id);
+            if (!p) return "";
+            
+            let rName = p.role;
+            let c = "";
+            if (['預言家', '女巫', '獵人', '熊', '攝夢人'].includes(rName)) c = "var(--color-god)";
+            else if (['狼人', '黑狼王', '狼美人'].includes(rName)) c = "var(--color-wolf)";
+            else c = "var(--color-villager)";
+
+            if (isNightDead) {
+                return `<span style="color:${c}; background-color:#333; padding:2px 6px; border-radius:4px; text-decoration:line-through; font-weight:bold; border:1px solid #555; display:inline-block;">${id}號 (${rName})</span>`;
+            } else {
+                return `<span style="color:${c}; font-weight:bold;">${id}號 (${rName})</span>`;
+            }
+        }
+
+        // =======================
+        // 核心死亡引擎 (含封印邏輯)
+        // =======================
+        function registerDeath(id, cause, deadList, deadCauses) {
+            if (!id || id === 0 || deadList.includes(id)) return;
+            deadList.push(id);
+            deadCauses[id] = cause;
+
+            let p = players.find(x => x.id === id);
+            if (!p) return;
+
+            let canTriggerSkills = !['dream-death', 'dream-link', 'wb-link'].includes(cause);
+
+            if (canTriggerSkills) {
+                if (p.role === '狼美人' && state.charmedPlayer !== 0 && !deadList.includes(state.charmedPlayer)) {
+                    registerDeath(state.charmedPlayer, 'wb-link', deadList, deadCauses);
+                }
+                let isNightCause = ['wolf', 'poison'].includes(cause);
+                if (isNightCause && p.role === '攝夢人' && nightData.dreamerTarget !== 0 && !deadList.includes(nightData.dreamerTarget)) {
+                    registerDeath(nightData.dreamerTarget, 'dream-link', deadList, deadCauses);
+                }
+            }
+        }
+
+        function queueShooter(id, cause) {
+            let p = players.find(x => x.id === id);
+            if (!p) return;
+            if (['poison', 'dream-death', 'dream-link', 'wb-link'].includes(cause)) return; 
+            
+            if (p.role === '獵人' || p.role === '黑狼王') {
+                shootQueue.push({ id: p.id, role: p.role, class: p.class });
+            }
+        }
+
+        function processNextAction() {
+            if (checkWinCondition()) {
+                localStorage.removeItem('werewolf_save'); 
+                return;
+            }
+
+            if (shootQueue.length > 0) {
+                currentPhase = 'shoot';
+                let shooter = shootQueue[0];
+                let titleArea = document.getElementById('shoot-title');
+                titleArea.innerHTML = `💥 <span class="${shooter.class}">${shooter.role} (${shooter.id}號)</span> 出局，請選擇開槍目標`;
+                populateAliveSelect('shoot-target', true, "放棄開槍 (不帶走人)");
+                
+                document.getElementById('phase-morning').classList.remove('hidden');
+                document.getElementById('vote-section').classList.add('hidden');
+                document.getElementById('phase-shoot').classList.remove('hidden');
+            } else {
+                document.getElementById('phase-shoot').classList.add('hidden');
+                if (currentPhase === 'vote') {
+                    document.getElementById('phase-morning').classList.add('hidden');
+                    day++;
+                    startNight(false);
+                } else {
+                    currentPhase = 'vote';
+                    document.getElementById('phase-morning').classList.remove('hidden');
+                    document.getElementById('vote-section').classList.remove('hidden');
+                    populateAliveSelect('vote-target', true, "無人出局 (棄票/平票)");
+                }
+            }
+            autoSave();
+        }
+
+        /* ========== 夜晚流程與動態更新 ========== */
+        function startNight(isResume = false) {
+            if(!isResume) {
+                nightData = { wolfKill: 0, witchHeal: false, witchPoison: 0, prophetCheck: 0, dreamerTarget: 0, wbTarget: 0 };
+            }
+            document.getElementById('day-counter').innerText = `第 ${day} 天 夜晚`;
+            document.getElementById('phase-morning').classList.add('hidden');
+            
+            updateAliveStatus();
+            prepareDreamer();
+        }
+
+        function updateDreamerTarget() {
+            let dId = null;
+            if (day === 1) {
+                let setupVal = parseInt(document.getElementById('dreamer-id').value);
+                if (!isNaN(setupVal)) dId = setupVal;
+            } else {
+                let dreamer = players.find(p => p.role === '攝夢人');
+                if (dreamer) dId = dreamer.id;
+            }
+            populateAliveSelect('dreamer-target', false, "", true, dId);
+        }
+
+        function updateWbTarget() {
+            let wId = null;
+            if (day === 1) {
+                let setupVal = parseInt(document.getElementById('wb-id').value);
+                if (!isNaN(setupVal)) wId = setupVal;
+            } else {
+                let wb = players.find(p => p.role === '狼美人');
+                if (wb) wId = wb.id;
+            }
+            populateAliveSelect('wb-target', false, "", true, wId);
+        }
+
+        function prepareDreamer() {
+            if (!gameConfig.dreamer) return prepareWolf();
+            currentPhase = 'dreamer';
+            document.getElementById('phase-dreamer').classList.remove('hidden');
+            let dreamer = players.find(p => p.role === '攝夢人');
+
+            if (day === 1) {
+                document.getElementById('d1-dreamer-setup').classList.remove('hidden');
+                document.getElementById('dreamer-history-msg').classList.add('hidden');
+            } else {
+                document.getElementById('d1-dreamer-setup').classList.add('hidden');
+                if (historyData.lastDreamTarget !== 0) {
+                    document.getElementById('dreamer-history-msg').classList.remove('hidden');
+                    document.getElementById('dreamer-history-msg').innerHTML = `⚠️ 昨晚攝的玩家是：<span style="font-size:20px; text-decoration:underline;">${historyData.lastDreamTarget} 號</span>`;
+                } else {
+                    document.getElementById('dreamer-history-msg').classList.add('hidden');
+                }
+            }
+
+            if (day > 1 && dreamer && !dreamer.alive) {
+                populateAliveSelect('dreamer-target', true, "攝夢人已死，無動作", false, null);
+                document.getElementById('dreamer-target').disabled = true;
+            } else {
+                updateDreamerTarget();
+                document.getElementById('dreamer-target').disabled = false;
+            }
+            autoSave();
+        }
+
+        function processDreamer() {
+            let selectBox = document.getElementById('dreamer-target');
+            let dId = null;
+            
+            if (day === 1) {
+                let setupVal = parseInt(document.getElementById('dreamer-id').value);
+                if (!isNaN(setupVal)) dId = setupVal;
+            } else {
+                let p = players.find(p => p.role === '攝夢人');
+                if (p && p.alive) dId = p.id;
+            }
+
+            if (!selectBox.disabled) {
+                let val = parseInt(selectBox.value);
+                if (isNaN(val)) return alert("請選擇要攝的玩家！");
+                if (dId !== null && dId === val) return alert("防呆機制啟動：攝夢人絕對不能攝自己！");
+            }
+
+            takeSnapshot(); // 審核過關才儲存狀態
+            
+            if (day === 1 && dId !== null) {
+                let p = players.find(x => x.id === dId);
+                p.role = '攝夢人'; p.class = 'color-god';
+                updateAliveStatus();
+            }
+
+            if (!selectBox.disabled) {
+                nightData.dreamerTarget = parseInt(selectBox.value);
+            }
+            
+            document.getElementById('phase-dreamer').classList.add('hidden');
+            prepareWolf();
+        }
+
+        function prepareWolf() {
+            currentPhase = 'wolf';
+            document.getElementById('phase-wolf').classList.remove('hidden');
+            if (day === 1) document.getElementById('d1-wolf-setup').classList.remove('hidden');
+            else document.getElementById('d1-wolf-setup').classList.add('hidden');
+            
+            populateAliveSelect('wolf-target', true, "不擊殺 (空刀)");
+
+            if (gameConfig.wb) {
+                document.getElementById('wb-action-container').classList.remove('hidden');
+                let wb = players.find(p => p.role === '狼美人');
+                if (day > 1 && wb && !wb.alive) {
+                    document.getElementById('wb-target').classList.add('hidden');
+                    document.getElementById('wb-dead-msg').classList.remove('hidden');
+                    document.getElementById('wb-target').disabled = true;
+                } else {
+                    document.getElementById('wb-target').classList.remove('hidden');
+                    document.getElementById('wb-dead-msg').classList.add('hidden');
+                    document.getElementById('wb-target').disabled = false;
+                    updateWbTarget();
+                }
+            }
+            autoSave();
+        }
+
+        function processWolf() {
+            let wbId = null;
+            let wIds = [];
+            let bwk = NaN, wb = NaN;
+
+            if (day === 1) {
+                wIds = ['w1','w2','w3','w4'].map(id => parseInt(document.getElementById(id).value)).filter(v => !isNaN(v));
+                bwk = parseInt(document.getElementById('bwk-id')?.value);
+                wb = parseInt(document.getElementById('wb-id')?.value);
+                if(wIds.length === 0 && isNaN(bwk) && isNaN(wb)) return alert("首夜設定：請至少選擇一名狼陣營角色！");
+                if (!isNaN(wb)) wbId = wb;
+            } else {
+                let wbPlayer = players.find(p => p.role === '狼美人');
+                if (wbPlayer && wbPlayer.alive) wbId = wbPlayer.id;
+            }
+
+            let wbTarget = NaN;
+            if (gameConfig.wb && !document.getElementById('wb-target').disabled) {
+                wbTarget = parseInt(document.getElementById('wb-target').value);
+                if (isNaN(wbTarget)) return alert("請選擇狼美人魅惑的玩家！");
+                if (wbId !== null && wbId === wbTarget) return alert("防呆機制啟動：狼美人絕對不能魅惑自己！");
+            }
+
+            takeSnapshot(); // 審核過關才儲存狀態
+
+            if (day === 1) {
+                wIds.forEach(id => { players.find(x => x.id === id).role = '狼人'; players.find(x => x.id === id).class = 'color-wolf'; });
+                if (gameConfig.bwk && !isNaN(bwk)) { players.find(x => x.id === bwk).role = '黑狼王'; players.find(x => x.id === bwk).class = 'color-wolf'; }
+                if (gameConfig.wb && !isNaN(wb)) { 
+                    players.find(x => x.id === wb).role = '狼美人'; 
+                    players.find(x => x.id === wb).class = 'color-wolf'; 
+                }
+                updateAliveStatus();
+            }
+
+            nightData.wolfKill = parseInt(document.getElementById('wolf-target').value);
+
+            if (gameConfig.wb && !document.getElementById('wb-target').disabled) {
+                nightData.wbTarget = wbTarget;
+                state.charmedPlayer = wbTarget;
+            }
+
+            document.getElementById('phase-wolf').classList.add('hidden');
+            prepareWitch();
+        }
+
+        function prepareWitch() {
+            if (!gameConfig.witch) return prepareHunter(); 
+            currentPhase = 'witch';
+
+            document.getElementById('phase-witch').classList.remove('hidden');
+            let witch = players.find(p => p.role === '女巫');
+            let victimText = nightData.wolfKill === 0 ? '無人被殺' : `${nightData.wolfKill} 號`;
+
+            if (day === 1) {
+                document.getElementById('d1-witch-setup').classList.remove('hidden');
+                document.getElementById('d1-witch-kill-hint').innerText = ` ➔ 今晚被殺：${victimText}`;
+            } else {
+                document.getElementById('d1-witch-setup').classList.add('hidden');
+            }
+
+            document.getElementById('radio-none').checked = true;
+            const poisonSelect = document.getElementById('witch-target');
+            populateAliveSelect('witch-target', true, "不選擇");
+            
+            // 毒藥狀態 UI 判斷
+            if (!potions.poison) {
+                document.getElementById('radio-poison').disabled = true;
+                poisonSelect.disabled = true;
+                document.getElementById('poison-status-msg').classList.remove('hidden');
+                document.getElementById('label-poison').style.color = '#888';
+            } else {
+                document.getElementById('radio-poison').disabled = false;
+                poisonSelect.disabled = true; // 預設未點擊Radio前不可選
+                document.getElementById('poison-status-msg').classList.add('hidden');
+                document.getElementById('label-poison').style.color = 'inherit';
+            }
+
+            if (day > 1 && witch && !witch.alive && nightData.wolfKill !== witch.id) {
+                document.getElementById('witch-dead-msg').classList.remove('hidden');
+                document.getElementById('witch-action-controls').classList.add('hidden');
+            } else {
+                document.getElementById('witch-dead-msg').classList.add('hidden');
+                document.getElementById('witch-action-controls').classList.remove('hidden');
+
+                if (potions.heal) {
+                    document.getElementById('witch-info').innerHTML = `
+                        <div class="witch-alert-active">
+                            👉 <strong>上帝請向女巫比出手勢：</strong><br>
+                            告訴女巫，今晚被殺害的是 <span style="color:var(--color-wolf); font-size:24px; font-weight:bold;">${victimText}</span>
+                        </div>`;
+                    document.getElementById('radio-heal').disabled = (nightData.wolfKill === 0); 
+                } else {
+                    document.getElementById('witch-info').innerHTML = `
+                        <div class="witch-alert-used">
+                            ⚠️ 解藥已用過。<br>
+                            <strong>上帝請搖頭或不給手勢</strong>，不要告知死訊。
+                        </div>`;
+                    document.getElementById('radio-heal').disabled = true;
+                }
+            }
+            autoSave();
+        }
+
+        function processWitch() {
+            takeSnapshot(); // 儲存狀態
+
+            if (day === 1) {
+                let wId = parseInt(document.getElementById('witch-id').value);
+                if (!isNaN(wId)) {
+                    players.find(x => x.id === wId).role = '女巫';
+                    players.find(x => x.id === wId).class = 'color-god';
+                }
+                updateAliveStatus();
+            }
+
+            let actionEle = document.querySelector('input[name="witch-action"]:checked');
+            if (actionEle) {
+                if (actionEle.value === 'heal') {
+                    nightData.witchHeal = true;
+                    potions.heal = false;
+                } else if (actionEle.value === 'poison') {
+                    const t = parseInt(document.getElementById('witch-target').value);
+                    if (t !== 0) {
+                        nightData.witchPoison = t;
+                        potions.poison = false;
+                    }
+                }
+            }
+            document.getElementById('phase-witch').classList.add('hidden');
+            prepareHunter();
+        }
+
+        function prepareHunter() {
+            if (!gameConfig.hunter) return prepareBear();
+            currentPhase = 'hunter';
+
+            document.getElementById('phase-hunter').classList.remove('hidden');
+            if (day === 1) document.getElementById('d1-hunter-setup').classList.remove('hidden');
+            else document.getElementById('d1-hunter-setup').classList.add('hidden');
+            updateHunterStatus();
+            autoSave();
+        }
+
+        function updateHunterStatus() {
+            const statusArea = document.getElementById('hunter-status');
+            let hId = day === 1 ? parseInt(document.getElementById('hunter-id').value) : (players.find(p => p.role === '獵人') || {}).id;
+            
+            if (hId && !isNaN(hId)) {
+                let hunter = players.find(p => p.id === hId);
+                let isDeadPreviously = day > 1 && !hunter.alive && nightData.wolfKill !== hId && nightData.witchPoison !== hId;
+                if (isDeadPreviously) {
+                    statusArea.innerHTML = "<span style='color:#aaa;'>🏹 獵人已在先前的回合陣亡。</span>";
+                } else {
+                    let canShoot = (nightData.witchPoison !== hId);
+                    let color = canShoot ? "var(--btn-success)" : "var(--color-wolf)";
+                    let txt = canShoot ? "👌 可以開槍" : "🙅‍♂️ 不能開槍 (遭毒殺)";
+                    statusArea.innerHTML = `<span><span style='color:${color}; font-size:24px;'>${txt}</span></span>`;
+                }
+            } else {
+                statusArea.innerHTML = "<span style='color:#aaa;'>🏹 本局尚未設定獵人號碼</span>";
+            }
+        }
+
+        function processHunter() {
+            takeSnapshot(); // 儲存狀態
+
+            if (day === 1) {
+                let hId = parseInt(document.getElementById('hunter-id').value);
+                if (!isNaN(hId)) {
+                    players.find(x => x.id === hId).role = '獵人';
+                    players.find(x => x.id === hId).class = 'color-god';
+                }
+                updateAliveStatus();
+            }
+            document.getElementById('phase-hunter').classList.add('hidden');
+            prepareBear();
+        }
+
+        function prepareBear() {
+            if (!gameConfig.bear) return prepareProphet();
+            currentPhase = 'bear';
+
+            document.getElementById('phase-bear').classList.remove('hidden');
+            if (day === 1) document.getElementById('d1-bear-setup').classList.remove('hidden');
+            else document.getElementById('d1-bear-setup').classList.add('hidden');
+            autoSave();
+        }
+
+        function processBear() {
+            takeSnapshot(); // 儲存狀態
+
+            if (day === 1) {
+                let bId = parseInt(document.getElementById('bear-id').value);
+                if (!isNaN(bId)) {
+                    players.find(x => x.id === bId).role = '熊';
+                    players.find(x => x.id === bId).class = 'color-god';
+                }
+                updateAliveStatus();
+            }
+            document.getElementById('phase-bear').classList.add('hidden');
+            prepareProphet();
+        }
+
+        function prepareProphet() {
+            if (!gameConfig.prophet) return processMorning();
+            currentPhase = 'prophet';
+
+            document.getElementById('phase-prophet').classList.remove('hidden');
+            let prophet = players.find(p => p.role === '預言家');
+
+            if (day === 1) document.getElementById('d1-prophet-setup').classList.remove('hidden');
+            else document.getElementById('d1-prophet-setup').classList.add('hidden');
+
+            const actionArea = document.getElementById('prophet-action-area');
+            
+            if (day > 1 && prophet && !prophet.alive) {
+                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>預言家已陣亡，無需查驗。請假裝等待後點擊閉眼。</span>";
+                document.getElementById('btn-prophet-check').classList.add('hidden');
+                document.getElementById('btn-prophet-next').classList.remove('hidden');
+                document.getElementById('prophet-result').classList.add('hidden');
+            } else {
+                actionArea.innerHTML = actionArea.getAttribute('data-original') || actionArea.innerHTML;
+                if(!actionArea.getAttribute('data-original')) actionArea.setAttribute('data-original', actionArea.innerHTML);
+                
+                populateAliveSelect('prophet-target', true, "不查驗");
+                
+                if (nightData.prophetCheck !== 0) {
+                    // 若是 Undo 恢復到已查驗狀態，自動顯示查驗結果
+                    document.getElementById('prophet-target').value = nightData.prophetCheck;
+                    showProphetResultUI(nightData.prophetCheck);
+                } else {
+                    // 全新階段
+                    document.getElementById('prophet-result').classList.add('hidden');
+                    document.getElementById('btn-prophet-check').classList.remove('hidden');
+                    document.getElementById('btn-prophet-next').classList.add('hidden');
+                }
+            }
+            autoSave();
+        }
+
+        function showProphetResultUI(targetId) {
+            document.getElementById('prophet-result').classList.remove('hidden');
+            document.getElementById('btn-prophet-check').classList.add('hidden');
+            document.getElementById('btn-prophet-next').classList.remove('hidden');
+
+            const resultText = document.getElementById('prophet-result-text');
+            if (targetId === 0) {
+                resultText.innerText = "未查驗";
+                resultText.className = "color-unknown";
+            } else {
+                const target = players.find(p => p.id === targetId);
+                if (['狼人', '黑狼王', '狼美人'].includes(target.role)) {
+                    resultText.innerText = "🐺 查殺 (狼陣營)";
+                    resultText.className = "color-wolf";
+                } else {
+                    resultText.innerText = "💧 金水 (好人)";
+                    resultText.className = "color-good";
+                }
+            }
+        }
+
+        function checkProphetTarget() {
+            takeSnapshot(); // 送出查驗前儲存狀態
+
+            if (day === 1) {
+                let pId = parseInt(document.getElementById('prophet-id').value);
+                if (!isNaN(pId)) {
+                    players.find(x => x.id === pId).role = '預言家';
+                    players.find(x => x.id === pId).class = 'color-god';
+                }
+                updateAliveStatus(); 
+            }
+
+            const targetId = parseInt(document.getElementById('prophet-target').value);
+            nightData.prophetCheck = targetId;
+            showProphetResultUI(targetId);
+            autoSave();
+        }
+
+        function processProphet() {
+            takeSnapshot(); // 準備進入白天前儲存狀態
+            document.getElementById('phase-prophet').classList.add('hidden');
+            processMorning();
+        }
+
+        /* ========== 天亮死亡結算與排程 ========== */
+        function processMorning() {
+            if (day === 1) {
+                players.forEach(pl => {
+                    if (pl.role === '?') {
+                        pl.role = '平民';
+                        pl.class = 'color-villager';
+                    }
+                });
+            }
+
+            document.getElementById('phase-morning').classList.remove('hidden');
+            
+            let deadTonight = [];
+            let causes = {};
+
+            if (gameConfig.dreamer && nightData.dreamerTarget !== 0 && nightData.dreamerTarget === historyData.lastDreamTarget) {
+                registerDeath(nightData.dreamerTarget, 'dream-death', deadTonight, causes);
+            }
+
+            if (nightData.wolfKill !== 0 && !nightData.witchHeal) {
+                if (!gameConfig.dreamer || nightData.wolfKill !== nightData.dreamerTarget) {
+                    registerDeath(nightData.wolfKill, 'wolf', deadTonight, causes);
+                }
+            }
+
+            if (gameConfig.witch && nightData.witchPoison !== 0) {
+                if (!gameConfig.dreamer || nightData.witchPoison !== nightData.dreamerTarget) {
+                    registerDeath(nightData.witchPoison, 'poison', deadTonight, causes);
+                }
+            }
+
+            deadTonight.forEach(id => {
+                let p = players.find(x => x.id === id);
+                if (p) p.alive = false;
+            });
+
+            if (gameConfig.dreamer) historyData.lastDreamTarget = nightData.dreamerTarget;
+
+            let bearHtml = "";
+            let logBearStr = "";
+            if (gameConfig.bear) {
+                let bear = players.find(p => p.role === '熊');
+                let bearGrowled = false;
+                let bearAlive = (bear && bear.alive);
+                
+                if (bearAlive) {
+                    let alivePlayers = players.filter(p => p.alive).sort((a,b) => a.id - b.id);
+                    if (alivePlayers.length >= 3) {
+                        let idx = alivePlayers.findIndex(p => p.id === bear.id);
+                        let left = alivePlayers[(idx - 1 + alivePlayers.length) % alivePlayers.length];
+                        let right = alivePlayers[(idx + 1) % alivePlayers.length];
+                        if (['狼人', '黑狼王', '狼美人'].includes(left.role) || ['狼人', '黑狼王', '狼美人'].includes(right.role)) bearGrowled = true;
+                    } else if (alivePlayers.length === 2) {
+                        let other = alivePlayers.find(p => p.id !== bear.id);
+                        if (['狼人', '黑狼王', '狼美人'].includes(other.role)) bearGrowled = true;
+                    }
+                }
+                
+                if (bear) {
+                    let msg = (bearAlive && bearGrowled) ? "🐾 上帝宣布：熊叫了" : "🐾 上帝宣布：熊沒有叫";
+                    bearHtml = `<div class="bear-alert"><h3>${msg}</h3></div>`;
+                    logBearStr = `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-god); font-weight:bold;">${msg}</div>`;
+                }
+            }
+
+            let logHtml = `<div class="log-entry">
+                <div style="color: #999; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 5px; font-weight:bold;">🌙 【第 ${day} 天夜晚】</div>
+                <ul style="margin: 5px 0; padding-left: 20px; list-style-type: none;">`;
+
+            if (gameConfig.dreamer && nightData.dreamerTarget !== 0) {
+                logHtml += `<li>💤 ${getRoleStr('攝夢人')} 攝了 ${getPlayerStr(nightData.dreamerTarget, false)}。</li>`;
+            }
+
+            logHtml += `<li>🐺 狼陣營 `;
+            if (nightData.wolfKill !== 0) {
+                let hitImmune = (gameConfig.dreamer && nightData.wolfKill === nightData.dreamerTarget);
+                if (hitImmune) logHtml += `砍殺了 ${getPlayerStr(nightData.wolfKill, false)}，但因在夢中免疫了傷害。</li>`;
+                else logHtml += `殺害了 ${getPlayerStr(nightData.wolfKill, false)}。</li>`;
+            }
+            else logHtml += `選擇空刀。</li>`;
+
+            if (gameConfig.wb && nightData.wbTarget !== 0) {
+                logHtml += `<li>💋 ${getRoleStr('狼美人')} 魅惑了 ${getPlayerStr(nightData.wbTarget, false)}。</li>`;
+            }
+
+            if (gameConfig.witch) {
+                logHtml += `<li>🧪 ${getRoleStr('女巫')} `;
+                if (nightData.witchHeal) logHtml += `使用解藥，救起了 ${getPlayerStr(nightData.wolfKill, false)}。</li>`;
+                else if (nightData.witchPoison !== 0) {
+                    let hitImmune = (gameConfig.dreamer && nightData.witchPoison === nightData.dreamerTarget);
+                    if (hitImmune) logHtml += `對 ${getPlayerStr(nightData.witchPoison, false)} 使用毒藥，但因在夢中免疫了傷害。</li>`;
+                    else logHtml += `使用毒藥，毒死了 ${getPlayerStr(nightData.witchPoison, false)}。</li>`;
+                }
+                else logHtml += `未使用任何藥物。</li>`;
+            }
+
+            if (gameConfig.prophet && nightData.prophetCheck !== 0) {
+                let target = players.find(x => x.id === nightData.prophetCheck);
+                let isWolf = ['狼人', '黑狼王', '狼美人'].includes(target.role);
+                let resCol = isWolf ? 'var(--color-wolf)' : 'var(--color-good)'; 
+                let resTxt = isWolf ? '查殺' : '金水';
+                logHtml += `<li>👁️ ${getRoleStr('預言家')} 查驗了 ${getPlayerStr(nightData.prophetCheck, false)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
+            }
+            logHtml += `</ul>`;
+
+            logHtml += `<div style="color: #aaa; margin-top: 15px; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 5px; font-weight:bold;">☀️ 【第 ${day} 天白天】</div>`;
+            logHtml += `<div style="padding-left: 5px;">昨晚出局：`;
+            if (deadTonight.length > 0) {
+                let deadStrs = deadTonight.sort((a,b)=>a-b).map(id => {
+                    let causeStr = "";
+                    if (causes[id] === 'dream-death') causeStr = "(夢死封印)";
+                    else if (causes[id] === 'dream-link') causeStr = "(夢中連帶死封印)";
+                    else if (causes[id] === 'wb-link') causeStr = "(魅惑殉情封印)";
+                    return getPlayerStr(id, true) + " " + causeStr;
+                });
+                logHtml += deadStrs.join(' , ') + "。";
+            } else {
+                logHtml += `<span style="color:var(--btn-success); font-weight:bold;">平安夜。</span>`;
+            }
+            logHtml += `</div>${logBearStr}`;
+
+            gameHistory.push(logHtml);
+
+            let resultHtml = "";
+            if (deadTonight.length === 0) {
+                resultHtml = "<h3 style='color:var(--btn-success); margin-bottom: 0;'>昨晚是平安夜！沒有人死亡。</h3>";
+            } else {
+                let displayIds = deadTonight.sort((a,b)=>a-b);
+                resultHtml = `<h3 style='margin-bottom: 0;'>昨晚出局的玩家為：<span style='color:var(--color-wolf);'>${displayIds.join(' 號, ')} 號</span></h3>`;
+            }
+            
+            state.morningResultHtml = resultHtml + bearHtml; // 儲存供 Undo 使用
+            document.getElementById('morning-result').innerHTML = state.morningResultHtml;
+            updateAliveStatus();
+
+            deadTonight.forEach(id => { queueShooter(id, causes[id]); });
+
+            processNextAction();
+        }
+
+        /* ========== 開槍與投票 ========== */
+        function submitShoot() {
+            takeSnapshot(); // 確認開槍前儲存狀態
+
+            let shooter = shootQueue[0];
+            let targetId = parseInt(document.getElementById('shoot-target').value);
+            
+            if (targetId !== 0) {
+                let newlyDead = [];
+                let causes = {};
+                registerDeath(targetId, 'shoot', newlyDead, causes);
+                
+                newlyDead.forEach(id => {
+                    let p = players.find(x => x.id === id);
+                    if (p) p.alive = false;
+                });
+
+                gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">💥 ${getPlayerStr(shooter.id, false)} 開槍帶走了 ${getPlayerStr(targetId, true)}。</div>`;
+                
+                newlyDead.filter(id => id !== targetId).forEach(id => {
+                    if (causes[id] === 'wb-link') {
+                        gameHistory[gameHistory.length-1] += `<div style="padding-left: 20px; color: var(--color-wolf);">➔ 狼美人出局，${getPlayerStr(id, true)} 隨之殉情 (技能封印)。</div>`;
+                    } else if (causes[id] === 'dream-link') {
+                        gameHistory[gameHistory.length-1] += `<div style="padding-left: 20px; color: var(--color-god);">➔ 攝夢人出局，${getPlayerStr(id, true)} 隨之在夢中死亡 (技能封印)。</div>`;
+                    }
+                });
+
+                newlyDead.forEach(id => queueShooter(id, causes[id]));
+            } else {
+                gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">💥 ${getPlayerStr(shooter.id, false)} 選擇不開槍 (或無法開槍)。</div>`;
+            }
+            
+            updateAliveStatus();
+            shootQueue.shift(); 
+            processNextAction(); 
+        }
+
+        function processVote() {
+            takeSnapshot(); // 投票結算前儲存狀態
+
+            let vId = parseInt(document.getElementById('vote-target').value);
+
+            if (vId !== 0) {
+                let newlyDead = [];
+                let causes = {};
+                registerDeath(vId, 'vote', newlyDead, causes);
+                
+                newlyDead.forEach(id => {
+                    let p = players.find(x => x.id === id);
+                    if (p) p.alive = false;
+                });
+
+                gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">🗳️ 白天投票結果：${getPlayerStr(vId, false)} 出局。</div>`;
+                
+                newlyDead.filter(id => id !== vId).forEach(id => {
+                    if (causes[id] === 'wb-link') {
+                        gameHistory[gameHistory.length-1] += `<div style="padding-left: 20px; color: var(--color-wolf);">➔ 狼美人出局，${getPlayerStr(id, true)} 隨之殉情 (技能封印)。</div>`;
+                    } else if (causes[id] === 'dream-link') {
+                        gameHistory[gameHistory.length-1] += `<div style="padding-left: 20px; color: var(--color-god);">➔ 攝夢人出局，${getPlayerStr(id, true)} 隨之在夢中死亡 (技能封印)。</div>`;
+                    }
+                });
+
+                newlyDead.forEach(id => queueShooter(id, causes[id]));
+            } else {
+                gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">🗳️ 白天投票結果：無人出局。</div>`;
+            }
+            gameHistory[gameHistory.length-1] += `</div>`; 
+
+            updateAliveStatus();
+            document.getElementById('vote-section').classList.add('hidden');
+            
+            processNextAction();
+        }
+
+        /* ========== 勝負判定 ========== */
+        function checkWinCondition() {
+            let wolves = players.filter(p => ['狼人', '黑狼王', '狼美人'].includes(p.role) && p.alive).length;
+            let gods = players.filter(p => ['預言家', '女巫', '獵人', '熊', '攝夢人'].includes(p.role) && p.alive).length;
+            let villagers = players.filter(p => p.role === '平民' && p.alive).length;
+
+            let endMsg = "";
+            let wolfWin = (gods === 0 || villagers === 0);
+            let goodWin = (wolves === 0);
+
+            if (wolfWin && goodWin) {
+                if (gods === 0) endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:18px; color:#aaa;'>(判定為狼刀在先，神職全滅)</span>";
+                else endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:18px; color:#aaa;'>(判定為狼刀在先，平民全滅)</span>";
+            } 
+            else if (wolfWin) {
+                if (gods === 0) endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:18px; color:#aaa;'>(神職已全滅)</span>";
+                else endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:18px; color:#aaa;'>(平民已全滅)</span>";
+            } 
+            else if (goodWin) {
+                endMsg = "🏆 好人陣營獲勝！<br><span style='font-size:18px; color:#aaa;'>(狼陣營已全滅)</span>";
+            }
+
+            if (endMsg !== "") {
+                document.getElementById('game-screen').classList.add('hidden');
+                document.getElementById('end-screen').classList.remove('hidden');
+                document.getElementById('win-title').innerHTML = endMsg;
+                
+                document.getElementById('game-log').innerHTML = gameHistory.join('');
+                return true;
+            }
+            return false;
+        }
+    </script>
+</body>
+</html>
