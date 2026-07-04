@@ -15,6 +15,7 @@
             --color-god: #c879ff;
             --color-villager: #ffcc00;
             --color-good: #4da6ff;
+            --color-gold: #FFD700; /* 新增金色變數 */
             --color-unknown: #888;
             --btn-primary: #2196F3;
             --btn-success: #4CAF50;
@@ -45,6 +46,7 @@
         .color-god { color: var(--color-god); font-weight: bold; }
         .color-villager { color: var(--color-villager); font-weight: bold; }
         .color-good { color: var(--color-good); font-weight: bold; }
+        .color-gold { color: var(--color-gold); font-weight: bold; }
         .color-unknown { color: var(--color-unknown); }
         
         .hidden { display: none !important; }
@@ -59,7 +61,8 @@
         .bear-alert { background: #332244; padding: 12px; border-radius: 6px; border: 1px solid var(--color-god); margin-top: 15px; text-align: center; }
         
         .role-check-label { display: inline-block; width: 48%; margin: 10px 0; font-size: 16px; cursor: pointer; }
-        .role-check-label input { width: 18px; height: 18px; margin-right: 8px; cursor: pointer; vertical-align: middle; accent-color: var(--color-god); }
+        /* 移除紫色底色，改為純粹黑色勾勾 */
+        .role-check-label input { width: 18px; height: 18px; margin-right: 8px; cursor: pointer; vertical-align: middle; accent-color: black; }
         
         .status-badge { background: #333; padding: 6px 10px; border-radius: 6px; border: 1px solid #555; display: inline-block; white-space: nowrap; font-size: 14px; }
     </style>
@@ -71,8 +74,6 @@
     <!-- 遊戲設定介面 -->
     <div id="setup-screen" style="text-align:center; padding: 10px 0;">
         <button id="btn-resume" onclick="resumeGame()" class="hidden" style="background-color: var(--btn-warning); font-size: 18px; margin-bottom: 20px; color: #000;">🔄 發現未完成的對局，點此恢復</button>
-
-        <h2>遊戲參數設定</h2>
         
         <div style="margin-bottom: 20px;">
             <label style="font-size: 18px; font-weight: bold;">玩家人數：</label>
@@ -97,12 +98,6 @@
             <label class="role-check-label"><input type="checkbox" id="cfg-bwk"> 🐺 黑狼王</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-wb"> 💋 狼美人</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-ek"> 🏍️ 惡靈騎士</label>
-            
-            <div style="font-size: 13px; color: #aaa; margin-top: 15px; line-height: 1.5; background: #222; padding: 10px; border-radius: 5px;">
-                * 魔術師交換牌將自動影響當晚所有技能判定！<br>
-                * 惡靈騎士擁有夜間免死及一次性反傷機制。<br>
-                * 已實裝強制選擇防呆與進度復原功能。
-            </div>
         </div>
         <br>
         <button onclick="startGame()" style="width: 100%; max-width: 340px; font-size: 20px; background-color: var(--btn-primary); padding: 14px;">進入上帝控制台</button>
@@ -204,7 +199,10 @@
                 <div id="witch-action-controls">
                     <div id="witch-info"></div>
                     <div id="witch-actions" style="margin-top: 15px; background: #222; padding: 15px; border-radius: 6px;">
-                        <label style="display: block; margin-bottom: 10px; font-size: 18px;"><input type="radio" name="witch-action" value="heal" id="radio-heal" style="width:20px; height:20px; vertical-align:middle;"> 使用解藥</label>
+                        <label style="display: block; margin-bottom: 10px; font-size: 18px;">
+                            <input type="radio" name="witch-action" value="heal" id="radio-heal" style="width:20px; height:20px; vertical-align:middle;"> 使用解藥 
+                            <span id="heal-target-hint" style="color:var(--color-wolf); font-size: 16px; margin-left: 5px;"></span>
+                        </label>
                         
                         <label id="label-poison" style="display: block; margin-bottom: 10px; font-size: 18px;">
                             <input type="radio" name="witch-action" value="poison" id="radio-poison" style="width:20px; height:20px; vertical-align:middle;"> 使用毒藥 ➔ 
@@ -768,7 +766,6 @@
             } else {
                 document.getElementById('magician-target1').disabled = false;
                 document.getElementById('magician-target2').disabled = false;
-                // 魔術師不可選曾經換過的號碼
                 populateAliveSelect('magician-target1', true, "不交換", false, null, historyData.magicianSwapped);
                 populateAliveSelect('magician-target2', true, "不交換", false, null, historyData.magicianSwapped);
             }
@@ -895,7 +892,7 @@
 
             if (gameConfig.wb && !document.getElementById('wb-target').disabled) {
                 nightData.wbTarget = wbTarget;
-                state.charmedPlayer = wbTarget; // 記錄原始號碼 (連死會在早上結算實際號碼)
+                state.charmedPlayer = wbTarget; 
             }
 
             document.getElementById('phase-wolf').classList.add('hidden');
@@ -910,13 +907,10 @@
             document.getElementById('phase-witch').classList.remove('hidden');
             let witch = players.find(p => p.role === '女巫');
             
-            // 魔術師置換死亡資訊
             let actualVictim = applyMagic(nightData.wolfKill);
-            let victimText = actualVictim === 0 ? '無人被殺' : `${actualVictim} 號`;
 
             if (day === 1) {
                 document.getElementById('d1-witch-setup').classList.remove('hidden');
-                document.getElementById('d1-witch-kill-hint').innerHTML = ` ➔ 今晚被殺：<span style="color:var(--color-wolf);">${victimText}</span>`;
             } else {
                 document.getElementById('d1-witch-setup').classList.add('hidden');
             }
@@ -945,12 +939,14 @@
                 document.getElementById('witch-action-controls').classList.remove('hidden');
 
                 if (potions.heal) {
+                    let victimText = actualVictim === 0 ? '無人被殺' : `${actualVictim} 號`;
                     document.getElementById('witch-info').innerHTML = `
                         <div class="witch-alert-active">
                             👉 <strong>上帝請向女巫比出手勢：</strong><br>
                             告訴女巫，今晚被殺害的是 <span style="color:var(--color-wolf); font-size:24px; font-weight:bold;">${victimText}</span>
                         </div>`;
                     document.getElementById('radio-heal').disabled = (actualVictim === 0); 
+                    document.getElementById('heal-target-hint').innerText = actualVictim === 0 ? "(昨晚空刀)" : `(狼人晚上殺的是 ${actualVictim} 號)`;
                 } else {
                     document.getElementById('witch-info').innerHTML = `
                         <div class="witch-alert-used">
@@ -958,6 +954,7 @@
                             <strong>上帝請搖頭或不給手勢</strong>，不要告知死訊。
                         </div>`;
                     document.getElementById('radio-heal').disabled = true;
+                    document.getElementById('heal-target-hint').innerText = "";
                 }
             }
             autoSave();
@@ -1013,7 +1010,6 @@
             
             if (hId && !isNaN(hId)) {
                 let hunter = players.find(p => p.id === hId);
-                // 檢查是否早就在前幾天死掉
                 let isDeadPreviously = day > 1 && !hunter.alive && applyMagic(nightData.wolfKill) !== hId && applyMagic(nightData.witchPoison) !== hId;
                 if (isDeadPreviously) {
                     statusArea.innerHTML = "<span style='color:#aaa;'>🏹 獵人已在先前的回合陣亡。</span>";
@@ -1119,7 +1115,6 @@
 
             const resultText = document.getElementById('prophet-result-text');
             
-            // 經過魔術置換後的真實身分
             let actualTarget = applyMagic(targetId);
             let swapMsg = (actualTarget !== targetId && actualTarget !== 0) ? `<br><span style="font-size:16px; color:#aaa;">(受魔術影響，實際查驗為 ${actualTarget} 號)</span>` : "";
 
@@ -1129,11 +1124,11 @@
             } else {
                 const target = players.find(p => p.id === actualTarget);
                 if (['狼人', '黑狼王', '狼美人', '惡靈騎士'].includes(target.role)) {
-                    resultText.innerHTML = `🐺 查殺 (狼陣營)${swapMsg}`;
+                    resultText.innerHTML = `🐺 查殺${swapMsg}`;
                     resultText.className = "color-wolf";
                 } else {
-                    resultText.innerHTML = `💧 金水 (好人)${swapMsg}`;
-                    resultText.className = "color-good";
+                    resultText.innerHTML = `💧 金水${swapMsg}`;
+                    resultText.className = "color-gold";
                 }
             }
         }
@@ -1166,7 +1161,7 @@
         }
 
         // =======================
-        // 天亮死亡結算與排程 (包含魔術與惡靈騎士反傷)
+        // 天亮死亡結算與排程
         // =======================
         function getSwapLogStr(original, actual) {
             if (original === 0) return "";
@@ -1189,37 +1184,31 @@
             let deadTonight = [];
             let causes = {};
 
-            // 1. 計算所有經過魔術置換後的真實目標
             let actualDream = applyMagic(nightData.dreamerTarget);
             let actualKill = applyMagic(nightData.wolfKill);
             let actualPoison = applyMagic(nightData.witchPoison);
             let actualCharm = applyMagic(nightData.wbTarget);
             let actualCheck = applyMagic(nightData.prophetCheck);
 
-            // 2. 攝夢人夢死
             if (gameConfig.dreamer && actualDream !== 0 && actualDream === historyData.lastDreamTarget) {
                 registerDeath(actualDream, 'dream-death', deadTonight, causes);
             }
 
-            // 3. 狼刀 (女巫救的是被魔術置換後的 actualKill，邏輯相符)
             if (actualKill !== 0 && !nightData.witchHeal) {
                 if (!gameConfig.dreamer || actualKill !== actualDream) {
                     registerDeath(actualKill, 'wolf', deadTonight, causes);
                 }
             }
 
-            // 4. 女巫毒藥
             if (gameConfig.witch && actualPoison !== 0) {
                 if (!gameConfig.dreamer || actualPoison !== actualDream) {
                     registerDeath(actualPoison, 'poison', deadTonight, causes);
                 }
             }
 
-            // 5. 惡靈騎士反傷結算
             let extraEventsHtml = "";
             let ek = players.find(p => p.role === '惡靈騎士');
             if (ek && ek.alive) {
-                // 如果被毒，觸發反傷彈死女巫 (惡靈騎士本身在 registerDeath 裡已經免疫 poison)
                 if (actualPoison === ek.id && !state.ekReflectUsed) {
                     state.ekReflectUsed = true;
                     let witch = players.find(p => p.role === '女巫');
@@ -1228,7 +1217,6 @@
                         extraEventsHtml += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">🏍️ 惡靈騎士被毒，觸發反傷彈死了女巫！</div>`;
                     }
                 } 
-                // 如果被驗，觸發反傷彈死預言家
                 else if (actualCheck === ek.id && !state.ekReflectUsed) {
                     state.ekReflectUsed = true;
                     let seer = players.find(p => p.role === '預言家');
@@ -1239,19 +1227,16 @@
                 }
             }
 
-            // 標記今晚死者狀態
             deadTonight.forEach(id => {
                 let p = players.find(x => x.id === id);
                 if (p) p.alive = false;
             });
 
-            // 記錄歷程資料
-            if (gameConfig.dreamer) historyData.lastDreamTarget = actualDream; // 記錄真實夢境
+            if (gameConfig.dreamer) historyData.lastDreamTarget = actualDream; 
             if (gameConfig.magician && nightData.magicianSwap.t1 !== 0) {
                 historyData.magicianSwapped.push(nightData.magicianSwap.t1, nightData.magicianSwap.t2);
             }
 
-            // 6. 熊的判定
             let bearHtml = "";
             let logBearStr = "";
             if (gameConfig.bear) {
@@ -1279,7 +1264,6 @@
                 }
             }
 
-            // --- 產生彩色賽報 ---
             let logHtml = `<div class="log-entry">
                 <div style="color: #999; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 5px; font-weight:bold;">🌙 【第 ${day} 天夜晚】</div>
                 <ul style="margin: 5px 0; padding-left: 20px; list-style-type: none;">`;
@@ -1318,7 +1302,7 @@
             if (gameConfig.prophet && nightData.prophetCheck !== 0) {
                 let target = players.find(x => x.id === actualCheck);
                 let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士'].includes(target.role);
-                let resCol = isWolf ? 'var(--color-wolf)' : 'var(--color-good)'; 
+                let resCol = isWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
                 let resTxt = isWolf ? '查殺' : '金水';
                 logHtml += `<li>👁️ ${getRoleStr('預言家')} 查驗了 ${getPlayerStr(nightData.prophetCheck, false)}${getSwapLogStr(nightData.prophetCheck, actualCheck)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
             }
@@ -1332,7 +1316,7 @@
                     if (causes[id] === 'dream-death') causeStr = "(夢死封印)";
                     else if (causes[id] === 'dream-link') causeStr = "(夢中連帶死封印)";
                     else if (causes[id] === 'wb-link') causeStr = "(魅惑殉情封印)";
-                    return getPlayerStr(id, false) + " " + causeStr; // 正常顯示，不劃橫槓
+                    return getPlayerStr(id, false) + " " + causeStr;
                 });
                 logHtml += deadStrs.join(' , ') + "。";
             } else {
@@ -1369,9 +1353,8 @@
             if (targetId !== 0) {
                 let targetP = players.find(x => x.id === targetId);
                 
-                // 惡靈騎士免疫槍殺
                 if (targetP && targetP.role === '惡靈騎士') {
-                    gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">💥 ${getPlayerStr(shooter.id, false)} 開槍命中 ${getPlayerStr(targetId, true)}，<span style="color:var(--color-wolf); font-weight:bold;">但惡靈騎士免疫槍殺，未能帶走！</span></div>`;
+                    gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">💥 ${getPlayerStr(shooter.id, false)} 開槍命中 ${getPlayerStr(targetId, false)}，<span style="color:var(--color-wolf); font-weight:bold;">但惡靈騎士免疫槍殺，未能帶走！</span></div>`;
                 } else {
                     let newlyDead = [];
                     let causes = {};
