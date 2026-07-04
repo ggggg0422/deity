@@ -15,7 +15,7 @@
             --color-god: #c879ff;
             --color-villager: #ffcc00;
             --color-good: #4da6ff;
-            --color-gold: #FFD700; /* 新增金色變數 */
+            --color-gold: #FFD700; 
             --color-unknown: #888;
             --btn-primary: #2196F3;
             --btn-success: #4CAF50;
@@ -52,6 +52,9 @@
         .hidden { display: none !important; }
         .result-box { background: #333; padding: 12px; border-left: 4px solid var(--btn-success); margin-top: 10px; border-radius: 4px; }
         
+        /* 狀態板玩家出局時的橫槓與變灰效果 */
+        .dead { text-decoration: line-through; opacity: 0.4; filter: grayscale(100%); }
+        
         .setup-box { background: #3a3a3a; padding: 12px; border-radius: 6px; border: 1px dashed #666; margin-bottom: 15px; }
         .setup-box p { margin-top: 0; font-weight: bold; color: #aaa; margin-bottom: 8px; }
         .log-entry { margin-bottom: 15px; border-bottom: 1px dotted #555; padding-bottom: 15px; background: #222; padding: 12px; border-radius: 6px; }
@@ -61,7 +64,6 @@
         .bear-alert { background: #332244; padding: 12px; border-radius: 6px; border: 1px solid var(--color-god); margin-top: 15px; text-align: center; }
         
         .role-check-label { display: inline-block; width: 48%; margin: 10px 0; font-size: 16px; cursor: pointer; }
-        /* 移除紫色底色，改為純粹黑色勾勾 */
         .role-check-label input { width: 18px; height: 18px; margin-right: 8px; cursor: pointer; vertical-align: middle; accent-color: black; }
         
         .status-badge { background: #333; padding: 6px 10px; border-radius: 6px; border: 1px solid #555; display: inline-block; white-space: nowrap; font-size: 14px; }
@@ -553,7 +555,7 @@
         }
 
         function updateAliveStatus() {
-            let html = '<strong>玩家狀態板：</strong><div style="margin-top:10px; display:flex; flex-wrap:wrap; justify-content:center; gap:8px;">';
+            let html = '<div style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px;">';
             players.forEach(p => {
                 let status = p.alive ? '' : ' dead';
                 let roleTxt = p.role === '?' ? '未定' : p.role;
@@ -607,7 +609,6 @@
                 }
                 let isNightCause = ['wolf', 'poison'].includes(cause);
                 if (isNightCause && p.role === '攝夢人' && nightData.dreamerTarget !== 0 && !deadList.includes(nightData.dreamerTarget)) {
-                    // 如果攝夢人死亡，夢中人跟著死 (注意：互換後實際夢的目標已記錄)
                     let actualDream = applyMagic(nightData.dreamerTarget);
                     registerDeath(actualDream, 'dream-link', deadList, deadCauses);
                 }
@@ -1124,10 +1125,10 @@
             } else {
                 const target = players.find(p => p.id === actualTarget);
                 if (['狼人', '黑狼王', '狼美人', '惡靈騎士'].includes(target.role)) {
-                    resultText.innerHTML = `🐺 查殺${swapMsg}`;
+                    resultText.innerHTML = `查殺${swapMsg}`;
                     resultText.className = "color-wolf";
                 } else {
-                    resultText.innerHTML = `💧 金水${swapMsg}`;
+                    resultText.innerHTML = `金水${swapMsg}`;
                     resultText.className = "color-gold";
                 }
             }
