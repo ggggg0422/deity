@@ -565,11 +565,8 @@
             else if (['狼人', '黑狼王', '狼美人'].includes(rName)) c = "var(--color-wolf)";
             else c = "var(--color-villager)";
 
-            if (isNightDead) {
-                return `<span style="color:${c}; background-color:#333; padding:2px 6px; border-radius:4px; text-decoration:line-through; font-weight:bold; border:1px solid #555; display:inline-block;">${id}號 (${rName})</span>`;
-            } else {
-                return `<span style="color:${c}; font-weight:bold;">${id}號 (${rName})</span>`;
-            }
+            // 移除刪除線，正常顯示即可
+            return `<span style="color:${c}; font-weight:bold;">${id}號 (${rName})</span>`;
         }
 
         // =======================
@@ -709,7 +706,8 @@
             
             if (day === 1) {
                 let setupVal = parseInt(document.getElementById('dreamer-id').value);
-                if (!isNaN(setupVal)) dId = setupVal;
+                if (isNaN(setupVal)) return alert("請在首夜設定中選擇「攝夢人」的號碼！");
+                dId = setupVal;
             } else {
                 let p = players.find(p => p.role === '攝夢人');
                 if (p && p.alive) dId = p.id;
@@ -721,7 +719,7 @@
                 if (dId !== null && dId === val) return alert("防呆機制啟動：攝夢人絕對不能攝自己！");
             }
 
-            takeSnapshot(); // 審核過關才儲存狀態
+            takeSnapshot(); 
             
             if (day === 1 && dId !== null) {
                 let p = players.find(x => x.id === dId);
@@ -771,7 +769,11 @@
                 wIds = ['w1','w2','w3','w4'].map(id => parseInt(document.getElementById(id).value)).filter(v => !isNaN(v));
                 bwk = parseInt(document.getElementById('bwk-id')?.value);
                 wb = parseInt(document.getElementById('wb-id')?.value);
-                if(wIds.length === 0 && isNaN(bwk) && isNaN(wb)) return alert("首夜設定：請至少選擇一名狼陣營角色！");
+                
+                if (gameConfig.bwk && isNaN(bwk)) return alert("請在首夜設定中選擇「黑狼王」的號碼！");
+                if (gameConfig.wb && isNaN(wb)) return alert("請在首夜設定中選擇「狼美人」的號碼！");
+                if (wIds.length === 0 && isNaN(bwk) && isNaN(wb)) return alert("首夜設定：請至少選擇一名狼陣營角色！");
+                
                 if (!isNaN(wb)) wbId = wb;
             } else {
                 let wbPlayer = players.find(p => p.role === '狼美人');
@@ -785,7 +787,7 @@
                 if (wbId !== null && wbId === wbTarget) return alert("防呆機制啟動：狼美人絕對不能魅惑自己！");
             }
 
-            takeSnapshot(); // 審核過關才儲存狀態
+            takeSnapshot(); 
 
             if (day === 1) {
                 wIds.forEach(id => { players.find(x => x.id === id).role = '狼人'; players.find(x => x.id === id).class = 'color-wolf'; });
@@ -827,7 +829,6 @@
             const poisonSelect = document.getElementById('witch-target');
             populateAliveSelect('witch-target', true, "不選擇");
             
-            // 毒藥狀態 UI 判斷
             if (!potions.poison) {
                 document.getElementById('radio-poison').disabled = true;
                 poisonSelect.disabled = true;
@@ -835,7 +836,7 @@
                 document.getElementById('label-poison').style.color = '#888';
             } else {
                 document.getElementById('radio-poison').disabled = false;
-                poisonSelect.disabled = true; // 預設未點擊Radio前不可選
+                poisonSelect.disabled = true; 
                 document.getElementById('poison-status-msg').classList.add('hidden');
                 document.getElementById('label-poison').style.color = 'inherit';
             }
@@ -867,14 +868,17 @@
         }
 
         function processWitch() {
-            takeSnapshot(); // 儲存狀態
-
+            let wId = null;
             if (day === 1) {
-                let wId = parseInt(document.getElementById('witch-id').value);
-                if (!isNaN(wId)) {
-                    players.find(x => x.id === wId).role = '女巫';
-                    players.find(x => x.id === wId).class = 'color-god';
-                }
+                wId = parseInt(document.getElementById('witch-id').value);
+                if (isNaN(wId)) return alert("請在首夜設定中選擇「女巫」的號碼！");
+            }
+
+            takeSnapshot(); 
+
+            if (day === 1 && wId !== null) {
+                players.find(x => x.id === wId).role = '女巫';
+                players.find(x => x.id === wId).class = 'color-god';
                 updateAliveStatus();
             }
 
@@ -927,14 +931,17 @@
         }
 
         function processHunter() {
-            takeSnapshot(); // 儲存狀態
-
+            let hId = null;
             if (day === 1) {
-                let hId = parseInt(document.getElementById('hunter-id').value);
-                if (!isNaN(hId)) {
-                    players.find(x => x.id === hId).role = '獵人';
-                    players.find(x => x.id === hId).class = 'color-god';
-                }
+                hId = parseInt(document.getElementById('hunter-id').value);
+                if (isNaN(hId)) return alert("請在首夜設定中選擇「獵人」的號碼！");
+            }
+
+            takeSnapshot(); 
+
+            if (day === 1 && hId !== null) {
+                players.find(x => x.id === hId).role = '獵人';
+                players.find(x => x.id === hId).class = 'color-god';
                 updateAliveStatus();
             }
             document.getElementById('phase-hunter').classList.add('hidden');
@@ -952,14 +959,17 @@
         }
 
         function processBear() {
-            takeSnapshot(); // 儲存狀態
-
+            let bId = null;
             if (day === 1) {
-                let bId = parseInt(document.getElementById('bear-id').value);
-                if (!isNaN(bId)) {
-                    players.find(x => x.id === bId).role = '熊';
-                    players.find(x => x.id === bId).class = 'color-god';
-                }
+                bId = parseInt(document.getElementById('bear-id').value);
+                if (isNaN(bId)) return alert("請在首夜設定中選擇「熊」的號碼！");
+            }
+
+            takeSnapshot(); 
+
+            if (day === 1 && bId !== null) {
+                players.find(x => x.id === bId).role = '熊';
+                players.find(x => x.id === bId).class = 'color-god';
                 updateAliveStatus();
             }
             document.getElementById('phase-bear').classList.add('hidden');
@@ -990,11 +1000,9 @@
                 populateAliveSelect('prophet-target', true, "不查驗");
                 
                 if (nightData.prophetCheck !== 0) {
-                    // 若是 Undo 恢復到已查驗狀態，自動顯示查驗結果
                     document.getElementById('prophet-target').value = nightData.prophetCheck;
                     showProphetResultUI(nightData.prophetCheck);
                 } else {
-                    // 全新階段
                     document.getElementById('prophet-result').classList.add('hidden');
                     document.getElementById('btn-prophet-check').classList.remove('hidden');
                     document.getElementById('btn-prophet-next').classList.add('hidden');
@@ -1025,14 +1033,17 @@
         }
 
         function checkProphetTarget() {
-            takeSnapshot(); // 送出查驗前儲存狀態
-
+            let pId = null;
             if (day === 1) {
-                let pId = parseInt(document.getElementById('prophet-id').value);
-                if (!isNaN(pId)) {
-                    players.find(x => x.id === pId).role = '預言家';
-                    players.find(x => x.id === pId).class = 'color-god';
-                }
+                pId = parseInt(document.getElementById('prophet-id').value);
+                if (isNaN(pId)) return alert("請在首夜設定中選擇「預言家」的號碼！");
+            }
+
+            takeSnapshot(); 
+
+            if (day === 1 && pId !== null) {
+                players.find(x => x.id === pId).role = '預言家';
+                players.find(x => x.id === pId).class = 'color-god';
                 updateAliveStatus(); 
             }
 
@@ -1043,7 +1054,7 @@
         }
 
         function processProphet() {
-            takeSnapshot(); // 準備進入白天前儲存狀態
+            takeSnapshot(); 
             document.getElementById('phase-prophet').classList.add('hidden');
             processMorning();
         }
@@ -1180,7 +1191,7 @@
                 resultHtml = `<h3 style='margin-bottom: 0;'>昨晚出局的玩家為：<span style='color:var(--color-wolf);'>${displayIds.join(' 號, ')} 號</span></h3>`;
             }
             
-            state.morningResultHtml = resultHtml + bearHtml; // 儲存供 Undo 使用
+            state.morningResultHtml = resultHtml + bearHtml; 
             document.getElementById('morning-result').innerHTML = state.morningResultHtml;
             updateAliveStatus();
 
@@ -1191,7 +1202,7 @@
 
         /* ========== 開槍與投票 ========== */
         function submitShoot() {
-            takeSnapshot(); // 確認開槍前儲存狀態
+            takeSnapshot(); 
 
             let shooter = shootQueue[0];
             let targetId = parseInt(document.getElementById('shoot-target').value);
@@ -1227,7 +1238,7 @@
         }
 
         function processVote() {
-            takeSnapshot(); // 投票結算前儲存狀態
+            takeSnapshot(); 
 
             let vId = parseInt(document.getElementById('vote-target').value);
 
