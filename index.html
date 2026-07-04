@@ -52,7 +52,6 @@
         .hidden { display: none !important; }
         .result-box { background: #333; padding: 12px; border-left: 4px solid var(--btn-success); margin-top: 10px; border-radius: 4px; }
         
-        /* 狀態板玩家出局時的橫槓與變灰效果 */
         .dead { text-decoration: line-through; opacity: 0.4; filter: grayscale(100%); }
         
         .setup-box { background: #3a3a3a; padding: 12px; border-radius: 6px; border: 1px dashed #666; margin-bottom: 15px; }
@@ -120,7 +119,7 @@
         <div id="phase-dreamer" class="action-row hidden">
             <h3 class="color-god">💤 攝夢人請睜眼</h3>
             <div id="d1-dreamer-setup" class="setup-box hidden">
-                <p>【首夜設定】請選擇攝夢人號碼：</p>
+                <p>選擇攝夢人號碼：</p>
                 <select id="dreamer-id"></select>
             </div>
             <p id="dreamer-history-msg" class="hidden" style="color:var(--color-god); background:#332244; padding:10px; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid var(--color-god); margin-bottom: 15px;"></p>
@@ -134,7 +133,7 @@
         <div id="phase-magician" class="action-row hidden">
             <h3 class="color-god">🎩 魔術師請睜眼</h3>
             <div id="d1-magician-setup" class="setup-box hidden">
-                <p>【首夜設定】請選擇魔術師號碼：</p>
+                <p>選擇魔術師號碼：</p>
                 <select id="magician-id"></select>
             </div>
             <p>請選擇今晚要交換的兩個號碼 (每人限換一次，可選擇不換)：</p>
@@ -149,24 +148,24 @@
         <div id="phase-wolf" class="action-row hidden">
             <h3 class="color-wolf">🐺 狼陣營請睜眼</h3>
             <div id="d1-wolf-setup" class="setup-box hidden">
-                <p>【首夜設定】請選擇一般狼人 (無則留空)：</p>
+                <p>請選擇小狼：</p>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                     <select id="w1"></select> <select id="w2"></select> 
                     <select id="w3"></select> <select id="w4"></select>
                 </div>
                 
                 <div id="bwk-setup-container">
-                    <p style="margin-top: 15px;">【首夜設定】請選擇黑狼王 (無則留空)：</p>
+                    <p style="margin-top: 15px;">請選擇黑狼王：</p>
                     <select id="bwk-id"></select>
                 </div>
 
                 <div id="wb-setup-container">
-                    <p style="margin-top: 15px;">【首夜設定】請選擇狼美人 (無則留空)：</p>
+                    <p style="margin-top: 15px;">請選擇狼美人：</p>
                     <select id="wb-id"></select>
                 </div>
 
                 <div id="ek-setup-container">
-                    <p style="margin-top: 15px;">【首夜設定】請選擇惡靈騎士 (無則留空)：</p>
+                    <p style="margin-top: 15px;">請選擇惡靈騎士：</p>
                     <select id="ek-id"></select>
                 </div>
             </div>
@@ -189,7 +188,7 @@
             
             <div id="d1-witch-setup" class="setup-box hidden">
                 <p style="margin: 0;">
-                    【首夜設定】請選擇女巫號碼：<br><select id="witch-id"></select>
+                    選擇女巫號碼：<br><select id="witch-id"></select>
                 </p>
             </div>
 
@@ -223,7 +222,7 @@
         <div id="phase-hunter" class="action-row hidden">
             <h3 class="color-god">🏹 獵人請睜眼</h3>
             <div id="d1-hunter-setup" class="setup-box hidden">
-                <p>【首夜設定】請選擇獵人號碼 (無則留空)：</p>
+                <p>選擇獵人號碼：</p>
                 <select id="hunter-id"></select>
             </div>
             <div class="result-box">
@@ -237,7 +236,7 @@
         <div id="phase-bear" class="action-row hidden">
             <h3 class="color-god">🐻 熊請睜眼</h3>
             <div id="d1-bear-setup" class="setup-box hidden">
-                <p>【首夜設定】請選擇熊的號碼 (無則留空)：</p>
+                <p>選擇熊的號碼：</p>
                 <select id="bear-id"></select>
             </div>
             <p>請上帝確認熊的身分並給予相對應的手勢確認。</p>
@@ -248,11 +247,11 @@
         <div id="phase-prophet" class="action-row hidden">
             <h3 class="color-god">👁️ 預言家請睜眼</h3>
             <div id="d1-prophet-setup" class="setup-box hidden">
-                <p>【首夜設定】請選擇預言家號碼 (無則留空)：</p>
+                <p>選擇預言家的號碼：</p>
                 <select id="prophet-id"></select>
             </div>
             <div id="prophet-action-area">
-                <p>請選擇要查驗的玩家：</p>
+                <p>查驗目標：</p>
                 <select id="prophet-target"></select>
                 <button onclick="checkProphetTarget()" id="btn-prophet-check" style="background-color: var(--btn-primary);">確認查驗</button>
             </div>
@@ -267,6 +266,7 @@
         <div id="phase-morning" class="action-row hidden">
             <h2>☀️ 天亮了</h2>
             <div class="result-box" id="morning-result"></div>
+            <div id="bear-result"></div>
             
             <!-- 開槍區塊 -->
             <div id="phase-shoot" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--color-wolf); padding-top: 15px; background: #332222; padding: 15px; border-radius: 8px;">
@@ -274,6 +274,14 @@
                 <p>請選擇要帶走的玩家：</p>
                 <select id="shoot-target"></select>
                 <button onclick="submitShoot()" style="background-color: var(--btn-danger);">確認帶走並繼續</button>
+            </div>
+
+            <!-- 自爆區塊 -->
+            <div id="explode-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed var(--color-wolf); padding-top: 15px;">
+                <h3 style="color:var(--color-wolf); margin-top:0;">💣 狼人自爆</h3>
+                <p>請選擇自爆的狼人 (僅限一般狼人與黑狼王)：</p>
+                <select id="explode-target"></select>
+                <button onclick="processExplode()" style="background-color: var(--color-wolf); color: white;">確認自爆並進入天黑</button>
             </div>
 
             <!-- 投票區塊 -->
@@ -305,7 +313,7 @@
         
         let nightData = { wolfKill: 0, witchHeal: false, witchPoison: 0, prophetCheck: 0, dreamerTarget: 0, wbTarget: 0, magicianSwap: {t1: 0, t2: 0} };
         let historyData = { lastDreamTarget: 0, magicianSwapped: [] };
-        let state = { charmedPlayer: 0, morningResultHtml: "", ekReflectUsed: false };
+        let state = { charmedPlayer: 0, morningResultHtml: "", bearResultHtml: "", ekReflectUsed: false };
         
         let gameHistory = [];
         let shootQueue = []; 
@@ -344,6 +352,26 @@
             if (this.id === 'hunter-id') updateHunterStatus();
             if (this.id === 'dreamer-id') updateDreamerTarget();
             if (this.id === 'wb-id') updateWbTarget();
+        }
+
+        // =======================
+        // 動態隱藏小狼選單
+        // =======================
+        function updateWolfSelectVisibility() {
+            let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0);
+            let normalWolfCount = Math.max(0, 4 - specialWolfCount);
+            
+            for (let i = 1; i <= 4; i++) {
+                let el = document.getElementById('w' + i);
+                if (el) {
+                    if (i <= normalWolfCount) {
+                        el.style.display = '';
+                    } else {
+                        el.style.display = 'none';
+                        el.value = ""; 
+                    }
+                }
+            }
         }
 
         // =======================
@@ -386,6 +414,7 @@
             document.getElementById('wb-setup-container').classList.toggle('hidden', !gameConfig.wb);
             document.getElementById('wb-action-container').classList.toggle('hidden', !gameConfig.wb);
             document.getElementById('ek-setup-container').classList.toggle('hidden', !gameConfig.ek);
+            updateWolfSelectVisibility();
 
             updateAliveStatus();
             restoreUI();
@@ -395,6 +424,7 @@
             document.querySelectorAll('.action-row').forEach(el => el.classList.add('hidden'));
             document.getElementById('phase-shoot').classList.add('hidden');
             document.getElementById('vote-section').classList.add('hidden');
+            document.getElementById('explode-section').classList.add('hidden');
             
             let isNight = ['dreamer','magician','wolf','witch','hunter','bear','prophet'].includes(currentPhase);
             document.getElementById('day-counter').innerText = `第 ${day} 天 ${isNight ? '夜晚' : '白天'}`;
@@ -402,6 +432,7 @@
             if (['shoot', 'vote'].includes(currentPhase)) {
                 document.getElementById('phase-morning').classList.remove('hidden');
                 document.getElementById('morning-result').innerHTML = state.morningResultHtml || "";
+                document.getElementById('bear-result').innerHTML = state.bearResultHtml || "";
             } else {
                 document.getElementById('phase-morning').classList.add('hidden');
             }
@@ -422,6 +453,8 @@
             } else if (currentPhase === 'vote') {
                 populateAliveSelect('vote-target', true, "無人出局 (棄票/平票)");
                 document.getElementById('vote-section').classList.remove('hidden');
+                populateExplodeSelect();
+                document.getElementById('explode-section').classList.remove('hidden');
             }
             
             if(snapshots.length === 0) document.getElementById('btn-undo').classList.add('hidden');
@@ -455,6 +488,7 @@
             document.getElementById('wb-setup-container').classList.toggle('hidden', !gameConfig.wb);
             document.getElementById('wb-action-container').classList.toggle('hidden', !gameConfig.wb);
             document.getElementById('ek-setup-container').classList.toggle('hidden', !gameConfig.ek);
+            updateWolfSelectVisibility();
 
             updateAliveStatus();
             restoreUI();
@@ -489,6 +523,7 @@
             document.getElementById('wb-setup-container').classList.toggle('hidden', !gameConfig.wb);
             document.getElementById('wb-action-container').classList.toggle('hidden', !gameConfig.wb);
             document.getElementById('ek-setup-container').classList.toggle('hidden', !gameConfig.ek);
+            updateWolfSelectVisibility();
 
             document.getElementById('setup-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
@@ -505,7 +540,12 @@
         }
 
         function getActiveSetupIds() {
-            let ids = ['w1', 'w2', 'w3', 'w4'];
+            let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0);
+            let normalWolfCount = Math.max(0, 4 - specialWolfCount);
+            
+            let ids = [];
+            for (let i = 1; i <= normalWolfCount; i++) ids.push('w' + i);
+
             if (gameConfig.bwk) ids.push('bwk-id');
             if (gameConfig.witch) ids.push('witch-id');
             if (gameConfig.hunter) ids.push('hunter-id');
@@ -527,7 +567,7 @@
                 if (!select) return;
                 let currentVal = select.value;
                 select.innerHTML = '<option value="" disabled selected>請選擇號碼</option>';
-                select.innerHTML += '<option value="none" style="color:#aaa;">無 / 不選擇</option>';
+                // 移除「無 / 不選擇」選項，強制選擇
                 for (let i = 1; i <= playerCount; i++) {
                     let iStr = i.toString();
                     if (selectedVals.includes(iStr) && currentVal !== iStr) continue;
@@ -536,7 +576,7 @@
             });
         }
 
-        function populateAliveSelect(selectId, includeZero = false, zeroText = "無 / 不選擇", requireTarget = false, excludeId = null, disabledIds = []) {
+        function populateAliveSelect(selectId, includeZero = false, zeroText = "無 / 不選擇", requireTarget = false, excludeIds = [], disabledIds = []) {
             const select = document.getElementById(selectId);
             if(!select) return;
             select.innerHTML = "";
@@ -546,11 +586,23 @@
                 select.innerHTML = `<option value="" disabled selected>請選擇目標...</option>`;
             }
             
-            players.filter(p => p.alive && p.id !== excludeId).forEach(p => {
+            if (!Array.isArray(excludeIds)) excludeIds = excludeIds ? [excludeIds] : [];
+            if (!Array.isArray(disabledIds)) disabledIds = disabledIds ? [disabledIds] : [];
+            
+            players.filter(p => p.alive && !excludeIds.includes(p.id)).forEach(p => {
                 let roleInfo = p.role === '?' ? '' : ` (${p.role})`;
                 let dis = disabledIds.includes(p.id) ? 'disabled' : '';
                 let disCol = disabledIds.includes(p.id) ? '' : p.class;
                 select.innerHTML += `<option value="${p.id}" class="${disCol}" ${dis}>${p.id} 號${roleInfo}</option>`;
+            });
+        }
+
+        function populateExplodeSelect() {
+            const select = document.getElementById('explode-target');
+            if(!select) return;
+            select.innerHTML = `<option value="0">無人自爆</option>`;
+            players.filter(p => p.alive && ['狼人', '黑狼王'].includes(p.role)).forEach(p => {
+                select.innerHTML += `<option value="${p.id}" class="${p.class}">${p.id} 號 (${p.role})</option>`;
             });
         }
 
@@ -602,7 +654,7 @@
             deadList.push(id);
             deadCauses[id] = cause;
 
-            let canTriggerSkills = !['dream-death', 'dream-link', 'wb-link', 'reflect'].includes(cause);
+            let canTriggerSkills = !['dream-death', 'dream-link', 'wb-link', 'reflect', 'explode'].includes(cause);
             if (canTriggerSkills) {
                 if (p.role === '狼美人' && state.charmedPlayer !== 0 && !deadList.includes(state.charmedPlayer)) {
                     registerDeath(state.charmedPlayer, 'wb-link', deadList, deadCauses);
@@ -618,10 +670,47 @@
         function queueShooter(id, cause) {
             let p = players.find(x => x.id === id);
             if (!p) return;
-            if (['poison', 'dream-death', 'dream-link', 'wb-link', 'reflect'].includes(cause)) return; 
+            // 自爆(explode) 或 被連帶死等皆無法開槍
+            if (['poison', 'dream-death', 'dream-link', 'wb-link', 'reflect', 'explode'].includes(cause)) return; 
             
             if (p.role === '獵人' || p.role === '黑狼王') {
                 shootQueue.push({ id: p.id, role: p.role, class: p.class });
+            }
+        }
+
+        function evaluateBear() {
+            if (!gameConfig.bear) {
+                document.getElementById('bear-result').innerHTML = "";
+                return;
+            }
+            let bearHtml = "";
+            let logBearStr = "";
+            
+            let bear = players.find(p => p.role === '熊');
+            let bearGrowled = false;
+            let bearAlive = (bear && bear.alive);
+            
+            if (bearAlive) {
+                let alivePlayers = players.filter(p => p.alive).sort((a,b) => a.id - b.id);
+                if (alivePlayers.length >= 3) {
+                    let idx = alivePlayers.findIndex(p => p.id === bear.id);
+                    let left = alivePlayers[(idx - 1 + alivePlayers.length) % alivePlayers.length];
+                    let right = alivePlayers[(idx + 1) % alivePlayers.length];
+                    if (['狼人', '黑狼王', '狼美人', '惡靈騎士'].includes(left.role) || ['狼人', '黑狼王', '狼美人', '惡靈騎士'].includes(right.role)) bearGrowled = true;
+                } else if (alivePlayers.length === 2) {
+                    let other = alivePlayers.find(p => p.id !== bear.id);
+                    if (['狼人', '黑狼王', '狼美人', '惡靈騎士'].includes(other.role)) bearGrowled = true;
+                }
+            }
+            
+            if (bear) {
+                let msg = (bearAlive && bearGrowled) ? "🐾 上帝宣布：熊叫了" : "🐾 上帝宣布：熊沒有叫";
+                bearHtml = `<div class="bear-alert"><h3>${msg}</h3></div>`;
+                logBearStr = `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-god); font-weight:bold;">${msg}</div>`;
+                
+                gameHistory[gameHistory.length-1] += logBearStr;
+                state.bearResultHtml = bearHtml;
+                document.getElementById('bear-result').innerHTML = bearHtml;
             }
         }
 
@@ -640,6 +729,7 @@
                 
                 document.getElementById('phase-morning').classList.remove('hidden');
                 document.getElementById('vote-section').classList.add('hidden');
+                document.getElementById('explode-section').classList.add('hidden');
                 document.getElementById('phase-shoot').classList.remove('hidden');
             } else {
                 document.getElementById('phase-shoot').classList.add('hidden');
@@ -649,9 +739,12 @@
                     startNight(false);
                 } else {
                     currentPhase = 'vote';
+                    evaluateBear(); // 所有射擊結算後才判定熊
                     document.getElementById('phase-morning').classList.remove('hidden');
                     document.getElementById('vote-section').classList.remove('hidden');
                     populateAliveSelect('vote-target', true, "無人出局 (棄票/平票)");
+                    populateExplodeSelect();
+                    document.getElementById('explode-section').classList.remove('hidden');
                 }
             }
             autoSave();
@@ -662,6 +755,10 @@
             if(!isResume) {
                 nightData = { wolfKill: 0, witchHeal: false, witchPoison: 0, prophetCheck: 0, dreamerTarget: 0, wbTarget: 0, magicianSwap: {t1:0, t2:0} };
             }
+            state.morningResultHtml = "";
+            state.bearResultHtml = "";
+            document.getElementById('bear-result').innerHTML = "";
+            
             document.getElementById('day-counter').innerText = `第 ${day} 天 夜晚`;
             document.getElementById('phase-morning').classList.add('hidden');
             
@@ -679,7 +776,7 @@
                 let dreamer = players.find(p => p.role === '攝夢人');
                 if (dreamer) dId = dreamer.id;
             }
-            populateAliveSelect('dreamer-target', false, "", true, dId);
+            populateAliveSelect('dreamer-target', false, "", true, dId ? [dId] : []);
         }
 
         function prepareDreamer() {
@@ -822,7 +919,7 @@
                 let wb = players.find(p => p.role === '狼美人');
                 if (wb) wId = wb.id;
             }
-            populateAliveSelect('wb-target', false, "", true, wId);
+            populateAliveSelect('wb-target', false, "", true, wId ? [wId] : []);
         }
 
         function prepareWolf() {
@@ -831,7 +928,9 @@
             if (day === 1) document.getElementById('d1-wolf-setup').classList.remove('hidden');
             else document.getElementById('d1-wolf-setup').classList.add('hidden');
             
-            populateAliveSelect('wolf-target', true, "不擊殺 (空刀)");
+            // 夜晚狼刀不能選狼美人和惡靈騎士
+            let excludeWolfKill = players.filter(p => ['狼美人', '惡靈騎士'].includes(p.role)).map(p => p.id);
+            populateAliveSelect('wolf-target', true, "不擊殺 (空刀)", false, excludeWolfKill);
 
             if (gameConfig.wb) {
                 document.getElementById('wb-action-container').classList.remove('hidden');
@@ -856,7 +955,13 @@
             let bwk = NaN, wb = NaN, ek = NaN;
 
             if (day === 1) {
-                wIds = ['w1','w2','w3','w4'].map(id => parseInt(document.getElementById(id).value)).filter(v => !isNaN(v));
+                let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0);
+                let normalWolfCount = Math.max(0, 4 - specialWolfCount);
+                
+                let wIdsToMap = [];
+                for(let i=1; i<=normalWolfCount; i++) wIdsToMap.push('w'+i);
+
+                wIds = wIdsToMap.map(id => parseInt(document.getElementById(id).value)).filter(v => !isNaN(v));
                 bwk = parseInt(document.getElementById('bwk-id')?.value);
                 wb = parseInt(document.getElementById('wb-id')?.value);
                 ek = parseInt(document.getElementById('ek-id')?.value);
@@ -1238,33 +1343,6 @@
                 historyData.magicianSwapped.push(nightData.magicianSwap.t1, nightData.magicianSwap.t2);
             }
 
-            let bearHtml = "";
-            let logBearStr = "";
-            if (gameConfig.bear) {
-                let bear = players.find(p => p.role === '熊');
-                let bearGrowled = false;
-                let bearAlive = (bear && bear.alive);
-                
-                if (bearAlive) {
-                    let alivePlayers = players.filter(p => p.alive).sort((a,b) => a.id - b.id);
-                    if (alivePlayers.length >= 3) {
-                        let idx = alivePlayers.findIndex(p => p.id === bear.id);
-                        let left = alivePlayers[(idx - 1 + alivePlayers.length) % alivePlayers.length];
-                        let right = alivePlayers[(idx + 1) % alivePlayers.length];
-                        if (['狼人', '黑狼王', '狼美人', '惡靈騎士'].includes(left.role) || ['狼人', '黑狼王', '狼美人', '惡靈騎士'].includes(right.role)) bearGrowled = true;
-                    } else if (alivePlayers.length === 2) {
-                        let other = alivePlayers.find(p => p.id !== bear.id);
-                        if (['狼人', '黑狼王', '狼美人', '惡靈騎士'].includes(other.role)) bearGrowled = true;
-                    }
-                }
-                
-                if (bear) {
-                    let msg = (bearAlive && bearGrowled) ? "🐾 上帝宣布：熊叫了" : "🐾 上帝宣布：熊沒有叫";
-                    bearHtml = `<div class="bear-alert"><h3>${msg}</h3></div>`;
-                    logBearStr = `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-god); font-weight:bold;">${msg}</div>`;
-                }
-            }
-
             let logHtml = `<div class="log-entry">
                 <div style="color: #999; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 5px; font-weight:bold;">🌙 【第 ${day} 天夜晚】</div>
                 <ul style="margin: 5px 0; padding-left: 20px; list-style-type: none;">`;
@@ -1317,13 +1395,14 @@
                     if (causes[id] === 'dream-death') causeStr = "(夢死封印)";
                     else if (causes[id] === 'dream-link') causeStr = "(夢中連帶死封印)";
                     else if (causes[id] === 'wb-link') causeStr = "(魅惑殉情封印)";
+                    else if (causes[id] === 'reflect') causeStr = "(受惡靈反傷出局)";
                     return getPlayerStr(id, false) + " " + causeStr;
                 });
                 logHtml += deadStrs.join(' , ') + "。";
             } else {
                 logHtml += `<span style="color:var(--btn-success); font-weight:bold;">平安夜。</span>`;
             }
-            logHtml += `</div>${logBearStr}${extraEventsHtml}`;
+            logHtml += `</div>${extraEventsHtml}`;
 
             gameHistory.push(logHtml);
 
@@ -1335,12 +1414,50 @@
                 resultHtml = `<h3 style='margin-bottom: 0;'>昨晚出局的玩家為：<span style='color:var(--color-wolf);'>${displayIds.join(' 號, ')} 號</span></h3>`;
             }
             
-            state.morningResultHtml = resultHtml + bearHtml; 
+            state.morningResultHtml = resultHtml; 
             document.getElementById('morning-result').innerHTML = state.morningResultHtml;
             updateAliveStatus();
 
             deadTonight.forEach(id => { queueShooter(id, causes[id]); });
 
+            processNextAction();
+        }
+
+        /* ========== 狼人自爆 ========== */
+        function processExplode() {
+            let eId = parseInt(document.getElementById('explode-target').value);
+            if (eId === 0) return alert("請選擇要自爆的玩家！");
+
+            takeSnapshot(); 
+
+            let newlyDead = [];
+            let causes = {};
+            
+            registerDeath(eId, 'explode', newlyDead, causes);
+            
+            newlyDead.forEach(id => {
+                let p = players.find(x => x.id === id);
+                if (p) p.alive = false;
+            });
+
+            gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">💣 <span style="color:var(--color-wolf); font-weight:bold;">${getPlayerStr(eId, false)} 選擇自爆！</span>略過投票環節，直接進入天黑。</div>`;
+            
+            newlyDead.filter(id => id !== eId).forEach(id => {
+                if (causes[id] === 'wb-link') {
+                    gameHistory[gameHistory.length-1] += `<div style="padding-left: 20px; color: var(--color-wolf);">➔ 狼美人出局，${getPlayerStr(id, false)} 隨之殉情 (技能封印)。</div>`;
+                } else if (causes[id] === 'dream-link') {
+                    gameHistory[gameHistory.length-1] += `<div style="padding-left: 20px; color: var(--color-god);">➔ 攝夢人出局，${getPlayerStr(id, false)} 隨之在夢中死亡 (技能封印)。</div>`;
+                }
+            });
+
+            newlyDead.forEach(id => queueShooter(id, causes[id]));
+            gameHistory[gameHistory.length-1] += `</div>`; 
+
+            updateAliveStatus();
+            document.getElementById('vote-section').classList.add('hidden');
+            document.getElementById('explode-section').classList.add('hidden');
+            
+            currentPhase = 'vote'; 
             processNextAction();
         }
 
@@ -1420,6 +1537,7 @@
 
             updateAliveStatus();
             document.getElementById('vote-section').classList.add('hidden');
+            document.getElementById('explode-section').classList.add('hidden');
             
             processNextAction();
         }
