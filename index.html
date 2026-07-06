@@ -34,12 +34,38 @@
         }
         h1, h2 { text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 5px; }
         
-        .action-row { margin-bottom: 15px; background: var(--panel-bg); padding: 18px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        /* 區塊內資訊全面置中 */
+        .action-row { margin-bottom: 15px; background: var(--panel-bg); padding: 18px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; }
+        .setup-box { background: #3a3a3a; padding: 12px; border-radius: 6px; border: 1px dashed #666; margin-bottom: 15px; text-align: center; }
         
-        select, button { padding: 12px 16px; font-size: 16px; border-radius: 6px; border: none; margin: 6px 0; outline: none; }
-        select { background-color: #333; color: white; border: 1px solid #555; width: 100%; max-width: 100%; box-sizing: border-box; }
+        /* 下拉選單改為與文字長度貼齊並置中 */
+        select, button { padding: 12px 16px; font-size: 16px; border-radius: 6px; border: none; outline: none; }
+        select { 
+            background-color: #333; 
+            color: white; 
+            border: 1px solid #555; 
+            width: fit-content; 
+            min-width: 140px; 
+            max-width: 100%; 
+            box-sizing: border-box; 
+            display: inline-block; 
+            text-align: center; 
+            text-align-last: center; 
+            margin: 6px auto; 
+        }
         select:disabled { opacity: 0.5; }
-        button { background-color: var(--btn-success); color: white; cursor: pointer; width: 100%; margin-top: 15px; font-weight: bold; transition: opacity 0.2s; }
+        
+        /* 按鈕改為與文字長度貼齊並置中 */
+        button { 
+            background-color: var(--btn-success); 
+            color: white; 
+            cursor: pointer; 
+            width: max-content; 
+            display: block; 
+            margin: 15px auto 0 auto; 
+            font-weight: bold; 
+            transition: opacity 0.2s; 
+        }
         button:hover, button:active { opacity: 0.8; }
         
         .color-wolf { color: var(--color-wolf); font-weight: bold; }
@@ -50,19 +76,18 @@
         .color-unknown { color: var(--color-unknown); }
         
         .hidden { display: none !important; }
-        .result-box { background: #333; padding: 12px; border-left: 4px solid var(--btn-success); margin-top: 10px; border-radius: 4px; }
+        .result-box { background: #333; padding: 12px; border-left: 4px solid var(--btn-success); margin-top: 10px; border-radius: 4px; text-align: center; }
         
         .dead { text-decoration: line-through; opacity: 0.4; filter: grayscale(100%); }
         
-        .setup-box { background: #3a3a3a; padding: 12px; border-radius: 6px; border: 1px dashed #666; margin-bottom: 15px; }
         .setup-box p { margin-top: 0; font-weight: bold; color: #aaa; margin-bottom: 8px; }
-        .log-entry { margin-bottom: 15px; border-bottom: 1px dotted #555; padding-bottom: 15px; background: #222; padding: 12px; border-radius: 6px; }
+        .log-entry { margin-bottom: 15px; border-bottom: 1px dotted #555; padding-bottom: 15px; background: #222; padding: 12px; border-radius: 6px; text-align: left; }
         
         .witch-alert-active { background: #442222; padding: 12px; border-radius: 6px; border: 1px solid var(--color-wolf); margin-bottom: 10px; }
         .witch-alert-used { background: #333; padding: 12px; border-radius: 6px; border: 1px solid #666; margin-bottom: 10px; color: #aaa; }
         .bear-alert { background: #332244; padding: 12px; border-radius: 6px; border: 1px solid var(--color-god); margin-top: 15px; text-align: center; }
         
-        .role-check-label { display: inline-block; width: 48%; margin: 10px 0; font-size: 16px; cursor: pointer; }
+        .role-check-label { display: inline-block; width: 48%; margin: 10px 0; font-size: 16px; cursor: pointer; text-align: center; }
         .role-check-label input { width: 18px; height: 18px; margin-right: 8px; cursor: pointer; vertical-align: middle; accent-color: black; }
         
         .status-badge { background: #333; padding: 6px 10px; border-radius: 6px; border: 1px solid #555; display: inline-block; white-space: nowrap; font-size: 14px; }
@@ -72,12 +97,13 @@
 
     <h1>🐺 狼人殺上帝控制台 🌙</h1>
 
+    <!-- 遊戲設定介面 -->
     <div id="setup-screen" style="text-align:center; padding: 10px 0;">
-        <button id="btn-resume" onclick="resumeGame()" class="hidden" style="background-color: var(--btn-warning); font-size: 18px; margin-bottom: 20px; color: #000;">🔄 發現未完成的對局，點此恢復</button>
+        <button id="btn-resume" onclick="resumeGame()" class="hidden" style="background-color: var(--btn-warning); font-size: 18px; margin-bottom: 20px; color: #000; padding: 12px 24px;">🔄 發現未完成的對局，點此恢復</button>
         
         <div style="margin-bottom: 20px;">
             <label style="font-size: 18px; font-weight: bold;">玩家人數：</label>
-            <select id="player-count-select" style="font-size: 18px; width: auto; display: inline-block;">
+            <select id="player-count-select" style="font-size: 18px; width: auto; display: inline-block; margin-left: 10px;">
                 <option value="9">9 人局</option>
                 <option value="10">10 人局</option>
                 <option value="11">11 人局</option>
@@ -85,7 +111,7 @@
             </select>
         </div>
 
-        <div style="background: var(--panel-bg); padding: 20px; border-radius: 8px; display: inline-block; text-align: left; max-width: 340px; box-sizing: border-box; width: 100%;">
+        <div style="background: var(--panel-bg); padding: 20px; border-radius: 8px; display: inline-block; text-align: center; max-width: 400px; box-sizing: border-box; width: 100%;">
             <h3 style="margin-top: 0; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-god);">配置神職陣營</h3>
             <p style="font-size: 13px; color: #aaa; margin-top:-5px;">※ 勾選任意五個神職將自動觸發【百變狼王模式】</p>
             <label class="role-check-label"><input type="checkbox" id="cfg-prophet" checked> 👁️ 預言家</label>
@@ -101,27 +127,31 @@
             <label class="role-check-label"><input type="checkbox" id="cfg-ek"> 🏍️ 惡靈騎士</label>
         </div>
         <br>
-        <button onclick="startGame()" style="width: 100%; max-width: 340px; font-size: 20px; background-color: var(--btn-primary); padding: 14px;">進入上帝控制台</button>
+        <button onclick="startGame()" style="font-size: 20px; background-color: var(--btn-primary); padding: 14px 30px;">進入上帝控制台</button>
     </div>
 
+    <!-- 遊戲進行介面 -->
     <div id="game-screen" class="hidden">
         
+        <!-- 頂部資訊與復原按鈕區 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
             <h2 id="day-counter" style="margin: 0; border: none; padding: 0;">第 1 天 夜晚</h2>
-            <button onclick="undoAction()" id="btn-undo" class="hidden" style="width: auto; background-color: var(--btn-danger); padding: 8px 12px; margin: 0; font-size: 14px;">🔙 回到上一步</button>
+            <button onclick="undoAction()" id="btn-undo" class="hidden" style="background-color: var(--btn-danger); padding: 8px 12px; margin: 0; font-size: 14px;">🔙 回到上一步</button>
         </div>
 
         <div id="alive-status" style="margin-bottom: 20px; text-align: center;"></div>
 
+        <!-- 百變狼王帶刀確認階段 (第2晚開始) -->
         <div id="phase-shapeshifter" class="action-row hidden">
             <h3 class="color-wolf">🐺 百變狼王請睜眼</h3>
             <p>請上帝確認百變狼王 (<span id="ss-role-name"></span>) 的帶刀狀態，並給予手勢：</p>
-            <div class="result-box" style="text-align: center;">
+            <div class="result-box">
                 <h2 id="ss-signal" style="margin: 0; font-size: 24px;"></h2>
             </div>
             <button onclick="processShapeShifter()">確認並請百變狼王閉眼</button>
         </div>
 
+        <!-- 攝夢人階段 -->
         <div id="phase-dreamer" class="action-row hidden">
             <h3 class="color-god">💤 攝夢人請睜眼</h3>
             <div id="d1-dreamer-setup" class="setup-box hidden">
@@ -135,6 +165,7 @@
             <button onclick="processDreamer()">確認並請閉眼</button>
         </div>
 
+        <!-- 魔術師階段 -->
         <div id="phase-magician" class="action-row hidden">
             <h3 class="color-god">🎩 魔術師請睜眼</h3>
             <div id="d1-magician-setup" class="setup-box hidden">
@@ -142,18 +173,19 @@
                 <select id="magician-id"></select>
             </div>
             <p>請選擇今晚要交換的兩個號碼 (每人限換一次，可選擇不換)：</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;">
                 <select id="magician-target1"></select>
                 <select id="magician-target2"></select>
             </div>
             <button onclick="processMagician()">確認並請閉眼</button>
         </div>
 
+        <!-- 狼人與特殊狼階段合併 -->
         <div id="phase-wolf" class="action-row hidden">
             <h3 class="color-wolf">🐺 狼陣營請睜眼</h3>
             <div id="d1-wolf-setup" class="setup-box hidden">
                 <p>請選擇小狼：</p>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 8px;">
                     <select id="w1"></select> <select id="w2"></select> 
                     <select id="w3"></select> <select id="w4"></select>
                 </div>
@@ -186,13 +218,13 @@
             <button onclick="processWolf()">確認動作並請狼陣營閉眼</button>
         </div>
 
+        <!-- 女巫階段 -->
         <div id="phase-witch" class="action-row hidden">
             <h3 class="color-god">🧪 女巫請睜眼</h3>
             
             <div id="d1-witch-setup" class="setup-box hidden">
-                <p style="margin: 0;">
-                    選擇女巫號碼：<br><select id="witch-id"></select>
-                </p>
+                <p style="margin: 0;">選擇女巫號碼：</p>
+                <select id="witch-id"></select>
             </div>
 
             <div id="witch-action-area">
@@ -202,25 +234,31 @@
                 
                 <div id="witch-action-controls">
                     <div id="witch-info"></div>
-                    <div id="witch-actions" style="margin-top: 15px; background: #222; padding: 15px; border-radius: 6px;">
-                        <label style="display: block; margin-bottom: 10px; font-size: 18px;">
-                            <input type="radio" name="witch-action" value="heal" id="radio-heal" style="width:20px; height:20px; vertical-align:middle;"> 使用解藥 
+                    <div id="witch-actions" style="margin-top: 15px; background: #222; padding: 15px; border-radius: 6px; display: flex; flex-direction: column; align-items: center;">
+                        <label style="margin-bottom: 12px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            <input type="radio" name="witch-action" value="heal" id="radio-heal" style="width:20px; height:20px; margin-right: 8px;"> 
+                            使用解藥 
                             <span id="heal-target-hint" style="color:var(--color-wolf); font-size: 16px; margin-left: 5px;"></span>
                         </label>
                         
-                        <label id="label-poison" style="display: block; margin-bottom: 10px; font-size: 18px;">
-                            <input type="radio" name="witch-action" value="poison" id="radio-poison" style="width:20px; height:20px; vertical-align:middle;"> 使用毒藥 ➔ 
-                            <select id="witch-target" disabled style="width: auto; display: inline-block; padding: 8px;"></select>
+                        <label id="label-poison" style="margin-bottom: 12px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            <input type="radio" name="witch-action" value="poison" id="radio-poison" style="width:20px; height:20px; margin-right: 8px;"> 
+                            使用毒藥 ➔ 
+                            <select id="witch-target" disabled style="margin: 0 0 0 10px; padding: 8px; min-width: 120px;"></select>
                             <span id="poison-status-msg" class="hidden" style="color:var(--color-wolf); font-weight:bold; margin-left:8px; font-size: 16px;">(已使用)</span>
                         </label>
 
-                        <label style="display: block; font-size: 18px;"><input type="radio" name="witch-action" value="none" id="radio-none" checked style="width:20px; height:20px; vertical-align:middle;"> 不使用藥物</label>
+                        <label style="font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            <input type="radio" name="witch-action" value="none" id="radio-none" checked style="width:20px; height:20px; margin-right: 8px;"> 
+                            不使用藥物
+                        </label>
                     </div>
                 </div>
             </div>
             <button onclick="processWitch()">確認操作並請閉眼</button>
         </div>
 
+        <!-- 熊階段 -->
         <div id="phase-bear" class="action-row hidden">
             <h3 class="color-god">🐻 熊請睜眼</h3>
             <div id="d1-bear-setup" class="setup-box hidden">
@@ -238,6 +276,7 @@
             <button onclick="processBear()">請閉眼</button>
         </div>
 
+        <!-- 預言家階段 -->
         <div id="phase-prophet" class="action-row hidden">
             <h3 class="color-god">👁️ 預言家請睜眼</h3>
             <div id="d1-prophet-setup" class="setup-box hidden">
@@ -251,11 +290,12 @@
             </div>
             
             <div id="prophet-result" class="result-box hidden">
-                <h2 id="prophet-result-text" style="text-align: center; margin: 0; font-size: 24px;"></h2>
+                <h2 id="prophet-result-text" style="margin: 0; font-size: 24px;"></h2>
             </div>
             <button onclick="processProphet()" id="btn-prophet-next" class="hidden">請閉眼</button>
         </div>
 
+        <!-- 獵人階段 (預言家之後) -->
         <div id="phase-hunter" class="action-row hidden">
             <h3 class="color-god">🏹 獵人請睜眼</h3>
             <div id="d1-hunter-setup" class="setup-box hidden">
@@ -264,31 +304,35 @@
             </div>
             <div class="result-box">
                 <p style="margin-top:0;">上帝請給出手勢 (獵人狀態)：</p>
-                <h2 id="hunter-status" style="text-align: center; margin: 0;">等待判定...</h2>
+                <h2 id="hunter-status" style="margin: 0;">等待判定...</h2>
             </div>
             <button onclick="processHunter()">請閉眼並進入白天</button>
         </div>
 
+        <!-- 白天結算與投票階段 -->
         <div id="phase-morning" class="action-row hidden">
             <h2>☀️ 天亮了</h2>
             <div class="result-box" id="morning-result"></div>
             <div id="bear-result"></div>
             
-            <div id="phase-shoot" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--color-wolf); padding-top: 15px; background: #332222; padding: 15px; border-radius: 8px;">
+            <!-- 開槍區塊 -->
+            <div id="phase-shoot" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--color-wolf); padding-top: 15px; background: #332222; padding: 15px; border-radius: 8px; text-align: center;">
                 <h3 id="shoot-title" style="margin-top: 0;">出局，請開槍</h3>
                 <p>請選擇要帶走的玩家：</p>
                 <select id="shoot-target"></select>
                 <button onclick="submitShoot()" style="background-color: var(--btn-danger);">確認帶走並繼續</button>
             </div>
 
-            <div id="explode-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed var(--color-wolf); padding-top: 15px;">
+            <!-- 自爆區塊 -->
+            <div id="explode-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed var(--color-wolf); padding-top: 15px; text-align: center;">
                 <h3 style="color:var(--color-wolf); margin-top:0;">💣 狼人自爆</h3>
                 <p>請選擇自爆的狼人 (僅限一般狼人與黑狼王)：</p>
                 <select id="explode-target"></select>
                 <button onclick="processExplode()" style="background-color: var(--color-wolf); color: white;">確認自爆並進入天黑</button>
             </div>
 
-            <div id="vote-section" class="hidden" style="margin-top: 20px; border-top: 1px solid #555; padding-top: 15px;">
+            <!-- 投票區塊 -->
+            <div id="vote-section" class="hidden" style="margin-top: 20px; border-top: 1px solid #555; padding-top: 15px; text-align: center;">
                 <h3>🗳️ 白天投票環節</h3>
                 <p>請選擇被投票出局的玩家：</p>
                 <select id="vote-target"></select>
@@ -297,7 +341,8 @@
         </div>
     </div>
 
-    <div id="end-screen" class="hidden">
+    <!-- 遊戲結束介面 -->
+    <div id="end-screen" class="hidden" style="text-align: center;">
         <h1 id="win-title" style="color: var(--color-villager); font-size: 28px; line-height: 1.4;"></h1>
         <div style="background: var(--panel-bg); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
             <h2 style="margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px;">📖 遊戲彩色歷程紀錄</h2>
@@ -355,20 +400,33 @@
             if (this.id === 'hunter-id') updateHunterStatus();
             if (this.id === 'dreamer-id') updateDreamerTarget();
             if (this.id === 'wb-id') updateWbTarget();
+            if (this.id === 'witch-id' && currentPhase === 'witch') prepareWitch(); // 動態更新女巫自救狀態
         }
 
         // =======================
-        // 動態隱藏小狼選單
+        // 新增：取得當前人數與配置下，狼人陣營最大數量
+        // =======================
+        function getMaxWolves() {
+            // 9與10人局：3狼；11與12人局：4狼
+            let baseMax = (playerCount <= 10) ? 3 : 4;
+            // 百變狼王若啟動，會佔據 1 個狼坑
+            let shapeShifterCount = gameConfig.shapeShifterMode ? 1 : 0;
+            return Math.max(0, baseMax - shapeShifterCount);
+        }
+
+        // =======================
+        // 動態隱藏小狼選單 (根據新的數量限制)
         // =======================
         function updateWolfSelectVisibility() {
             let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0);
-            let normalWolfCount = Math.max(0, 4 - specialWolfCount);
+            let maxDraftable = getMaxWolves();
+            let normalWolfCount = Math.max(0, maxDraftable - specialWolfCount);
             
             for (let i = 1; i <= 4; i++) {
                 let el = document.getElementById('w' + i);
                 if (el) {
                     if (i <= normalWolfCount) {
-                        el.style.display = '';
+                        el.style.display = 'inline-block';
                     } else {
                         el.style.display = 'none';
                         el.value = ""; 
@@ -569,7 +627,8 @@
 
         function getActiveSetupIds() {
             let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0);
-            let normalWolfCount = Math.max(0, 4 - specialWolfCount);
+            let maxDraftable = getMaxWolves();
+            let normalWolfCount = Math.max(0, maxDraftable - specialWolfCount);
             
             let ids = [];
             for (let i = 1; i <= normalWolfCount; i++) ids.push('w' + i);
@@ -741,7 +800,6 @@
                 let borderColor = bear.isCorrupted ? "var(--color-wolf)" : "var(--color-god)";
                 bearHtml = `<div class="bear-alert" style="border-color:${borderColor};"><h3>${msg}</h3></div>`;
                 
-                // 修正：強制指定行內樣式為白色，避免受到其它 CSS 影響
                 logBearStr = `<div style="padding-left: 5px; margin-top: 5px; color:white; font-weight:bold;">${msg}</div>`;
                 
                 gameHistory[gameHistory.length-1] += logBearStr;
@@ -1035,7 +1093,8 @@
 
             if (day === 1) {
                 let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0);
-                let normalWolfCount = Math.max(0, 4 - specialWolfCount);
+                let maxDraftable = getMaxWolves();
+                let normalWolfCount = Math.max(0, maxDraftable - specialWolfCount);
                 
                 let wIdsToMap = [];
                 for(let i=1; i<=normalWolfCount; i++) wIdsToMap.push('w'+i);
@@ -1096,6 +1155,15 @@
             
             let actualVictim = applyMagic(nightData.wolfKill);
 
+            // 取得女巫 ID 以便判斷自救
+            let wId = null;
+            if (day === 1) {
+                let setupVal = parseInt(document.getElementById('witch-id').value);
+                if (!isNaN(setupVal)) wId = setupVal;
+            } else {
+                if (witch) wId = witch.id;
+            }
+
             if (day === 1) {
                 document.getElementById('d1-witch-setup').classList.remove('hidden');
             } else {
@@ -1132,8 +1200,18 @@
                             👉 <strong>上帝請向女巫比出手勢：</strong><br>
                             告訴女巫，今晚被殺害的是 <span style="color:var(--color-wolf); font-size:24px; font-weight:bold;">${victimText}</span>
                         </div>`;
-                    document.getElementById('radio-heal').disabled = (actualVictim === 0); 
-                    document.getElementById('heal-target-hint').innerText = actualVictim === 0 ? "(昨晚空刀)" : `(狼人晚上殺的是 ${actualVictim} 號)`;
+                    
+                    // 新增女巫自救限制邏輯：大於 9 人局且受害者是女巫本人，禁止使用解藥
+                    let cannotSelfHeal = (playerCount > 9 && actualVictim !== 0 && actualVictim === wId);
+                    
+                    if (cannotSelfHeal) {
+                        document.getElementById('radio-heal').disabled = true;
+                        document.getElementById('heal-target-hint').innerText = `(狼人晚上殺的是 ${actualVictim} 號，10人局以上不可自救)`;
+                    } else {
+                        document.getElementById('radio-heal').disabled = (actualVictim === 0); 
+                        document.getElementById('heal-target-hint').innerText = actualVictim === 0 ? "(昨晚空刀)" : `(狼人晚上殺的是 ${actualVictim} 號)`;
+                    }
+
                 } else {
                     document.getElementById('witch-info').innerHTML = `
                         <div class="witch-alert-used">
