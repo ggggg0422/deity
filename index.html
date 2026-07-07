@@ -87,7 +87,7 @@
         .witch-alert-used { background: #333; padding: 12px; border-radius: 6px; border: 1px solid #666; margin-bottom: 10px; color: #aaa; }
         .bear-alert { background: #332244; padding: 12px; border-radius: 6px; border: 1px solid var(--color-god); margin-top: 15px; text-align: center; }
         
-        .role-check-label { display: inline-block; width: 48%; margin: 10px 0; font-size: 16px; cursor: pointer; text-align: center; }
+        .role-check-label { display: inline-block; width: 48%; margin: 10px 0; font-size: 16px; cursor: pointer; text-align: left; padding-left: 10%; box-sizing: border-box; }
         .role-check-label input { width: 18px; height: 18px; margin-right: 8px; cursor: pointer; vertical-align: middle; accent-color: black; }
         
         .status-badge { background: #333; padding: 6px 10px; border-radius: 6px; border: 1px solid #555; display: inline-block; white-space: nowrap; font-size: 14px; }
@@ -111,23 +111,25 @@
             </select>
         </div>
 
-        <div style="background: var(--panel-bg); padding: 20px; border-radius: 8px; display: inline-block; text-align: center; max-width: 400px; box-sizing: border-box; width: 100%;">
+        <div style="background: var(--panel-bg); padding: 20px; border-radius: 8px; display: inline-block; text-align: center; max-width: 440px; box-sizing: border-box; width: 100%;">
             <h3 style="margin-top: 0; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-god);">配置神職陣營</h3>
             <p style="font-size: 13px; color: #aaa; margin-top:-5px;">※ 勾選任意五個神職將自動觸發【百變狼王模式】</p>
             <label class="role-check-label"><input type="checkbox" id="cfg-prophet" checked> 👁️ 預言家</label>
+            <label class="role-check-label"><input type="checkbox" id="cfg-psychic"> 🔮 通靈師</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-witch" checked> 🧪 女巫</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-hunter" checked> 🏹 獵人</label>
-            <label class="role-check-label"><input type="checkbox" id="cfg-bear"> 🐻 熊</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-guard"> 🛡️ 守衛</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-merchant"> 💼 黑市商人</label>
+            <label class="role-check-label"><input type="checkbox" id="cfg-bear"> 🐻 熊</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-dreamer"> 💤 攝夢人</label>
-            <label class="role-check-label"><input type="checkbox" id="cfg-magician"> 🎩 魔術師</label>
+            <label class="role-check-label" style="width: 100%; text-align: center; padding-left:0;"><input type="checkbox" id="cfg-magician"> 🎩 魔術師</label>
             
             <h3 style="margin-top: 15px; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-wolf);">配置特殊狼人</h3>
             <label class="role-check-label"><input type="checkbox" id="cfg-bwk"> 🐺 黑狼王</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-wb"> 💋 狼美人</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-ek"> 🏍️ 惡靈騎士</label>
-            <label class="role-check-label" style="width: 100%;"><input type="checkbox" id="cfg-wolfbros"> 🐺 狼兄 與 狼弟</label>
+            <label class="role-check-label"><input type="checkbox" id="cfg-mechwolf"> 🐺 機械狼</label>
+            <label class="role-check-label" style="width: 100%; text-align: center; padding-left:0;"><input type="checkbox" id="cfg-wolfbros"> 🐺 狼兄 與 狼弟</label>
         </div>
         <br>
         <button onclick="startGame()" style="font-size: 20px; background-color: var(--btn-primary); padding: 14px 30px;">進入上帝控制台</button>
@@ -143,6 +145,64 @@
         </div>
 
         <div id="alive-status" style="margin-bottom: 20px; text-align: center;"></div>
+
+        <!-- 機械狼階段 (每晚第一個睜眼) -->
+        <div id="phase-mechwolf" class="action-row hidden">
+            <h3 class="color-wolf">🐺 機械狼請睜眼</h3>
+            
+            <div id="mw-signal-ui" class="result-box" style="margin-bottom:15px; text-align:center;"></div>
+            
+            <div id="d1-mw-setup" class="setup-box hidden">
+                <p>選擇機械狼號碼：</p>
+                <select id="mw-id"></select>
+            </div>
+            
+            <div id="mw-learn-container">
+                <p style="font-weight:bold; color:var(--color-gold);">請選擇要學習的對象 (僅限一次，可選擇延後)：</p>
+                <select id="mw-learn-target"></select>
+                <button onclick="learnMwSkill()" style="background-color: var(--btn-warning); color:#000;">確認並進入下一步</button>
+            </div>
+            
+            <div id="mw-action-container" class="hidden">
+                <p style="color:var(--color-god); font-weight:bold; font-size:18px;">已學習能力：<span id="mw-learned-role"></span></p>
+                
+                <!-- 根據學習技能顯示對應UI -->
+                <div id="mw-act-psychic" class="hidden">
+                    <p>選擇查驗目標 (每晚皆可)：</p><select id="mw-psychic-target"></select>
+                    <button onclick="checkMwPsychic()" style="background-color: var(--btn-primary);">查驗</button>
+                    <div id="mw-psychic-result" class="result-box hidden"></div>
+                </div>
+                
+                <div id="mw-act-prophet" class="hidden">
+                    <p>選擇查驗目標 (每晚皆可)：</p><select id="mw-prophet-target"></select>
+                    <button onclick="checkMwProphet()" style="background-color: var(--btn-primary);">查驗</button>
+                    <div id="mw-prophet-result" class="result-box hidden"></div>
+                </div>
+                
+                <div id="mw-act-witch" class="hidden">
+                    <p style="color:var(--color-wolf); font-weight:bold;">獲得一瓶毒藥：</p>
+                    <label style="font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-bottom:10px;">
+                        <input type="radio" name="mw-poison" value="poison" id="radio-mw-poison" style="width:20px; height:20px; margin-right: 8px;"> 
+                        使用毒藥 ➔ <select id="mw-poison-target" disabled style="margin: 0 0 0 10px; padding: 8px;"></select>
+                    </label>
+                    <label style="font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                        <input type="radio" name="mw-poison" value="none" checked style="width:20px; height:20px; margin-right: 8px;"> 
+                        不使用
+                    </label>
+                </div>
+                
+                <div id="mw-act-guard" class="hidden">
+                    <p>獲得防毒盾，請選擇要套上防毒盾的玩家 (能防女巫/禮物毒)：</p>
+                    <select id="mw-guard-target"></select>
+                </div>
+                
+                <div id="mw-act-passive" class="hidden">
+                    <p style="color:#aaa;">無特殊夜間主動能力。<br>請假裝確認後點擊閉眼。</p>
+                </div>
+            </div>
+            
+            <button onclick="processMechWolf()" id="btn-mw-next" class="hidden">確認並請閉眼</button>
+        </div>
 
         <!-- 百變狼王帶刀確認階段 (第2晚開始) -->
         <div id="phase-shapeshifter" class="action-row hidden">
@@ -212,7 +272,10 @@
             </div>
             
             <p>狼陣營今晚要擊殺誰？</p>
-            <select id="wolf-target"></select>
+            <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                <select id="wolf-target"></select>
+                <select id="wolf-target2" class="hidden"></select>
+            </div>
 
             <div id="wb-action-container" class="hidden" style="margin-top:15px; padding-top:15px; border-top:1px dashed #666;">
                 <p style="color:var(--color-wolf); font-weight:bold;">💋 狼美人請選擇魅惑玩家 (出局時隨之殉情)：</p>
@@ -242,14 +305,12 @@
                     <div id="witch-actions" style="margin-top: 15px; background: #222; padding: 15px; border-radius: 6px; display: flex; flex-direction: column; align-items: center;">
                         <label style="margin-bottom: 12px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                             <input type="radio" name="witch-action" value="heal" id="radio-heal" style="width:20px; height:20px; margin-right: 8px;"> 
-                            使用解藥 
-                            <span id="heal-target-hint" style="color:var(--color-wolf); font-size: 16px; margin-left: 5px;"></span>
+                            使用解藥 救 ➔ <select id="witch-heal-target" style="margin: 0 0 0 10px; padding: 8px; min-width: 120px;"></select>
                         </label>
                         
                         <label id="label-poison" style="margin-bottom: 12px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                             <input type="radio" name="witch-action" value="poison" id="radio-poison" style="width:20px; height:20px; margin-right: 8px;"> 
-                            使用毒藥 ➔ 
-                            <select id="witch-target" disabled style="margin: 0 0 0 10px; padding: 8px; min-width: 120px;"></select>
+                            使用毒藥 ➔ <select id="witch-target" disabled style="margin: 0 0 0 10px; padding: 8px; min-width: 120px;"></select>
                             <span id="poison-status-msg" class="hidden" style="color:var(--color-wolf); font-weight:bold; margin-left:8px; font-size: 16px;">(已使用)</span>
                         </label>
 
@@ -292,7 +353,7 @@
             <button onclick="processMagician()">確認並請閉眼</button>
         </div>
 
-        <!-- 第一晚 黑市商人發放禮物階段 -->
+        <!-- 黑市商人 第一晚發禮物階段 -->
         <div id="phase-merchant" class="action-row hidden">
             <h3 class="color-god">💼 黑市商人請睜眼</h3>
             <div id="merchant-night1-container">
@@ -350,7 +411,7 @@
             <button onclick="processProphet()" id="btn-prophet-next" class="hidden">請閉眼</button>
         </div>
 
-        <!-- 第二天以後 幸運兒禮物使用階段 -->
+        <!-- 第二天以後 幸運兒禮物使用階段 (在預言家之後) -->
         <div id="phase-gift" class="action-row hidden">
             <h3 class="color-good">🎁 幸運兒請睜眼</h3>
             <div id="merchant-gift-container">
@@ -395,6 +456,34 @@
                 <h2 id="hunter-status" style="margin: 0;">等待判定...</h2>
             </div>
             <button onclick="processHunter()">請閉眼並進入白天</button>
+        </div>
+
+        <!-- 通靈師階段 (獵人之後) -->
+        <div id="phase-psychic" class="action-row hidden">
+            <h3 class="color-god">🔮 通靈師請睜眼</h3>
+            <div id="d1-psychic-setup" class="setup-box hidden">
+                <p>選擇通靈師號碼：</p>
+                <select id="psychic-id"></select>
+            </div>
+            <div id="psychic-action-area">
+                <p>查驗目標：</p>
+                <select id="psychic-target"></select>
+                <button onclick="checkPsychicTarget()" id="btn-psychic-check" style="background-color: var(--btn-primary);">確認查驗</button>
+            </div>
+            <div id="psychic-result" class="result-box hidden">
+                <h2 id="psychic-result-text" style="margin: 0; font-size: 24px;"></h2>
+            </div>
+            <button onclick="processPsychic()" id="btn-psychic-next" class="hidden">請閉眼</button>
+        </div>
+
+        <!-- 機械狼結果階段 (第一晚專用，通靈師之後) -->
+        <div id="phase-mw-result" class="action-row hidden">
+            <h3 class="color-wolf">🐺 機械狼請睜眼 (學習結果)</h3>
+            <p>上帝請告知機械狼，他學習到的身分是：</p>
+            <div class="result-box">
+                <h2 id="mw-result-role" style="margin:0;"></h2>
+            </div>
+            <button onclick="processMwResult()">確認並請閉眼</button>
         </div>
 
         <!-- 白天結算與投票階段 -->
@@ -447,16 +536,18 @@
         let potions = { heal: true, poison: true };
         
         let nightData = { 
-            wolfKill: 0, witchHeal: false, witchPoison: 0, prophetCheck: 0, 
+            wolfKill: 0, wolfKill2: 0, witchHealTarget: 0, witchPoison: 0, prophetCheck: 0, 
             dreamerTarget: 0, wbTarget: 0, bearCharmTarget: 0, magicianSwap: {t1: 0, t2: 0},
-            guardProtect: 0, wolfRevengeKill: 0, merchantTarget: 0, merchantGift: 'none', giftPoison: 0, giftCheck: 0
+            guardProtect: 0, wolfRevengeKill: 0, merchantTarget: 0, merchantGift: 'none', giftPoison: 0, giftCheck: 0,
+            mwLearnTarget: 0, mwPoisonTarget: 0, mwGuardTarget: 0, mwCheckTarget: 0, psychicCheckTarget: 0
         };
         let historyData = { lastDreamTarget: 0, magicianSwapped: [], lastGuardProtect: 0 };
         
         let state = { 
             charmedPlayer: 0, morningResultHtml: "", bearResultHtml: "", ekReflectUsed: false, hasVotedToday: false,
             wolfBroDead: false, wolfLittleBroHasRevenge: false, wolfLittleBroRejoined: false,
-            merchantGift: { target: 0, type: 'none', used: false, isWolf: false }
+            merchantGift: { target: 0, type: 'none', used: false, isWolf: false },
+            mwStatus: { learned: false, target: 0, role: '', poisonUsed: false, justLearned: false, delayed: false }
         };
         
         let gameHistory = [];
@@ -464,8 +555,8 @@
         let currentPhase = 'night'; 
         
         let gameConfig = { 
-            prophet: true, witch: true, hunter: true, bear: false, bwk: false, dreamer: false, wb: false, magician: false, ek: false, 
-            guard: false, merchant: false, wolfBros: false, shapeShifterMode: false, shapeShifterRole: null 
+            prophet: true, psychic: false, witch: true, hunter: true, bear: false, guard: false, merchant: false, dreamer: false, magician: false,
+            bwk: false, wb: false, ek: false, mechWolf: false, wolfBros: false, shapeShifterMode: false, shapeShifterRole: null 
         };
         let snapshots = []; 
 
@@ -477,7 +568,7 @@
         };
 
         function bindSetupEvents() {
-            const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id', 'bear-id', 'prophet-id', 'dreamer-id', 'wb-id', 'magician-id', 'ek-id', 'guard-id', 'merchant-id', 'wolfbro-id', 'wolflittlebro-id'];
+            const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id', 'bear-id', 'prophet-id', 'psychic-id', 'dreamer-id', 'wb-id', 'magician-id', 'ek-id', 'guard-id', 'merchant-id', 'wolfbro-id', 'wolflittlebro-id', 'mw-id'];
             allSetupIds.forEach(id => {
                 let el = document.getElementById(id);
                 if(el) {
@@ -499,6 +590,13 @@
                     if (poisonSelect) poisonSelect.disabled = (this.value !== 'poison');
                 });
             });
+
+            document.querySelectorAll('input[name="mw-poison"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const poisonSelect = document.getElementById('mw-poison-target');
+                    if (poisonSelect) poisonSelect.disabled = (this.value !== 'poison');
+                });
+            });
         }
 
         function handleSetupChange() {
@@ -507,7 +605,7 @@
             if (this.id === 'dreamer-id') updateDreamerTarget();
             if (this.id === 'wb-id') updateWbTarget();
             if (this.id === 'witch-id' && currentPhase === 'witch') prepareWitch(); 
-            if (this.id === 'merchant-id') updateMerchantTarget(); // 動態排除黑市商人自己
+            if (this.id === 'merchant-id' && currentPhase === 'merchant') updateMerchantTarget(); 
         }
 
         function getMaxWolves() {
@@ -517,7 +615,7 @@
         }
 
         function updateWolfSelectVisibility() {
-            let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0) + (gameConfig.wolfBros ? 2 : 0);
+            let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0) + (gameConfig.wolfBros ? 2 : 0) + (gameConfig.mechWolf ? 1 : 0);
             let maxDraftable = getMaxWolves();
             let normalWolfCount = Math.max(0, maxDraftable - specialWolfCount);
             
@@ -548,6 +646,42 @@
                 if (id === nightData.magicianSwap.t2) return nightData.magicianSwap.t1;
             }
             return id;
+        }
+
+        function getTrueRole(id) {
+            let p = players.find(x => x.id === id);
+            if (p && p.role !== '?') return p.role; 
+            
+            const roles = [
+                {id: 'prophet-id', role: '預言家'}, {id: 'witch-id', role: '女巫'}, {id: 'hunter-id', role: '獵人'},
+                {id: 'bear-id', role: '熊'}, {id: 'guard-id', role: '守衛'}, {id: 'merchant-id', role: '黑市商人'},
+                {id: 'dreamer-id', role: '攝夢人'}, {id: 'magician-id', role: '魔術師'}, {id: 'psychic-id', role: '通靈師'},
+                {id: 'bwk-id', role: '黑狼王'}, {id: 'wb-id', role: '狼美人'}, {id: 'ek-id', role: '惡靈騎士'},
+                {id: 'wolfbro-id', role: '狼兄'}, {id: 'wolflittlebro-id', role: '狼弟'}, {id: 'mw-id', role: '機械狼'}
+            ];
+            for (let r of roles) {
+                let el = document.getElementById(r.id);
+                if (el && parseInt(el.value) === id) return r.role;
+            }
+            for (let i=1; i<=4; i++) {
+                let el = document.getElementById('w'+i);
+                if (el && parseInt(el.value) === id) return '狼人';
+            }
+            return '平民';
+        }
+
+        function finalizeD1Roles() {
+            if (day !== 1) return;
+            players.forEach(p => {
+                if (p.role === '?') {
+                    p.role = '平民';
+                    p.class = 'color-villager';
+                }
+            });
+            if (gameConfig.mechWolf && state.mwStatus.target !== 0 && state.mwStatus.role === '待定') {
+                state.mwStatus.role = getTrueRole(state.mwStatus.target);
+            }
+            updateAliveStatus();
         }
 
         function takeSnapshot() {
@@ -590,7 +724,7 @@
             document.getElementById('vote-section').classList.add('hidden');
             document.getElementById('explode-section').classList.add('hidden');
             
-            let isNight = ['shapeshifter','guard','wolfbros','dreamer','magician','wolf','witch','merchant','bear','prophet','gift','hunter'].includes(currentPhase);
+            let isNight = ['shapeshifter','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','psychic','gift','hunter','mw-result'].includes(currentPhase);
             document.getElementById('day-counter').innerText = `第 ${day} 天 ${isNight ? '夜晚' : '白天'}`;
             
             if (['shoot', 'vote'].includes(currentPhase)) {
@@ -601,18 +735,21 @@
                 document.getElementById('phase-morning').classList.add('hidden');
             }
 
-            if (currentPhase === 'shapeshifter') prepareShapeShifter();
+            if (currentPhase === 'mechwolf') prepareMechWolf();
+            else if (currentPhase === 'shapeshifter') prepareShapeShifter();
             else if (currentPhase === 'guard') prepareGuard();
             else if (currentPhase === 'wolfbros') prepareWolfBros();
-            else if (currentPhase === 'dreamer') prepareDreamer();
-            else if (currentPhase === 'magician') prepareMagician();
             else if (currentPhase === 'wolf') prepareWolf();
             else if (currentPhase === 'witch') prepareWitch();
+            else if (currentPhase === 'dreamer') prepareDreamer();
+            else if (currentPhase === 'magician') prepareMagician();
             else if (currentPhase === 'merchant') prepareMerchant();
             else if (currentPhase === 'bear') prepareBear();
             else if (currentPhase === 'prophet') prepareProphet();
+            else if (currentPhase === 'psychic') preparePsychic();
             else if (currentPhase === 'gift') prepareGift();
             else if (currentPhase === 'hunter') prepareHunter();
+            else if (currentPhase === 'mw-result') prepareMwResult();
             else if (currentPhase === 'shoot') {
                 let shooter = shootQueue[0];
                 let titleArea = document.getElementById('shoot-title');
@@ -681,6 +818,7 @@
         function startGame() {
             playerCount = parseInt(document.getElementById('player-count-select').value);
             gameConfig.prophet = document.getElementById('cfg-prophet').checked;
+            gameConfig.psychic = document.getElementById('cfg-psychic').checked;
             gameConfig.witch = document.getElementById('cfg-witch').checked;
             gameConfig.hunter = document.getElementById('cfg-hunter').checked;
             gameConfig.bear = document.getElementById('cfg-bear').checked;
@@ -691,12 +829,13 @@
             gameConfig.wb = document.getElementById('cfg-wb').checked;
             gameConfig.magician = document.getElementById('cfg-magician').checked;
             gameConfig.ek = document.getElementById('cfg-ek').checked;
+            gameConfig.mechWolf = document.getElementById('cfg-mechwolf').checked;
             gameConfig.wolfBros = document.getElementById('cfg-wolfbros').checked;
 
-            let activeGods = ['prophet', 'witch', 'hunter', 'bear', 'guard', 'merchant', 'dreamer', 'magician'].filter(id => document.getElementById('cfg-' + id).checked);
+            let activeGods = ['prophet', 'psychic', 'witch', 'hunter', 'bear', 'guard', 'merchant', 'dreamer', 'magician'].filter(id => document.getElementById('cfg-' + id).checked);
             if (activeGods.length === 5) {
                 gameConfig.shapeShifterMode = true;
-                const roleMap = { prophet: '預言家', witch: '女巫', hunter: '獵人', bear: '熊', guard: '守衛', merchant: '黑市商人', dreamer: '攝夢人', magician: '魔術師' };
+                const roleMap = { prophet: '預言家', psychic: '通靈師', witch: '女巫', hunter: '獵人', bear: '熊', guard: '守衛', merchant: '黑市商人', dreamer: '攝夢人', magician: '魔術師' };
                 let randomGod = activeGods[Math.floor(Math.random() * activeGods.length)];
                 gameConfig.shapeShifterRole = roleMap[randomGod];
                 alert(`🌟 觸發【百變狼王模式】！\n本局被腐化為狼陣營的神職是：${gameConfig.shapeShifterRole}`);
@@ -712,7 +851,8 @@
             state = { 
                 charmedPlayer: 0, morningResultHtml: "", bearResultHtml: "", ekReflectUsed: false, hasVotedToday: false,
                 wolfBroDead: false, wolfLittleBroHasRevenge: false, wolfLittleBroRejoined: false,
-                merchantGift: { target: 0, type: 'none', used: false, isWolf: false }
+                merchantGift: { target: 0, type: 'none', used: false, isWolf: false },
+                mwStatus: { learned: false, target: 0, role: '', poisonUsed: false, justLearned: false, delayed: false }
             };
             gameHistory = [];
             shootQueue = [];
@@ -738,7 +878,7 @@
         }
 
         function getActiveSetupIds() {
-            let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0) + (gameConfig.wolfBros ? 2 : 0);
+            let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0) + (gameConfig.wolfBros ? 2 : 0) + (gameConfig.mechWolf ? 1 : 0);
             let maxDraftable = getMaxWolves();
             let normalWolfCount = Math.max(0, maxDraftable - specialWolfCount);
             
@@ -752,10 +892,12 @@
             if (gameConfig.guard) ids.push('guard-id');
             if (gameConfig.merchant) ids.push('merchant-id');
             if (gameConfig.prophet) ids.push('prophet-id');
+            if (gameConfig.psychic) ids.push('psychic-id');
             if (gameConfig.dreamer) ids.push('dreamer-id');
             if (gameConfig.wb) ids.push('wb-id');
             if (gameConfig.magician) ids.push('magician-id');
             if (gameConfig.ek) ids.push('ek-id');
+            if (gameConfig.mechWolf) ids.push('mw-id');
             if (gameConfig.wolfBros) { ids.push('wolfbro-id'); ids.push('wolflittlebro-id'); }
             return ids;
         }
@@ -798,12 +940,11 @@
             });
         }
 
-        // 狼兄與狼弟不可自爆
         function populateExplodeSelect() {
             const select = document.getElementById('explode-target');
             if(!select) return;
             select.innerHTML = `<option value="0">無人自爆</option>`;
-            players.filter(p => p.alive && (['狼人', '黑狼王'].includes(p.role) || p.isCorrupted)).forEach(p => {
+            players.filter(p => p.alive && (['狼人', '黑狼王', '機械狼'].includes(p.role) || p.isCorrupted)).forEach(p => {
                 let roleDisp = p.isCorrupted ? `百變狼王 (${p.role})` : p.role;
                 select.innerHTML += `<option value="${p.id}" class="${p.class}">${p.id} 號 (${roleDisp})</option>`;
             });
@@ -822,12 +963,12 @@
         }
 
         function getRoleStr(roleName) {
-            if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師'].includes(roleName)) {
+            if (['預言家', '通靈師', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師'].includes(roleName)) {
                 let isCorrupted = gameConfig.shapeShifterRole === roleName;
                 if (isCorrupted) return `<span class="color-wolf">百變狼王(${roleName})</span>`;
                 return `<span class="color-god">${roleName}</span>`;
             }
-            if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(roleName)) return `<span class="color-wolf">${roleName}</span>`;
+            if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(roleName)) return `<span class="color-wolf">${roleName}</span>`;
             if (roleName === '平民') return `<span class="color-villager">${roleName}</span>`;
             return roleName;
         }
@@ -852,17 +993,17 @@
             let p = players.find(x => x.id === id);
             if (!p) return;
 
-            if (p.role === '惡靈騎士' && ['wolf', 'poison', 'gift-poison'].includes(cause)) return;
+            if (p.role === '惡靈騎士' && ['wolf', 'poison', 'gift-poison', 'mw-poison'].includes(cause)) return;
 
             deadList.push(id);
             deadCauses[id] = cause;
 
-            let canTriggerSkills = !['dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'milk-pierce'].includes(cause);
+            let canTriggerSkills = !['dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'milk-pierce', 'merchant-fail'].includes(cause);
             if (canTriggerSkills) {
                 if ((p.role === '狼美人' || (p.role === '熊' && p.isCorrupted)) && state.charmedPlayer !== 0 && !deadList.includes(state.charmedPlayer)) {
                     registerDeath(state.charmedPlayer, 'wb-link', deadList, deadCauses);
                 }
-                let isNightCause = ['wolf', 'wolf-revenge', 'poison', 'gift-poison'].includes(cause);
+                let isNightCause = ['wolf', 'wolf-revenge', 'poison', 'gift-poison', 'mw-poison'].includes(cause);
                 if (isNightCause && p.role === '攝夢人' && nightData.dreamerTarget !== 0 && !deadList.includes(nightData.dreamerTarget)) {
                     let actualDream = applyMagic(nightData.dreamerTarget);
                     registerDeath(actualDream, 'dream-link', deadList, deadCauses);
@@ -873,11 +1014,13 @@
         function queueShooter(id, cause) {
             let p = players.find(x => x.id === id);
             if (!p) return;
-            if (['poison', 'gift-poison', 'dream-death', 'dream-link', 'wb-link', 'reflect', 'explode'].includes(cause)) return; 
+            if (['poison', 'gift-poison', 'mw-poison', 'dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'merchant-fail'].includes(cause)) return; 
             
             if (p.role === '獵人' || p.role === '黑狼王' || (p.role === '獵人' && p.isCorrupted)) {
                 let roleDisp = p.isCorrupted ? `百變狼王(${p.role})` : p.role;
                 shootQueue.push({ id: p.id, role: roleDisp, class: p.class });
+            } else if (p.role === '機械狼' && state.mwStatus.role === '獵人') {
+                shootQueue.push({ id: p.id, role: '機械狼(獵人)', class: 'color-wolf' });
             }
 
             // 黑市商人發的槍
@@ -917,11 +1060,11 @@
                     let idx = alivePlayers.findIndex(p => p.id === bear.id);
                     let left = alivePlayers[(idx - 1 + alivePlayers.length) % alivePlayers.length];
                     let right = alivePlayers[(idx + 1) % alivePlayers.length];
-                    if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(left.role) || left.isCorrupted ||
-                        ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(right.role) || right.isCorrupted) bearGrowled = true;
+                    if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(left.role) || left.isCorrupted ||
+                        ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(right.role) || right.isCorrupted) bearGrowled = true;
                 } else if (alivePlayers.length === 2) {
                     let other = alivePlayers.find(p => p.id !== bear.id);
-                    if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(other.role) || other.isCorrupted) bearGrowled = true;
+                    if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(other.role) || other.isCorrupted) bearGrowled = true;
                 }
             }
             
@@ -983,10 +1126,12 @@
         function startNight(isResume = false) {
             if(!isResume) {
                 nightData = { 
-                    wolfKill: 0, witchHeal: false, witchPoison: 0, prophetCheck: 0, 
+                    wolfKill: 0, wolfKill2: 0, witchHealTarget: 0, witchPoison: 0, prophetCheck: 0, 
                     dreamerTarget: 0, wbTarget: 0, bearCharmTarget: 0, magicianSwap: {t1:0, t2:0},
-                    guardProtect: 0, wolfRevengeKill: 0, merchantTarget: 0, merchantGift: 'none', giftPoison: 0, giftCheck: 0
+                    guardProtect: 0, wolfRevengeKill: 0, merchantTarget: 0, merchantGift: 'none', giftPoison: 0, giftCheck: 0,
+                    mwLearnTarget: 0, mwPoisonTarget: 0, mwGuardTarget: 0, mwCheckTarget: 0, psychicCheckTarget: 0
                 };
+                state.mwStatus.justLearned = false;
             }
             state.morningResultHtml = "";
             state.bearResultHtml = "";
@@ -997,9 +1142,207 @@
             document.getElementById('phase-morning').classList.add('hidden');
             
             updateAliveStatus();
+            prepareMechWolf();
+        }
+
+        // --- 機械狼 (每晚第一個) ---
+        function hideAllMwActs() {
+            document.getElementById('mw-act-psychic').classList.add('hidden');
+            document.getElementById('mw-act-prophet').classList.add('hidden');
+            document.getElementById('mw-act-witch').classList.add('hidden');
+            document.getElementById('mw-act-guard').classList.add('hidden');
+            document.getElementById('mw-act-passive').classList.add('hidden');
+            document.getElementById('mw-psychic-result').classList.add('hidden');
+            document.getElementById('mw-prophet-result').classList.add('hidden');
+        }
+
+        function showMwActionUI() {
+            document.getElementById('mw-action-container').classList.remove('hidden');
+            document.getElementById('mw-learned-role').innerText = state.mwStatus.role;
+            hideAllMwActs();
             
-            if (day >= 2 && gameConfig.shapeShifterMode) prepareShapeShifter();
-            else prepareGuard();
+            let r = state.mwStatus.role;
+            if (r === '通靈師') {
+                document.getElementById('mw-act-psychic').classList.remove('hidden');
+                populateAliveSelect('mw-psychic-target', true, "不查驗");
+            } else if (r === '預言家') {
+                document.getElementById('mw-act-prophet').classList.remove('hidden');
+                populateAliveSelect('mw-prophet-target', true, "不查驗");
+            } else if (r === '女巫') {
+                document.getElementById('mw-act-witch').classList.remove('hidden');
+                if (state.mwStatus.poisonUsed) {
+                    document.getElementById('radio-mw-poison').disabled = true;
+                    let targetSel = document.getElementById('mw-poison-target');
+                    if(targetSel) targetSel.disabled = true;
+                } else {
+                    document.getElementById('radio-mw-poison').disabled = false;
+                    document.getElementById('mw-poison-target').disabled = true; // wait for radio
+                    populateAliveSelect('mw-poison-target', true, "不選擇");
+                }
+            } else if (r === '守衛') {
+                document.getElementById('mw-act-guard').classList.remove('hidden');
+                populateAliveSelect('mw-guard-target', true, "不守護");
+            } else {
+                document.getElementById('mw-act-passive').classList.remove('hidden');
+            }
+        }
+
+        function prepareMechWolf() {
+            if (!gameConfig.mechWolf) return gameConfig.shapeShifterMode ? prepareShapeShifter() : prepareGuard();
+            currentPhase = 'mechwolf';
+            document.getElementById('phase-mechwolf').classList.remove('hidden');
+            let mw = players.find(p => p.role === '機械狼');
+
+            if (day === 1) document.getElementById('d1-mw-setup').classList.remove('hidden');
+            else document.getElementById('d1-mw-setup').classList.add('hidden');
+
+            let signalDiv = document.getElementById('mw-signal-ui');
+            if (day > 1 && mw && !mw.alive) {
+                signalDiv.innerHTML = "<span style='color:#aaa; font-size:20px;'>機械狼已陣亡，無需給予手勢。</span>";
+                document.getElementById('mw-learn-container').classList.add('hidden');
+                document.getElementById('mw-action-container').classList.add('hidden');
+                document.getElementById('btn-mw-next').classList.remove('hidden');
+                return autoSave();
+            }
+
+            // Signal Logic
+            let otherWolvesAlive = players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(p.role) && p.alive && p.role !== '機械狼').length > 0;
+            let mwCanDoubleKill = (state.mwStatus.role === '狼人' && !otherWolvesAlive && players.find(p=>p.role==='機械狼')?.alive);
+            
+            if (otherWolvesAlive) {
+                signalDiv.innerHTML = "<span style='color:var(--color-wolf);'>🙅‍♂️ 雙手交叉 (X)</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(還有其他狼人存活，不可帶刀)</span>";
+            } else if (mwCanDoubleKill) {
+                signalDiv.innerHTML = "<span style='color:var(--btn-success); font-size: 24px;'>✌️ 兩根手指</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(其他狼已全滅且學到狼人，可帶兩刀)</span>";
+            } else {
+                signalDiv.innerHTML = "<span style='color:var(--btn-success); font-size: 24px;'>👍 讚 (大拇指)</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(其他狼已全滅，可帶一刀)</span>";
+            }
+
+            if (!state.mwStatus.learned) {
+                document.getElementById('mw-learn-container').classList.remove('hidden');
+                document.getElementById('mw-action-container').classList.add('hidden');
+                document.getElementById('btn-mw-next').classList.add('hidden');
+                let mwId = mw ? mw.id : parseInt(document.getElementById('mw-id')?.value);
+                populateAliveSelect('mw-learn-target', true, "不學習 (延後)", false, isNaN(mwId) ? [] : [mwId]);
+            } else {
+                document.getElementById('mw-learn-container').classList.add('hidden');
+                document.getElementById('btn-mw-next').classList.remove('hidden');
+                showMwActionUI();
+            }
+            autoSave();
+        }
+
+        function learnMwSkill() {
+            let mwIdStr = document.getElementById('mw-id')?.value;
+            if (day === 1 && (!mwIdStr || isNaN(parseInt(mwIdStr)))) {
+                return alert("請先選擇機械狼的號碼！");
+            }
+
+            let targetId = parseInt(document.getElementById('mw-learn-target').value);
+            if (targetId === 0) {
+                state.mwStatus.delayed = true;
+                document.getElementById('mw-learn-container').classList.add('hidden');
+                document.getElementById('mw-action-container').classList.remove('hidden');
+                document.getElementById('mw-learned-role').innerText = "未學習";
+                hideAllMwActs();
+                document.getElementById('mw-act-passive').classList.remove('hidden');
+                document.getElementById('btn-mw-next').classList.remove('hidden');
+                return;
+            }
+
+            takeSnapshot();
+            
+            if (day === 1) {
+                let mId = parseInt(mwIdStr);
+                players.find(x=>x.id===mId).role = '機械狼';
+                players.find(x=>x.id===mId).class = 'color-wolf';
+                updateAliveStatus();
+            }
+
+            state.mwStatus.target = targetId;
+            state.mwStatus.learned = true;
+            state.mwStatus.justLearned = true;
+            nightData.mwLearnTarget = targetId;
+
+            if (day === 1) {
+                state.mwStatus.role = '待定';
+                document.getElementById('mw-learn-container').classList.add('hidden');
+                document.getElementById('mw-action-container').classList.remove('hidden');
+                document.getElementById('mw-learned-role').innerText = "待定 (今晚稍後揭曉)";
+                hideAllMwActs();
+                document.getElementById('btn-mw-next').classList.remove('hidden');
+            } else {
+                state.mwStatus.role = getTrueRole(targetId);
+                document.getElementById('mw-learn-container').classList.add('hidden');
+                document.getElementById('btn-mw-next').classList.remove('hidden');
+                showMwActionUI();
+            }
+        }
+
+        function checkMwPsychic() {
+            let tId = parseInt(document.getElementById('mw-psychic-target').value);
+            nightData.mwCheckTarget = tId;
+            let actualTarget = applyMagic(tId);
+            let res = document.getElementById('mw-psychic-result');
+            res.classList.remove('hidden');
+            if(actualTarget === 0) { res.innerHTML = "<h2>未查驗</h2>"; return; }
+            
+            let role = getTrueRole(actualTarget);
+            if (role === '機械狼') {
+                 if (state.mwStatus.learned) role = state.mwStatus.role;
+            }
+            if (role === '狼弟' && !state.wolfBroDead) role = '平民'; 
+            
+            let c = "color-villager";
+            if (['預言家','女巫','獵人','熊','守衛','黑市商人','攝夢人','魔術師','通靈師'].includes(role)) c = "color-god";
+            else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role)) c = "color-wolf";
+            
+            res.innerHTML = `<h2 class='${c}' style='margin:0;'>${role}</h2>`;
+        }
+
+        function checkMwProphet() {
+            let tId = parseInt(document.getElementById('mw-prophet-target').value);
+            nightData.mwCheckTarget = tId;
+            let actualTarget = applyMagic(tId);
+            let res = document.getElementById('mw-prophet-result');
+            res.classList.remove('hidden');
+            if(actualTarget === 0) { res.innerHTML = "<h2>未查驗</h2>"; return; }
+            
+            let role = getTrueRole(actualTarget);
+            let isWolf = ['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role);
+            if (role === '狼弟' && !state.wolfBroDead) isWolf = false;
+            
+            res.innerHTML = isWolf ? "<h2 class='color-wolf' style='margin:0;'>查殺</h2>" : "<h2 class='color-gold' style='margin:0;'>金水</h2>";
+        }
+
+        function processMechWolf() {
+            if (day === 1 && !state.mwStatus.learned && !state.mwStatus.delayed) {
+               let mwId = parseInt(document.getElementById('mw-id').value);
+               if (!isNaN(mwId)) {
+                   players.find(x=>x.id===mwId).role = '機械狼';
+                   players.find(x=>x.id===mwId).class = 'color-wolf';
+                   updateAliveStatus();
+               }
+            }
+
+            takeSnapshot();
+            
+            if (state.mwStatus.learned) {
+               let r = state.mwStatus.role;
+               if (r === '女巫') {
+                   let act = document.querySelector('input[name="mw-poison"]:checked');
+                   if (act && act.value === 'poison' && !state.mwStatus.poisonUsed) {
+                       let t = parseInt(document.getElementById('mw-poison-target').value);
+                       if (t !== 0) {
+                           nightData.mwPoisonTarget = t;
+                           state.mwStatus.poisonUsed = true;
+                       }
+                   }
+               } else if (r === '守衛') {
+                   nightData.mwGuardTarget = parseInt(document.getElementById('mw-guard-target').value);
+               }
+            }
+            document.getElementById('phase-mechwolf').classList.add('hidden');
+            gameConfig.shapeShifterMode ? prepareShapeShifter() : prepareGuard();
         }
 
         // --- 百變狼王單獨確認階段 ---
@@ -1013,7 +1356,7 @@
             if (ssPlayer && !ssPlayer.alive) {
                 document.getElementById('ss-signal').innerHTML = "<span style='color:#aaa; font-size:20px;'>百變狼王已陣亡，無需給予手勢。</span>";
             } else {
-                let otherWolvesAlive = players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(p.role) && p.alive).length > 0;
+                let otherWolvesAlive = players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(p.role) && p.alive).length > 0;
                 if (otherWolvesAlive) {
                     document.getElementById('ss-signal').innerHTML = "<span style='color:var(--color-wolf);'>🙅‍♂️ 雙手交叉 (X)</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(還有其他狼人存活，不可帶刀)</span>";
                 } else {
@@ -1166,6 +1509,19 @@
             let excludeWolfKill = players.filter(p => ['狼美人', '惡靈騎士'].includes(p.role)).map(p => p.id);
             populateAliveSelect('wolf-target', true, "不擊殺 (空刀)", false, excludeWolfKill);
 
+            // 機械狼雙刀邏輯
+            let otherWolvesAlive = players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(p.role) && p.alive && p.role !== '機械狼').length > 0;
+            let mwCanDoubleKill = (gameConfig.mechWolf && state.mwStatus.role === '狼人' && !otherWolvesAlive && players.find(p=>p.role==='機械狼')?.alive);
+
+            if (mwCanDoubleKill) {
+                document.getElementById('wolf-target2').classList.remove('hidden');
+                populateAliveSelect('wolf-target2', true, "不擊殺 (第二刀)", false, excludeWolfKill);
+            } else {
+                document.getElementById('wolf-target2').classList.add('hidden');
+                let sel = document.getElementById('wolf-target2');
+                if(sel) sel.value = "0";
+            }
+
             if (gameConfig.wb) {
                 document.getElementById('wb-action-container').classList.remove('hidden');
                 let wb = players.find(p => p.role === '狼美人');
@@ -1189,7 +1545,7 @@
             let bwk = NaN, wb = NaN, ek = NaN;
 
             if (day === 1) {
-                let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0) + (gameConfig.wolfBros ? 2 : 0);
+                let specialWolfCount = (gameConfig.bwk ? 1 : 0) + (gameConfig.wb ? 1 : 0) + (gameConfig.ek ? 1 : 0) + (gameConfig.wolfBros ? 2 : 0) + (gameConfig.mechWolf ? 1 : 0);
                 let maxDraftable = getMaxWolves();
                 let normalWolfCount = Math.max(0, maxDraftable - specialWolfCount);
                 
@@ -1204,7 +1560,6 @@
                 if (gameConfig.bwk && isNaN(bwk)) return alert("強制防呆：請在首夜設定中選擇「黑狼王」的號碼！");
                 if (gameConfig.wb && isNaN(wb)) return alert("強制防呆：請在首夜設定中選擇「狼美人」的號碼！");
                 if (gameConfig.ek && isNaN(ek)) return alert("強制防呆：請在首夜設定中選擇「惡靈騎士」的號碼！");
-                if (wIds.length === 0 && isNaN(bwk) && isNaN(wb) && isNaN(ek) && !gameConfig.wolfBros) return alert("首夜設定：請至少選擇一名狼陣營角色！");
                 
                 if (!isNaN(wb)) wbId = wb;
             } else {
@@ -1230,6 +1585,7 @@
             }
 
             nightData.wolfKill = parseInt(document.getElementById('wolf-target').value);
+            nightData.wolfKill2 = parseInt(document.getElementById('wolf-target2')?.value || 0);
 
             if (gameConfig.wb && !document.getElementById('wb-target').disabled) {
                 nightData.wbTarget = wbTarget;
@@ -1249,8 +1605,11 @@
             document.getElementById('phase-witch').classList.remove('hidden');
             let witch = players.find(p => p.role === '女巫');
             
-            let actualVictim = applyMagic(nightData.wolfKill);
+            let actualVictim1 = applyMagic(nightData.wolfKill);
+            let actualVictim2 = applyMagic(nightData.wolfKill2);
             let actualRevengeVictim = applyMagic(nightData.wolfRevengeKill);
+            
+            let victims = [actualVictim1, actualVictim2, actualRevengeVictim].filter(v => v !== 0);
 
             let wId = null;
             if (day === 1) {
@@ -1279,7 +1638,9 @@
                 document.getElementById('label-poison').style.color = 'inherit';
             }
 
-            if (day > 1 && witch && !witch.alive && actualVictim !== witch.id && actualRevengeVictim !== witch.id) {
+            let witchSafeFromWolves = !victims.includes(witch?.id);
+
+            if (day > 1 && witch && !witch.alive && witchSafeFromWolves) {
                 document.getElementById('witch-dead-msg').classList.remove('hidden');
                 document.getElementById('witch-action-controls').classList.add('hidden');
             } else {
@@ -1287,21 +1648,33 @@
                 document.getElementById('witch-action-controls').classList.remove('hidden');
 
                 if (potions.heal) {
-                    let victimText = actualVictim === 0 ? '無人被殺' : `${actualVictim} 號`;
+                    let victimText = victims.length === 0 ? '無人被殺' : victims.join(' 號 與 ') + ' 號';
                     document.getElementById('witch-info').innerHTML = `
                         <div class="witch-alert-active">
                             👉 <strong>上帝請向女巫比出手勢：</strong><br>
                             告訴女巫，今晚(狼群)被殺害的是 <span style="color:var(--color-wolf); font-size:24px; font-weight:bold;">${victimText}</span>
                         </div>`;
                     
-                    let cannotSelfHeal = (playerCount > 9 && actualVictim !== 0 && actualVictim === wId);
-                    
-                    if (cannotSelfHeal) {
+                    let healSelect = document.getElementById('witch-heal-target');
+                    healSelect.innerHTML = "";
+                    if (victims.length === 0) {
                         document.getElementById('radio-heal').disabled = true;
-                        document.getElementById('heal-target-hint').innerText = `(狼人晚上殺的是 ${actualVictim} 號，10人局以上不可自救)`;
+                        healSelect.disabled = true;
+                        healSelect.innerHTML = `<option value="0">無人被殺</option>`;
                     } else {
-                        document.getElementById('radio-heal').disabled = (actualVictim === 0); 
-                        document.getElementById('heal-target-hint').innerText = actualVictim === 0 ? "(昨晚空刀)" : `(狼人晚上殺的是 ${actualVictim} 號)`;
+                        let cannotSelfHeal = (playerCount > 9 && victims.includes(wId) && victims.length === 1);
+                        if (cannotSelfHeal) {
+                            document.getElementById('radio-heal').disabled = true;
+                            healSelect.disabled = true;
+                            healSelect.innerHTML = `<option value="0">不可自救</option>`;
+                        } else {
+                            document.getElementById('radio-heal').disabled = false;
+                            healSelect.disabled = false;
+                            victims.forEach(v => {
+                                if (playerCount > 9 && v === wId) return; // exclude self if >9
+                                healSelect.innerHTML += `<option value="${v}">${v} 號</option>`;
+                            });
+                        }
                     }
                 } else {
                     document.getElementById('witch-info').innerHTML = `
@@ -1310,7 +1683,9 @@
                             <strong>上帝請搖頭或不給手勢</strong>，不要告知死訊。
                         </div>`;
                     document.getElementById('radio-heal').disabled = true;
-                    document.getElementById('heal-target-hint').innerText = "";
+                    let healSelect = document.getElementById('witch-heal-target');
+                    healSelect.disabled = true;
+                    healSelect.innerHTML = `<option value="0">無</option>`;
                 }
             }
             autoSave();
@@ -1336,7 +1711,7 @@
             let actionEle = document.querySelector('input[name="witch-action"]:checked');
             if (actionEle) {
                 if (actionEle.value === 'heal') {
-                    nightData.witchHeal = true;
+                    nightData.witchHealTarget = parseInt(document.getElementById('witch-heal-target').value);
                     potions.heal = false;
                 } else if (actionEle.value === 'poison') {
                     const t = parseInt(document.getElementById('witch-target').value);
@@ -1652,21 +2027,21 @@
                 resultText.innerText = "未查驗";
                 resultText.className = "color-unknown";
             } else {
-                const target = players.find(p => p.id === actualTarget);
+                let role = getTrueRole(actualTarget);
                 const prophet = players.find(p => p.role === '預言家');
                 
-                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(target.role) || target.isCorrupted;
+                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role);
                 // 狼弟在狼兄存活時，被查驗為好人
-                if (target.role === '狼弟' && !state.wolfBroDead) {
+                if (role === '狼弟' && !state.wolfBroDead) {
                     isWolfTarget = false;
                 }
 
                 if (prophet && prophet.isCorrupted) {
-                    let exactRole = target.role === '?' ? '平民' : target.role;
+                    let exactRole = role;
                     let roleClass = "color-villager"; 
-                    if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師'].includes(exactRole)) {
+                    if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師'].includes(exactRole)) {
                         roleClass = "color-god";
-                    } else if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(exactRole)) {
+                    } else if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(exactRole)) {
                         roleClass = "color-wolf"; 
                     }
                     resultText.innerHTML = `${exactRole}${swapMsg}`;
@@ -1719,7 +2094,7 @@
             }
             let recipient = players.find(p => p.id === state.merchantGift.target);
             if (!recipient || !recipient.alive) {
-                return prepareHunter();
+                return prepareHunter(); // 如果幸運兒死了就跳過
             }
 
             currentPhase = 'gift';
@@ -1766,12 +2141,12 @@
             if (actualTarget === 0) {
                 resultText.innerText = "未查驗";
                 resultText.className = "color-unknown";
-                state.merchantGift.used = false; // 沒用掉
+                state.merchantGift.used = false; // 沒用掉可以下次再用
             } else {
-                const target = players.find(p => p.id === actualTarget);
-                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(target.role) || target.isCorrupted;
+                let role = getTrueRole(actualTarget);
+                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role);
                 
-                if (target.role === '狼弟' && !state.wolfBroDead) {
+                if (role === '狼弟' && !state.wolfBroDead) {
                     isWolfTarget = false;
                 }
 
@@ -1803,7 +2178,7 @@
 
         // --- 獵人 ---
         function prepareHunter() {
-            if (!gameConfig.hunter) return processMorning();
+            if (!gameConfig.hunter) return preparePsychic();
             currentPhase = 'hunter';
 
             applyCorruptedColor('phase-hunter', '獵人');
@@ -1815,7 +2190,6 @@
             autoSave();
         }
 
-        // 加入「夢死/連帶夢死/禮物毒」的夜晚即時預判機制
         function updateHunterStatus() {
             const statusArea = document.getElementById('hunter-status');
             let hId = day === 1 ? parseInt(document.getElementById('hunter-id').value) : (players.find(p => p.role === '獵人') || {}).id;
@@ -1828,20 +2202,22 @@
                     statusArea.innerHTML = "<span style='color:#aaa;'>🏹 獵人已在先前的回合陣亡。</span>";
                 } else {
                     let actualDream = applyMagic(nightData.dreamerTarget);
-                    let actualKill = applyMagic(nightData.wolfKill);
+                    let actualKill1 = applyMagic(nightData.wolfKill);
+                    let actualKill2 = applyMagic(nightData.wolfKill2);
                     let actualRevenge = applyMagic(nightData.wolfRevengeKill);
                     let actualPoison = applyMagic(nightData.witchPoison);
                     let actualGiftPoison = applyMagic(nightData.giftPoison);
+                    let actualMwPoison = applyMagic(nightData.mwPoisonTarget);
                     let dreamer = players.find(p => p.role === '攝夢人');
                     let dId = dreamer ? dreamer.id : null;
 
-                    let hunterDiedFromPoison = ((actualPoison === hId || actualGiftPoison === hId) && actualDream !== hId);
+                    let hunterDiedFromPoison = ((actualPoison === hId || actualGiftPoison === hId || actualMwPoison === hId) && actualDream !== hId);
                     let hunterDiedFromDoubleDream = (gameConfig.dreamer && actualDream === hId && actualDream !== 0 && historyData.lastDreamTarget === hId);
                     
                     let dreamerDied = false;
                     if (gameConfig.dreamer && dId) {
-                        let killedByWolf = ((actualKill === dId || actualRevenge === dId) && (!nightData.witchHeal || actualKill !== dId) && actualDream !== dId);
-                        let killedByPoison = ((actualPoison === dId || actualGiftPoison === dId) && actualDream !== dId);
+                        let killedByWolf = ((actualKill1 === dId || actualKill2 === dId || actualRevenge === dId) && (!nightData.witchHealTarget || nightData.witchHealTarget !== dId) && actualDream !== dId);
+                        let killedByPoison = ((actualPoison === dId || actualGiftPoison === dId || actualMwPoison === dId) && actualDream !== dId);
                         if (killedByWolf || killedByPoison) {
                             dreamerDied = true;
                         }
@@ -1887,7 +2263,132 @@
                 updateAliveStatus();
             }
             document.getElementById('phase-hunter').classList.add('hidden');
-            processMorning(); 
+            preparePsychic(); 
+        }
+
+        // --- 通靈師 ---
+        function preparePsychic() {
+            if (!gameConfig.psychic) return (day === 1 && gameConfig.mechWolf && state.mwStatus.learned && state.mwStatus.role === '待定') ? prepareMwResult() : processMorning();
+            currentPhase = 'psychic';
+
+            applyCorruptedColor('phase-psychic', '通靈師');
+            document.getElementById('phase-psychic').classList.remove('hidden');
+            let psychic = players.find(p => p.role === '通靈師');
+
+            if (day === 1) document.getElementById('d1-psychic-setup').classList.remove('hidden');
+            else document.getElementById('d1-psychic-setup').classList.add('hidden');
+
+            const actionArea = document.getElementById('psychic-action-area');
+            
+            if (day > 1 && psychic && !psychic.alive) {
+                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>通靈師已陣亡，無需查驗。請假裝等待後點擊閉眼。</span>";
+                document.getElementById('btn-psychic-check').classList.add('hidden');
+                document.getElementById('btn-psychic-next').classList.remove('hidden');
+                document.getElementById('psychic-result').classList.add('hidden');
+            } else {
+                actionArea.innerHTML = actionArea.getAttribute('data-original') || actionArea.innerHTML;
+                if(!actionArea.getAttribute('data-original')) actionArea.setAttribute('data-original', actionArea.innerHTML);
+                
+                populateAliveSelect('psychic-target', true, "不查驗");
+                
+                if (nightData.psychicCheckTarget !== 0) {
+                    document.getElementById('psychic-target').value = nightData.psychicCheckTarget;
+                    showPsychicResultUI(nightData.psychicCheckTarget);
+                } else {
+                    document.getElementById('psychic-result').classList.add('hidden');
+                    document.getElementById('btn-psychic-check').classList.remove('hidden');
+                    document.getElementById('btn-psychic-next').classList.add('hidden');
+                }
+            }
+            autoSave();
+        }
+
+        function showPsychicResultUI(targetId) {
+            document.getElementById('psychic-result').classList.remove('hidden');
+            document.getElementById('btn-psychic-check').classList.add('hidden');
+            document.getElementById('btn-psychic-next').classList.remove('hidden');
+
+            const resultText = document.getElementById('psychic-result-text');
+            
+            let actualTarget = applyMagic(targetId);
+            let swapMsg = (actualTarget !== targetId && actualTarget !== 0) ? `<br><span style="font-size:16px; color:#aaa;">(受魔術影響，實際查驗為 ${actualTarget} 號)</span>` : "";
+
+            if (actualTarget === 0) {
+                resultText.innerText = "未查驗";
+                resultText.className = "color-unknown";
+            } else {
+                let role = getTrueRole(actualTarget);
+                if (role === '機械狼') {
+                     if (state.mwStatus.learned) role = state.mwStatus.role;
+                }
+                if (role === '狼弟' && !state.wolfBroDead) role = '平民'; 
+                
+                let c = "color-villager";
+                if (['預言家','女巫','獵人','熊','守衛','黑市商人','攝夢人','魔術師','通靈師'].includes(role)) c = "color-god";
+                else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role)) c = "color-wolf";
+                
+                resultText.innerHTML = `${role}${swapMsg}`;
+                resultText.className = c;
+            }
+        }
+
+        function checkPsychicTarget() {
+            let pId = null;
+            if (day === 1) {
+                pId = parseInt(document.getElementById('psychic-id').value);
+                if (isNaN(pId)) return alert("強制防呆：請在首夜設定中選擇「通靈師」的號碼！");
+            }
+
+            takeSnapshot(); 
+
+            if (day === 1 && pId !== null) {
+                let isCorrupted = gameConfig.shapeShifterRole === '通靈師';
+                players.find(x => x.id === pId).role = '通靈師';
+                players.find(x => x.id === pId).class = isCorrupted ? 'color-wolf' : 'color-god';
+                players.find(x => x.id === pId).isCorrupted = isCorrupted;
+                updateAliveStatus(); 
+            }
+
+            // 立刻將所有未選號碼填入平民，並結算機械狼學習身份
+            finalizeD1Roles();
+
+            const targetId = parseInt(document.getElementById('psychic-target').value);
+            nightData.psychicCheckTarget = targetId;
+            showPsychicResultUI(targetId);
+            autoSave();
+        }
+
+        function processPsychic() {
+            takeSnapshot(); 
+            document.getElementById('phase-psychic').classList.add('hidden');
+            if (day === 1 && gameConfig.mechWolf && state.mwStatus.learned && state.mwStatus.role === '待定') {
+                prepareMwResult();
+            } else {
+                processMorning(); 
+            }
+        }
+
+        // --- 機械狼學習結果揭曉階段 (僅第一晚) ---
+        function prepareMwResult() {
+            currentPhase = 'mw-result';
+            finalizeD1Roles(); // 確保通靈師未開或出局時依然會填滿平民
+            document.getElementById('phase-mw-result').classList.remove('hidden');
+            
+            let r = state.mwStatus.role;
+            let c = "color-villager";
+            if (['預言家','女巫','獵人','熊','守衛','黑市商人','攝夢人','魔術師','通靈師'].includes(r)) c = "color-god";
+            else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(r)) c = "color-wolf";
+            
+            let el = document.getElementById('mw-result-role');
+            el.className = c;
+            el.innerText = r;
+            autoSave();
+        }
+
+        function processMwResult() {
+            takeSnapshot();
+            document.getElementById('phase-mw-result').classList.add('hidden');
+            processMorning();
         }
 
         // =======================
@@ -1900,14 +2401,8 @@
         }
 
         function processMorning() {
-            if (day === 1) {
-                players.forEach(pl => {
-                    if (pl.role === '?') {
-                        pl.role = '平民';
-                        pl.class = 'color-villager';
-                    }
-                });
-            }
+            // 安全防線：如果跳過了前面階段，還是要在早上強制轉平民
+            finalizeD1Roles();
 
             document.getElementById('phase-morning').classList.remove('hidden');
             
@@ -1916,32 +2411,38 @@
 
             let actualDream = applyMagic(nightData.dreamerTarget);
             let actualGuard = applyMagic(nightData.guardProtect);
-            let actualKill = applyMagic(nightData.wolfKill);
+            let actualKill1 = applyMagic(nightData.wolfKill);
+            let actualKill2 = applyMagic(nightData.wolfKill2);
             let actualRevenge = applyMagic(nightData.wolfRevengeKill);
             let actualPoison = applyMagic(nightData.witchPoison);
             let actualGiftPoison = applyMagic(nightData.giftPoison);
             let actualCharm = applyMagic(nightData.wbTarget);
             let actualBearCharm = applyMagic(nightData.bearCharmTarget);
             let actualCheck = applyMagic(nightData.prophetCheck);
+            let actualPsychicCheck = applyMagic(nightData.psychicCheckTarget);
             let actualGiftCheck = applyMagic(nightData.giftCheck);
             let actualMerchantTarget = applyMagic(nightData.merchantTarget);
+            let actualMwPoison = applyMagic(nightData.mwPoisonTarget);
+            let actualMwGuard = applyMagic(nightData.mwGuardTarget);
 
             if (gameConfig.dreamer && actualDream !== 0 && actualDream === historyData.lastDreamTarget) {
                 registerDeath(actualDream, 'dream-death', deadTonight, causes);
             }
 
-            // 一般狼刀結算 (含奶穿邏輯)
-            if (actualKill !== 0) {
-                if (!gameConfig.dreamer || actualKill !== actualDream) {
-                    let isGuarded = (actualGuard === actualKill);
-                    let isHealed = nightData.witchHeal;
-                    if (isGuarded && isHealed) {
-                        registerDeath(actualKill, 'milk-pierce', deadTonight, causes);
-                    } else if (!isGuarded && !isHealed) {
-                        registerDeath(actualKill, 'wolf', deadTonight, causes);
+            // 狼刀結算 (含雙刀與奶穿)
+            [actualKill1, actualKill2].forEach(actualKill => {
+                if (actualKill !== 0) {
+                    if (!gameConfig.dreamer || actualKill !== actualDream) {
+                        let isGuarded = (actualGuard === actualKill);
+                        let isHealed = (nightData.witchHealTarget === actualKill);
+                        if (isGuarded && isHealed) {
+                            registerDeath(actualKill, 'milk-pierce', deadTonight, causes);
+                        } else if (!isGuarded && !isHealed) {
+                            registerDeath(actualKill, 'wolf', deadTonight, causes);
+                        }
                     }
                 }
-            }
+            });
 
             // 狼弟復仇刀結算 (不互通解藥)
             if (actualRevenge !== 0) {
@@ -1954,33 +2455,51 @@
             }
 
             if (gameConfig.witch && actualPoison !== 0) {
-                if (!gameConfig.dreamer || actualPoison !== actualDream) {
-                    registerDeath(actualPoison, 'poison', deadTonight, causes);
+                // 機械狼防毒盾
+                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actualMwGuard === actualPoison);
+                if (!mwBlocked) {
+                    if (!gameConfig.dreamer || actualPoison !== actualDream) {
+                        registerDeath(actualPoison, 'poison', deadTonight, causes);
+                    }
                 }
             }
 
             if (gameConfig.merchant && actualGiftPoison !== 0) {
-                if (!gameConfig.dreamer || actualGiftPoison !== actualDream) {
-                    registerDeath(actualGiftPoison, 'gift-poison', deadTonight, causes);
+                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actualMwGuard === actualGiftPoison);
+                if (!mwBlocked) {
+                    if (!gameConfig.dreamer || actualGiftPoison !== actualDream) {
+                        registerDeath(actualGiftPoison, 'gift-poison', deadTonight, causes);
+                    }
+                }
+            }
+
+            if (actualMwPoison !== 0) {
+                if (!gameConfig.dreamer || actualMwPoison !== actualDream) {
+                    registerDeath(actualMwPoison, 'mw-poison', deadTonight, causes);
                 }
             }
 
             let extraEventsHtml = "";
             let ek = players.find(p => p.role === '惡靈騎士');
             if (ek && ek.alive) {
-                if ((actualPoison === ek.id || actualGiftPoison === ek.id) && !state.ekReflectUsed) {
+                if ((actualPoison === ek.id || actualGiftPoison === ek.id || actualMwPoison === ek.id) && !state.ekReflectUsed) {
                     state.ekReflectUsed = true;
                     // 反彈給放毒者
-                    let poisonerId = (actualPoison === ek.id) ? players.find(p => p.role === '女巫')?.id : state.merchantGift.target;
+                    let poisonerId = (actualPoison === ek.id) ? players.find(p => p.role === '女巫')?.id : ((actualMwPoison === ek.id) ? players.find(p => p.role === '機械狼')?.id : state.merchantGift.target);
                     if (poisonerId && players.find(p=>p.id===poisonerId).alive) {
                         registerDeath(poisonerId, 'reflect', deadTonight, causes);
                         extraEventsHtml += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">🏍️ 惡靈騎士被毒，觸發反傷彈死了 ${getPlayerStr(poisonerId, false)}！</div>`;
                     }
                 } 
-                else if ((actualCheck === ek.id || actualGiftCheck === ek.id) && !state.ekReflectUsed) {
+                else if ((actualCheck === ek.id || actualGiftCheck === ek.id || actualPsychicCheck === ek.id || nightData.mwCheckTarget === ek.id) && !state.ekReflectUsed) {
                     state.ekReflectUsed = true;
                     // 反彈給查驗者
-                    let checkerId = (actualCheck === ek.id) ? players.find(p => p.role === '預言家')?.id : state.merchantGift.target;
+                    let checkerId;
+                    if (actualCheck === ek.id) checkerId = players.find(p => p.role === '預言家')?.id;
+                    else if (actualPsychicCheck === ek.id) checkerId = players.find(p => p.role === '通靈師')?.id;
+                    else if (nightData.mwCheckTarget === ek.id) checkerId = players.find(p => p.role === '機械狼')?.id;
+                    else checkerId = state.merchantGift.target;
+
                     if (checkerId && players.find(p=>p.id===checkerId).alive) {
                         registerDeath(checkerId, 'reflect', deadTonight, causes);
                         extraEventsHtml += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">🏍️ 惡靈騎士被查驗，觸發反傷彈死了 ${getPlayerStr(checkerId, false)}！</div>`;
@@ -1993,7 +2512,7 @@
                 let tPlayer = players.find(p => p.id === nightData.merchantTarget);
                 let isWolf = false;
                 if (tPlayer) {
-                    isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(tPlayer.role) || tPlayer.isCorrupted;
+                    isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(tPlayer.role) || tPlayer.isCorrupted;
                 }
                 state.merchantGift = { target: nightData.merchantTarget, type: nightData.merchantGift, used: false, isWolf: isWolf };
                 
@@ -2033,13 +2552,56 @@
                 logHtml += `<li>💤 ${getRoleStr('攝夢人')} 攝了 ${getPlayerStr(nightData.dreamerTarget, false)}${getSwapLogStr(nightData.dreamerTarget, actualDream)}。</li>`;
             }
 
-            logHtml += `<li>🐺 狼陣營 `;
-            if (nightData.wolfKill !== 0) {
-                let hitImmune = (gameConfig.dreamer && actualKill === actualDream);
-                if (hitImmune) logHtml += `想殺 ${getPlayerStr(nightData.wolfKill, false)}${getSwapLogStr(nightData.wolfKill, actualKill)}，但因在夢中免疫了傷害。</li>`;
-                else logHtml += `想殺 ${getPlayerStr(nightData.wolfKill, false)}${getSwapLogStr(nightData.wolfKill, actualKill)}。</li>`;
+            if (gameConfig.mechWolf) {
+                if (day === 1 && state.mwStatus.learned && nightData.mwLearnTarget !== 0) {
+                    logHtml += `<li>🐺 ${getRoleStr('機械狼')} 學習了 ${getPlayerStr(nightData.mwLearnTarget, false)}，獲得了【${state.mwStatus.role}】的能力。</li>`;
+                } else if (day > 1 && state.mwStatus.justLearned) {
+                    logHtml += `<li>🐺 ${getRoleStr('機械狼')} 學習了 ${getPlayerStr(nightData.mwLearnTarget, false)}，獲得了【${state.mwStatus.role}】的能力。</li>`;
+                }
+
+                if (state.mwStatus.learned) {
+                    if (state.mwStatus.role === '女巫' && nightData.mwPoisonTarget !== 0) {
+                        let hitImmune = (gameConfig.dreamer && actualMwPoison === actualDream);
+                        logHtml += `<li>🐺 機械狼(女巫) 毒了 ${getPlayerStr(nightData.mwPoisonTarget, false)}${getSwapLogStr(nightData.mwPoisonTarget, actualMwPoison)}${hitImmune?' (免疫)':''}。</li>`;
+                    }
+                    if (state.mwStatus.role === '守衛' && nightData.mwGuardTarget !== 0) {
+                        logHtml += `<li>🐺 機械狼(守衛) 施加了防毒盾於 ${getPlayerStr(nightData.mwGuardTarget, false)}${getSwapLogStr(nightData.mwGuardTarget, actualMwGuard)}。</li>`;
+                    }
+                    if ((state.mwStatus.role === '預言家' || state.mwStatus.role === '通靈師') && nightData.mwCheckTarget !== 0) {
+                        let actT = applyMagic(nightData.mwCheckTarget);
+                        let role = getTrueRole(actT);
+                        let isWolf = ['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role);
+                        if (role === '狼弟' && !state.wolfBroDead) isWolf = false; 
+
+                        let rTxt = "";
+                        if (state.mwStatus.role === '預言家') {
+                            rTxt = isWolf ? "<span class='color-wolf'>查殺</span>" : "<span class='color-gold'>金水</span>";
+                        } else {
+                            if (role === '機械狼' && state.mwStatus.learned) role = state.mwStatus.role;
+                            if (role === '狼弟' && !state.wolfBroDead) role = '平民'; 
+                            let c = "color-villager";
+                            if (['預言家','女巫','獵人','熊','守衛','黑市商人','攝夢人','魔術師','通靈師'].includes(role)) c = "color-god";
+                            else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role)) c = "color-wolf";
+                            rTxt = `<span class='${c}'>${role}</span>`;
+                        }
+                        logHtml += `<li>🐺 機械狼(查驗) 查驗了 ${getPlayerStr(nightData.mwCheckTarget, false)}${getSwapLogStr(nightData.mwCheckTarget, actT)}，結果為【${rTxt}】。</li>`;
+                    }
+                }
             }
-            else logHtml += `選擇空刀。</li>`;
+
+            let kills = [nightData.wolfKill, nightData.wolfKill2].filter(k => k !== 0);
+            if (kills.length > 0) {
+                logHtml += `<li>🐺 狼陣營 `;
+                let killStrs = [];
+                kills.forEach(k => {
+                    let actK = applyMagic(k);
+                    let hitImmune = (gameConfig.dreamer && actK === actualDream);
+                    killStrs.push(`想殺 ${getPlayerStr(k, false)}${getSwapLogStr(k, actK)}${hitImmune ? ' (免疫)' : ''}`);
+                });
+                logHtml += killStrs.join('，且') + `。</li>`;
+            } else {
+                logHtml += `<li>🐺 狼陣營 選擇空刀。</li>`;
+            }
 
             if (gameConfig.wolfBros && nightData.wolfRevengeKill !== 0) {
                 let hitImmune = (gameConfig.dreamer && actualRevenge === actualDream);
@@ -2056,10 +2618,12 @@
 
             if (gameConfig.witch) {
                 logHtml += `<li>🧪 ${getRoleStr('女巫')} `;
-                if (nightData.witchHeal) logHtml += `使用解藥，救起了 ${getPlayerStr(actualKill, false)}。</li>`;
+                if (nightData.witchHealTarget !== 0) logHtml += `使用解藥，救起了 ${getPlayerStr(nightData.witchHealTarget, false)}。</li>`;
                 else if (nightData.witchPoison !== 0) {
                     let hitImmune = (gameConfig.dreamer && actualPoison === actualDream);
-                    if (hitImmune) logHtml += `毒了 ${getPlayerStr(nightData.witchPoison, false)}${getSwapLogStr(nightData.witchPoison, actualPoison)}，但因在夢中免疫。</li>`;
+                    let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actualMwGuard === actualPoison);
+                    if (mwBlocked) logHtml += `毒了 ${getPlayerStr(nightData.witchPoison, false)}${getSwapLogStr(nightData.witchPoison, actualPoison)}，但被機械狼的防毒盾擋下。</li>`;
+                    else if (hitImmune) logHtml += `毒了 ${getPlayerStr(nightData.witchPoison, false)}${getSwapLogStr(nightData.witchPoison, actualPoison)}，但因在夢中免疫。</li>`;
                     else logHtml += `毒了 ${getPlayerStr(nightData.witchPoison, false)}${getSwapLogStr(nightData.witchPoison, actualPoison)}。</li>`;
                 }
                 else logHtml += `未使用任何藥物。</li>`;
@@ -2072,39 +2636,58 @@
 
             if (day > 1 && nightData.giftCheck !== 0) {
                 let target = players.find(x => x.id === actualGiftCheck);
-                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(target.role) || target.isCorrupted;
-                if (target.role === '狼弟' && !state.wolfBroDead) isWolf = false;
+                let role = getTrueRole(actualGiftCheck);
+                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role);
+                if (role === '狼弟' && !state.wolfBroDead) isWolf = false;
                 let resCol = isWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
                 let resTxt = isWolf ? '查殺' : '金水';
                 logHtml += `<li>🎁 禮物持有者 查驗了 ${getPlayerStr(nightData.giftCheck, false)}${getSwapLogStr(nightData.giftCheck, actualGiftCheck)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
             }
 
             if (day > 1 && nightData.giftPoison !== 0) {
-                logHtml += `<li>🎁 禮物持有者 使用毒藥，毒了 ${getPlayerStr(nightData.giftPoison, false)}${getSwapLogStr(nightData.giftPoison, actualGiftPoison)}。</li>`;
+                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actualMwGuard === actualGiftPoison);
+                if (mwBlocked) logHtml += `<li>🎁 禮物持有者 使用毒藥，毒了 ${getPlayerStr(nightData.giftPoison, false)}${getSwapLogStr(nightData.giftPoison, actualGiftPoison)}，但被防毒盾擋下。</li>`;
+                else logHtml += `<li>🎁 禮物持有者 使用毒藥，毒了 ${getPlayerStr(nightData.giftPoison, false)}${getSwapLogStr(nightData.giftPoison, actualGiftPoison)}。</li>`;
             }
 
             if (gameConfig.prophet && nightData.prophetCheck !== 0) {
-                let target = players.find(x => x.id === actualCheck);
+                let role = getTrueRole(actualCheck);
                 let prophetP = players.find(p => p.role === '預言家');
-                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(target.role) || target.isCorrupted;
-                if (target.role === '狼弟' && !state.wolfBroDead) isWolf = false;
+                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role);
+                if (role === '狼弟' && !state.wolfBroDead) isWolf = false;
                 let resCol = isWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
                 let resTxt = isWolf ? '查殺' : '金水';
                 
                 if (prophetP && prophetP.isCorrupted) {
-                    let exact = target.role === '?' ? '平民' : target.role;
+                    let exact = role;
                     let roleColor = 'var(--color-villager)';
-                    if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師'].includes(exact)) {
+                    if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師'].includes(exact)) {
                         roleColor = 'var(--color-god)';
-                    } else if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(exact)) {
+                    } else if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(exact)) {
                         roleColor = 'var(--color-wolf)';
                     }
                     resCol = roleColor;
                     resTxt = exact; 
                 }
-
                 logHtml += `<li>👁️ ${getRoleStr('預言家')} 查驗了 ${getPlayerStr(nightData.prophetCheck, false)}${getSwapLogStr(nightData.prophetCheck, actualCheck)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
             }
+
+            if (gameConfig.psychic && nightData.psychicCheckTarget !== 0) {
+                let role = getTrueRole(actualPsychicCheck);
+                let psychicP = players.find(p => p.role === '通靈師');
+                
+                if (role === '機械狼' && state.mwStatus.learned) role = state.mwStatus.role;
+                if (role === '狼弟' && !state.wolfBroDead) role = '平民';
+
+                let roleColor = 'var(--color-villager)';
+                if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師'].includes(role)) {
+                    roleColor = 'var(--color-god)';
+                } else if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role)) {
+                    roleColor = 'var(--color-wolf)';
+                }
+                logHtml += `<li>🔮 ${getRoleStr('通靈師')} 查驗了 ${getPlayerStr(nightData.psychicCheckTarget, false)}${getSwapLogStr(nightData.psychicCheckTarget, actualPsychicCheck)}，真實身分為 <span style="color:${roleColor}; font-weight:bold;">【${role}】</span>。</li>`;
+            }
+
             logHtml += `</ul>`;
 
             logHtml += `<div style="color: #aaa; margin-top: 15px; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 5px; font-weight:bold;">☀️ 【第 ${day} 天白天】</div>`;
@@ -2139,6 +2722,8 @@
             state.morningResultHtml = resultHtml; 
             document.getElementById('morning-result').innerHTML = state.morningResultHtml;
             updateAliveStatus();
+
+            state.mwStatus.justLearned = false; 
 
             checkWolfBroDeath(deadTonight);
             deadTonight.forEach(id => { queueShooter(id, causes[id]); });
@@ -2271,8 +2856,8 @@
 
         /* ========== 勝負判定 ========== */
         function checkWinCondition() {
-            let wolves = players.filter(p => (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(p.role) || p.isCorrupted) && p.alive).length;
-            let gods = players.filter(p => ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師'].includes(p.role) && !p.isCorrupted && p.alive).length;
+            let wolves = players.filter(p => (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(p.role) || p.isCorrupted) && p.alive).length;
+            let gods = players.filter(p => ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師'].includes(p.role) && !p.isCorrupted && p.alive).length;
             let villagers = players.filter(p => p.role === '平民' && p.alive).length;
 
             let endMsg = "";
