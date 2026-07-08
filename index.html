@@ -153,18 +153,18 @@
             <div id="mw-signal-ui" class="result-box" style="margin-bottom:15px; text-align:center;"></div>
             
             <div id="d1-mw-setup" class="setup-box hidden">
-                <p>選擇機械狼號碼：</p>
+                <p>選擇機械狼號碼</p>
                 <select id="mw-id"></select>
             </div>
             
             <div id="mw-learn-container">
-                <p style="font-weight:bold; color:var(--color-gold);">請選擇要學習的對象 (僅限一次，可選擇延後)：</p>
+                <p style="font-weight:bold; color:var(--color-gold);">選擇學習的對象 (僅限一次 可延後)</p>
                 <select id="mw-learn-target"></select>
                 <button onclick="learnMwSkill()" style="background-color: var(--btn-warning); color:#000;">確認並進入下一步</button>
             </div>
             
             <div id="mw-action-container" class="hidden">
-                <p style="color:var(--color-god); font-weight:bold; font-size:18px;">已學習能力：<span id="mw-learned-role"></span></p>
+                <p style="color:var(--color-god); font-weight:bold; font-size:18px;">學到技能<span id="mw-learned-role"></span></p>
                 
                 <!-- 根據學習技能顯示對應UI -->
                 <div id="mw-act-psychic" class="hidden">
@@ -192,7 +192,7 @@
                 </div>
                 
                 <div id="mw-act-guard" class="hidden">
-                    <p>獲得防毒盾，請選擇要套上防毒盾的玩家 (能防女巫/禮物毒)：</p>
+                    <p>機械守衛的盾可以擋毒</p>
                     <select id="mw-guard-target"></select>
                 </div>
                 
@@ -249,7 +249,7 @@
         <div id="phase-wolf" class="action-row hidden">
             <h3 class="color-wolf">🐺 狼陣營請睜眼</h3>
             <div id="d1-wolf-setup" class="setup-box hidden">
-                <p>請選擇小狼：</p>
+                <p>選擇小狼號碼</p>
                 <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 8px;">
                     <select id="w1"></select> <select id="w2"></select> 
                     <select id="w3"></select> <select id="w4"></select>
@@ -271,7 +271,7 @@
                 </div>
             </div>
             
-            <p>狼陣營今晚要擊殺誰？</p>
+            <p>今晚的擊殺目標</p>
             <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
                 <select id="wolf-target"></select>
                 <select id="wolf-target2" class="hidden"></select>
@@ -291,7 +291,7 @@
             <h3 class="color-god">🧪 女巫請睜眼</h3>
             
             <div id="d1-witch-setup" class="setup-box hidden">
-                <p style="margin: 0;">選擇女巫號碼：</p>
+                <p style="margin: 0;">選擇女巫號碼</p>
                 <select id="witch-id"></select>
             </div>
 
@@ -503,7 +503,7 @@
             <!-- 自爆區塊 -->
             <div id="explode-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed var(--color-wolf); padding-top: 15px; text-align: center;">
                 <h3 style="color:var(--color-wolf); margin-top:0;">💣 狼人自爆</h3>
-                <p>請選擇自爆的狼人 (僅限一般狼人與黑狼王)：</p>
+                <p>選擇自爆的狼人 </p>
                 <select id="explode-target"></select>
                 <button onclick="processExplode()" style="background-color: var(--color-wolf); color: white;">確認自爆並進入天黑</button>
             </div>
@@ -511,7 +511,7 @@
             <!-- 投票區塊 -->
             <div id="vote-section" class="hidden" style="margin-top: 20px; border-top: 1px solid #555; padding-top: 15px; text-align: center;">
                 <h3>🗳️ 白天投票環節</h3>
-                <p>請選擇被投票出局的玩家：</p>
+                <p>選擇被放逐的玩家</p>
                 <select id="vote-target"></select>
                 <button onclick="processVote()" style="background-color: var(--btn-warning); color: #000;">確認出局結算</button>
             </div>
@@ -1187,7 +1187,7 @@
             }
         }
 
-        function prepareMechWolf() {
+      function prepareMechWolf() {
             if (!gameConfig.mechWolf) return gameConfig.shapeShifterMode ? prepareShapeShifter() : prepareGuard();
             currentPhase = 'mechwolf';
             document.getElementById('phase-mechwolf').classList.remove('hidden');
@@ -1197,36 +1197,30 @@
             else document.getElementById('d1-mw-setup').classList.add('hidden');
 
             let signalDiv = document.getElementById('mw-signal-ui');
-            if (day > 1 && mw && !mw.alive) {
-                signalDiv.innerHTML = "<span style='color:#aaa; font-size:20px;'>機械狼已陣亡，無需給予手勢。</span>";
-                document.getElementById('mw-learn-container').classList.add('hidden');
-                document.getElementById('mw-action-container').classList.add('hidden');
-                document.getElementById('btn-mw-next').classList.remove('hidden');
-                return autoSave();
-            }
-
-            // Signal Logic
-            let otherWolvesAlive = players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(p.role) && p.alive && p.role !== '機械狼').length > 0;
-            let mwCanDoubleKill = (state.mwStatus.role === '狼人' && !otherWolvesAlive && players.find(p=>p.role==='機械狼')?.alive);
             
-            if (otherWolvesAlive) {
-                signalDiv.innerHTML = "<span style='color:var(--color-wolf);'>🙅‍♂️ 雙手交叉 (X)</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(還有其他狼人存活，不可帶刀)</span>";
-            } else if (mwCanDoubleKill) {
-                signalDiv.innerHTML = "<span style='color:var(--btn-success); font-size: 24px;'>✌️ 兩根手指</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(其他狼已全滅且學到狼人，可帶兩刀)</span>";
-            } else {
-                signalDiv.innerHTML = "<span style='color:var(--btn-success); font-size: 24px;'>👍 讚 (大拇指)</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(其他狼已全滅，可帶一刀)</span>";
-            }
+            // 確保每晚階段開始時都會把手勢區塊顯示回來
+            signalDiv.classList.remove('hidden'); 
 
-            if (!state.mwStatus.learned) {
-                document.getElementById('mw-learn-container').classList.remove('hidden');
-                document.getElementById('mw-action-container').classList.add('hidden');
-                document.getElementById('btn-mw-next').classList.add('hidden');
-                let mwId = mw ? mw.id : parseInt(document.getElementById('mw-id')?.value);
-                populateAliveSelect('mw-learn-target', true, "不學習 (延後)", false, isNaN(mwId) ? [] : [mwId]);
-            } else {
+            if (day > 1 && mw && !mw.alive) {
+                // 機械狼已陣亡的處理邏輯
+                signalDiv.innerHTML = "<h2 style='color:#aaa;'>機械狼已陣亡，無動作。</h2>";
                 document.getElementById('mw-learn-container').classList.add('hidden');
+                document.getElementById('mw-action-container').classList.add('hidden');
                 document.getElementById('btn-mw-next').classList.remove('hidden');
-                showMwActionUI();
+            } else {
+                // 存活狀態下的邏輯：判斷是否已經學習過技能
+                if (!state.mwStatus.learned) {
+                    document.getElementById('mw-learn-container').classList.remove('hidden');
+                    document.getElementById('mw-action-container').classList.add('hidden');
+                    document.getElementById('btn-mw-next').classList.add('hidden');
+                    populateAliveSelect('mw-learn-target', true, "不學習 (延後)", false, mw ? [mw.id] : []);
+                    signalDiv.innerHTML = "<h2>選擇學習目標不帶刀</h2>";
+                } else {
+                    document.getElementById('mw-learn-container').classList.add('hidden');
+                    document.getElementById('btn-mw-next').classList.remove('hidden');
+                    signalDiv.innerHTML = `<h2>學到技能${state.mwStatus.role}</h2>`;
+                    showMwActionUI();
+                }
             }
             autoSave();
         }
@@ -1246,6 +1240,12 @@
                 hideAllMwActs();
                 document.getElementById('mw-act-passive').classList.remove('hidden');
                 document.getElementById('btn-mw-next').classList.remove('hidden');
+                
+                // 若是首夜延後學習，同樣隱藏設定與手勢
+                if (day === 1) {
+                    document.getElementById('d1-mw-setup').classList.add('hidden');
+                    document.getElementById('mw-signal-ui').classList.add('hidden');
+                }
                 return;
             }
 
@@ -1267,9 +1267,16 @@
                 state.mwStatus.role = '待定';
                 document.getElementById('mw-learn-container').classList.add('hidden');
                 document.getElementById('mw-action-container').classList.remove('hidden');
-                document.getElementById('mw-learned-role').innerText = "待定 (今晚稍後揭曉)";
+                
+                // 1. 僅顯示待定，去除多餘括號文字
+                document.getElementById('mw-learned-role').innerText = "待定";
+                
                 hideAllMwActs();
                 document.getElementById('btn-mw-next').classList.remove('hidden');
+                
+                // 2. 點擊確認後，隱藏「選擇機械狼號碼」與「手勢提示」
+                document.getElementById('d1-mw-setup').classList.add('hidden');
+                document.getElementById('mw-signal-ui').classList.add('hidden');
             } else {
                 state.mwStatus.role = getTrueRole(targetId);
                 document.getElementById('mw-learn-container').classList.add('hidden');
@@ -1651,8 +1658,8 @@
                     let victimText = victims.length === 0 ? '無人被殺' : victims.join(' 號 與 ') + ' 號';
                     document.getElementById('witch-info').innerHTML = `
                         <div class="witch-alert-active">
-                            👉 <strong>上帝請向女巫比出手勢：</strong><br>
-                            告訴女巫，今晚(狼群)被殺害的是 <span style="color:var(--color-wolf); font-size:24px; font-weight:bold;">${victimText}</span>
+                            👉 <strong>上帝向女巫比出手勢</strong><br>
+                            今晚被殺的是 <span style="color:var(--color-wolf); font-size:24px; font-weight:bold;">${victimText}</span>
                         </div>`;
                     
                     let healSelect = document.getElementById('witch-heal-target');
@@ -1679,8 +1686,8 @@
                 } else {
                     document.getElementById('witch-info').innerHTML = `
                         <div class="witch-alert-used">
-                            ⚠️ 解藥已用過。<br>
-                            <strong>上帝請搖頭或不給手勢</strong>，不要告知死訊。
+                            ⚠️ 解藥已使用<br>
+                            <strong>上帝不給手勢</strong>不要告知死訊
                         </div>`;
                     document.getElementById('radio-heal').disabled = true;
                     let healSelect = document.getElementById('witch-heal-target');
@@ -2238,7 +2245,7 @@
                     }
 
                     let color = canShoot ? "var(--btn-success)" : "var(--color-wolf)";
-                    let txt = canShoot ? "👌 可以開槍" : `🙅‍♂️ 不能開槍${reason}`;
+                    let txt = canShoot ? "👍 可以開槍" : `👎 不能開槍${reason}`;
                     statusArea.innerHTML = `<span><span style='color:${color}; font-size:24px;'>${txt}</span></span>`;
                 }
             } else {
@@ -2268,7 +2275,8 @@
 
         // --- 通靈師 ---
         function preparePsychic() {
-            if (!gameConfig.psychic) return (day === 1 && gameConfig.mechWolf && state.mwStatus.learned && state.mwStatus.role === '待定') ? prepareMwResult() : processMorning();
+            // 改為判斷 justLearned，避免因角色已提前結算而跳過
+            if (!gameConfig.psychic) return (day === 1 && gameConfig.mechWolf && state.mwStatus.justLearned) ? prepareMwResult() : processMorning();
             currentPhase = 'psychic';
 
             applyCorruptedColor('phase-psychic', '通靈師');
@@ -2361,12 +2369,14 @@
         function processPsychic() {
             takeSnapshot(); 
             document.getElementById('phase-psychic').classList.add('hidden');
-            if (day === 1 && gameConfig.mechWolf && state.mwStatus.learned && state.mwStatus.role === '待定') {
+            // 改為判斷 justLearned
+            if (day === 1 && gameConfig.mechWolf && state.mwStatus.justLearned) {
                 prepareMwResult();
             } else {
                 processMorning(); 
             }
         }
+
 
         // --- 機械狼學習結果揭曉階段 (僅第一晚) ---
         function prepareMwResult() {
@@ -2716,7 +2726,7 @@
                 resultHtml = "<h3 style='color:var(--btn-success); margin-bottom: 0;'>昨晚是平安夜！沒有人死亡。</h3>";
             } else {
                 let displayIds = deadTonight.sort((a,b)=>a-b);
-                resultHtml = `<h3 style='margin-bottom: 0;'>昨晚出局的玩家為：<span style='color:var(--color-wolf);'>${displayIds.join(' 號, ')} 號</span></h3>`;
+                resultHtml = `<h3 style='margin-bottom: 0;'>昨晚死亡的玩家<span style='color:var(--color-wolf);'>${displayIds.join(' 號, ')} 號</span></h3>`;
             }
             
             state.morningResultHtml = resultHtml; 
