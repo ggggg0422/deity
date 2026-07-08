@@ -76,17 +76,32 @@
         .color-unknown { color: var(--color-unknown); }
         
         .hidden { display: none !important; }
-        .result-box { background: #333; padding: 12px; border-left: 4px solid var(--btn-success); margin-top: 10px; border-radius: 4px; text-align: center; }
-        
-        .dead { text-decoration: line-through; opacity: 0.4; filter: grayscale(100%); }
-        
-        .setup-box p { margin-top: 0; font-weight: bold; color: #aaa; margin-bottom: 8px; }
-        .log-entry { margin-bottom: 15px; border-bottom: 1px dotted #555; padding-bottom: 15px; background: #222; padding: 12px; border-radius: 6px; text-align: left; }
-        
-        .witch-alert-active { background: #442222; padding: 12px; border-radius: 6px; border: 1px solid var(--color-wolf); margin-bottom: 10px; }
-        .witch-alert-used { background: #333; padding: 12px; border-radius: 6px; border: 1px solid #666; margin-bottom: 10px; color: #aaa; }
-        .bear-alert { background: #332244; padding: 12px; border-radius: 6px; border: 1px solid var(--color-god); margin-top: 15px; text-align: center; }
-        
+        /* 所有夜間提示與白天結果方框 (加入 fit-content 與置中) */
+/* 所有夜間提示與白天結果方框 (加入 fit-content 與置中，並移除綠色邊條) */
+.result-box { 
+    background: #333; 
+    padding: 12px 24px; 
+    margin: 10px auto 10px auto; 
+    border-radius: 4px; 
+    text-align: center; 
+    width: fit-content; 
+    max-width: 100%; 
+    box-sizing: border-box;
+}
+
+/* 針對女巫與熊的特殊提示框也做相同優化 */
+.witch-alert-active { 
+    background: #442222; padding: 12px 24px; border-radius: 6px; border: 1px solid var(--color-wolf); 
+    margin: 0 auto 10px auto; width: fit-content; max-width: 100%; box-sizing: border-box; 
+}
+.witch-alert-used { 
+    background: #333; padding: 12px 24px; border-radius: 6px; border: 1px solid #666; color: #aaa; 
+    margin: 0 auto 10px auto; width: fit-content; max-width: 100%; box-sizing: border-box; 
+}
+.bear-alert { 
+    background: #332244; padding: 12px 24px; border-radius: 6px; border: 1px solid var(--color-god); 
+    margin: 15px auto 10px auto; text-align: center; width: fit-content; max-width: 100%; box-sizing: border-box; 
+}     
         .role-check-label { display: inline-block; width: 48%; margin: 10px 0; font-size: 16px; cursor: pointer; text-align: left; padding-left: 10%; box-sizing: border-box; }
         .role-check-label input { width: 18px; height: 18px; margin-right: 8px; cursor: pointer; vertical-align: middle; accent-color: black; }
         
@@ -197,7 +212,7 @@
                 </div>
                 
                 <div id="mw-act-passive" class="hidden">
-                    <p style="color:#aaa;">無特殊夜間主動能力。<br>請假裝確認後點擊閉眼。</p>
+                    <p style="color:#aaa;">無特殊夜間主動能力<br>上帝假裝詢問使否使用技能</p>
                 </div>
             </div>
             
@@ -438,10 +453,10 @@
                 </div>
 
                 <div id="gift-gun-ui" class="hidden">
-                    <p style="color:#aaa;">該玩家獲得的是【獵人的槍】。<br>夜晚無法發動，請假裝詢問其是否使用技能，隨後請其閉眼以混淆視聽。</p>
+                    <p style="color:#aaa;">該玩家獲得的是【獵人的槍】。<br>夜晚無法發動 假裝詢問是否使用技能</p>
                 </div>
             </div>
-            <button onclick="processGift()" id="btn-gift-next">確認並請閉眼</button>
+            <button onclick="processGift()" id="btn-gift-next">確認 請閉眼</button>
         </div>
 
         <!-- 獵人階段 -->
@@ -452,10 +467,10 @@
                 <select id="hunter-id"></select>
             </div>
             <div class="result-box">
-                <p style="margin-top:0;">上帝請給出手勢 (獵人狀態)：</p>
+                <p style="margin-top:0;">上帝給出獵人的開槍狀態</p>
                 <h2 id="hunter-status" style="margin: 0;">等待判定...</h2>
             </div>
-            <button onclick="processHunter()">請閉眼並進入白天</button>
+            <button onclick="processHunter()">確認 請閉眼</button>
         </div>
 
         <!-- 通靈師階段 (獵人之後) -->
@@ -1203,7 +1218,7 @@
 
             if (day > 1 && mw && !mw.alive) {
                 // 機械狼已陣亡的處理邏輯
-                signalDiv.innerHTML = "<h2 style='color:#aaa;'>機械狼已陣亡，無動作。</h2>";
+                signalDiv.innerHTML = "<h2 style='color:#aaa;'>機械狼已陣亡</h2>";
                 document.getElementById('mw-learn-container').classList.add('hidden');
                 document.getElementById('mw-action-container').classList.add('hidden');
                 document.getElementById('btn-mw-next').classList.remove('hidden');
@@ -1998,7 +2013,7 @@
             const actionArea = document.getElementById('prophet-action-area');
             
             if (day > 1 && prophet && !prophet.alive) {
-                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>預言家已陣亡，無需查驗。請假裝等待後點擊閉眼。</span>";
+                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>預言家已陣亡 假裝詢問查驗目標</span>";
                 document.getElementById('btn-prophet-check').classList.add('hidden');
                 document.getElementById('btn-prophet-next').classList.remove('hidden');
                 document.getElementById('prophet-result').classList.add('hidden');
@@ -2206,7 +2221,7 @@
                 let isDeadPreviously = day > 1 && !hunter.alive;
                 
                 if (isDeadPreviously) {
-                    statusArea.innerHTML = "<span style='color:#aaa;'>🏹 獵人已在先前的回合陣亡。</span>";
+                    statusArea.innerHTML = "<span style='color:#aaa;'>🏹 獵人已陣亡</span>";
                 } else {
                     let actualDream = applyMagic(nightData.dreamerTarget);
                     let actualKill1 = applyMagic(nightData.wolfKill);
@@ -2289,7 +2304,7 @@
             const actionArea = document.getElementById('psychic-action-area');
             
             if (day > 1 && psychic && !psychic.alive) {
-                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>通靈師已陣亡，無需查驗。請假裝等待後點擊閉眼。</span>";
+                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>通靈師已陣亡 假裝詢問查驗目標。</span>";
                 document.getElementById('btn-psychic-check').classList.add('hidden');
                 document.getElementById('btn-psychic-next').classList.remove('hidden');
                 document.getElementById('psychic-result').classList.add('hidden');
@@ -2722,12 +2737,19 @@
             gameHistory.push(logHtml);
 
             let resultHtml = "";
-            if (deadTonight.length === 0) {
-                resultHtml = "<h3 style='color:var(--btn-success); margin-bottom: 0;'>昨晚是平安夜！沒有人死亡。</h3>";
-            } else {
-                let displayIds = deadTonight.sort((a,b)=>a-b);
-                resultHtml = `<h3 style='margin-bottom: 0;'>昨晚死亡的玩家<span style='color:var(--color-wolf);'>${displayIds.join(' 號, ')} 號</span></h3>`;
-            }
+if (deadTonight.length === 0) {
+    resultHtml = "<h3 style='color:var(--btn-success); margin-bottom: 0;'>昨晚是平安夜！沒有人死亡。</h3>";
+} else {
+    let displayIds = deadTonight.sort((a,b)=>a-b);
+    // 透過迴圈將每個死亡玩家的號碼套用他們專屬的陣營顏色
+    let coloredIds = displayIds.map(id => {
+        let p = players.find(x => x.id === id);
+        // 如果找不到玩家或角色未定，預設給予未知顏色，否則給予陣營專屬顏色 (color-villager / color-god / color-wolf)
+        let colorClass = p ? p.class : "color-unknown"; 
+        return `<span class="${colorClass}" style="font-weight:bold;">${id} 號</span>`;
+    });
+    resultHtml = `<h3 style='margin-bottom: 0;'>昨晚死亡的玩家：${coloredIds.join(' , ')}</h3>`;
+}
             
             state.morningResultHtml = resultHtml; 
             document.getElementById('morning-result').innerHTML = state.morningResultHtml;
