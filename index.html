@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>狼人殺上帝專用小幫手 (百變狼王 擴充版)</title>
     <style>
+@keyframes alertPulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+        }
+        .early-win-btn {
+            background-color: var(--color-wolf); color: white; padding: 12px; text-align: center; font-size: 16px; font-weight: bold; border-radius: 8px; margin-bottom: 15px; cursor: pointer; border: 2px solid #ff9999; animation: alertPulse 2s infinite;
+        }
         /* CSS 變數模組化 */
         :root {
             --bg-main: #1e1e1e;
@@ -169,6 +177,10 @@
         </div>
 
         <div id="alive-status" style="margin-bottom: 20px; text-align: center;"></div>
+<!-- 提早結算橫幅 (智慧屠邊預警) -->
+        <div id="early-win-banner" class="hidden early-win-btn" onclick="forceProcessMorning()">
+            🚨 系統預測目前死傷已達成屠邊或全滅！<br><span style="font-size:14px; font-weight:normal;">(若後續已無神職可改變死傷，請點此跳過夜晚，直接天亮結算)</span>
+        </div>
 
         <!-- 機械狼階段 (每晚第一個睜眼) -->
         <div id="phase-mechwolf" class="action-row hidden">
@@ -188,21 +200,21 @@
             </div>
             
           <div id="mw-action-container" class="hidden">
-                <p style="color:var(--color-god); font-weight:bold; font-size:18px;">學到技能：<span id="mw-learned-role"></span></p>
+                <p style="color:var(--color-god); font-weight:bold; font-size:18px;">學到技能➡️<span id="mw-learned-role"></span></p>
                 
-                <div id="mw-act-wolf" class="hidden">
-                    <p style="color:var(--color-wolf); font-weight:bold;">🗡️ 帶刀 (僅限其他狼陣亡後)：</p>
+            <div id="mw-act-wolf" class="hidden">
+                    <p style="color:var(--color-wolf); font-weight:bold;">🗡️ 獨立帶刀 (僅限今晚)</p>
                     <select id="mw-wolf-target"></select>
                 </div>
                 
                 <div id="mw-act-psychic" class="hidden">
-                    <p>選擇查驗目標 (每晚皆可)：</p><select id="mw-psychic-target"></select>
+                    <p>選擇查驗目標🔍 (每晚皆可)：</p><select id="mw-psychic-target"></select>
                     <button onclick="checkMwPsychic()" style="background-color: var(--btn-primary);">查驗</button>
                     <div id="mw-psychic-result" class="result-box hidden"></div>
                 </div>
                 
                 <div id="mw-act-prophet" class="hidden">
-                    <p>選擇查驗目標 (每晚皆可)：</p><select id="mw-prophet-target"></select>
+                    <p>選擇查驗目標🔍 (每晚皆可)：</p><select id="mw-prophet-target"></select>
                     <button onclick="checkMwProphet()" style="background-color: var(--btn-primary);">查驗</button>
                     <div id="mw-prophet-result" class="result-box hidden"></div>
                 </div>
@@ -224,12 +236,16 @@
                     <select id="mw-guard-target"></select>
                 </div>
                 
+                <div id="mw-act-wolf-passive" class="hidden">
+                    <p style="color:var(--color-wolf); font-weight:bold;">當無其他狼人 可以在自己環節砍一刀 進狼隊砍一刀</p>
+                </div>
+                
                 <div id="mw-act-passive" class="hidden">
-                    <p style="color:#aaa;">無特殊夜間主動能力<br>上帝假裝詢問使否使用技能</p>
+                    <p style="color:#aaa;">無特殊夜間主動能力<br>上帝假裝詢問是否使用技能</p>
                 </div>
             </div>
             
-            <button onclick="processMechWolf()" id="btn-mw-next" class="hidden">確認並請閉眼</button>
+            <button onclick="processMechWolf()" id="btn-mw-next" class="hidden">確認 請閉眼</button>
         </div>
 
         <!-- 百變狼王帶刀確認階段 (第2晚開始) -->
@@ -249,9 +265,9 @@
                 <p>選擇守衛號碼：</p>
                 <select id="guard-id"></select>
             </div>
-            <p>請選擇今晚要守護的玩家 (不能連守同一人)：</p>
+            <p>選擇要守護的號碼 (不能連守同一人)</p>
             <select id="guard-target"></select>
-            <button onclick="processGuard()">確認並請閉眼</button>
+            <button onclick="processGuard()">確認 請閉眼</button>
         </div>
 
         <!-- 狼兄與狼弟階段 -->
@@ -270,7 +286,7 @@
             <div id="wolfbros-idle-container" class="hidden">
                 <p style="color:#aaa; font-weight:bold;">無復仇刀行動，請上帝確認雙方相認/狀態後點擊閉眼。</p>
             </div>
-            <button onclick="processWolfBros()">確認並請閉眼</button>
+            <button onclick="processWolfBros()">確認 請閉眼</button>
         </div>
 
         <!-- 狼人與特殊狼階段合併 -->
@@ -363,7 +379,7 @@
             
             <p>請選擇今晚要攝的玩家 (不能攝自己，連兩晚同目標致死)：</p>
             <select id="dreamer-target"></select>
-            <button onclick="processDreamer()">確認並請閉眼</button>
+            <button onclick="processDreamer()">確認 請閉眼</button>
         </div>
 
         <!-- 魔術師階段 -->
@@ -378,7 +394,7 @@
                 <select id="magician-target1"></select>
                 <select id="magician-target2"></select>
             </div>
-            <button onclick="processMagician()">確認並請閉眼</button>
+            <button onclick="processMagician()">確認 請閉眼</button>
         </div>
 
         <!-- 黑市商人 第一晚發禮物階段 -->
@@ -399,7 +415,7 @@
                     <option value="gun">🏹 獵人的槍</option>
                 </select>
             </div>
-            <button onclick="processMerchant()">確認並請閉眼</button>
+            <button onclick="processMerchant()">確認 請閉眼</button>
         </div>
 
         <!-- 熊階段 -->
@@ -428,7 +444,7 @@
                 <select id="prophet-id"></select>
             </div>
             <div id="prophet-action-area">
-                <p>查驗目標：</p>
+                <p>查驗目標🔍</p>
                 <select id="prophet-target"></select>
                 <button onclick="checkProphetTarget()" id="btn-prophet-check" style="background-color: var(--btn-primary);">確認查驗</button>
             </div>
@@ -446,7 +462,7 @@
                 <p style="font-weight:bold;">🎁 請喚醒收到禮物的幸運兒 (<span id="gift-recipient-text" class="color-good"></span>)，並詢問是否使用技能：</p>
                 
                 <div id="gift-prophet-ui" class="hidden">
-                    <p>選擇查驗目標：</p>
+                    <p>選擇查驗目標🔍</p>
                     <select id="gift-prophet-target"></select>
                     <button onclick="checkGiftProphet()" id="btn-gift-prophet-check" style="background-color: var(--btn-primary);">確認查驗</button>
                     <div id="gift-prophet-result" class="result-box hidden">
@@ -490,11 +506,11 @@
         <div id="phase-psychic" class="action-row hidden">
             <h3 class="color-god">🔮 通靈師請睜眼</h3>
             <div id="d1-psychic-setup" class="setup-box hidden">
-                <p>選擇通靈師號碼：</p>
+                <p>選擇通靈師號碼</p>
                 <select id="psychic-id"></select>
             </div>
             <div id="psychic-action-area">
-                <p>查驗目標：</p>
+                <p>查驗目標🔍</p>
                 <select id="psychic-target"></select>
                 <button onclick="checkPsychicTarget()" id="btn-psychic-check" style="background-color: var(--btn-primary);">確認查驗</button>
             </div>
@@ -511,7 +527,7 @@
             <div class="result-box">
                 <h2 id="mw-result-role" style="margin:0;"></h2>
             </div>
-            <button onclick="processMwResult()">確認並請閉眼</button>
+            <button onclick="processMwResult()">確認 請閉眼</button>
         </div>
 
         <!-- 白天結算與投票階段 -->
@@ -523,7 +539,7 @@
             <!-- 開槍區塊 -->
             <div id="phase-shoot" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--color-wolf); padding-top: 15px; background: #332222; padding: 15px; border-radius: 8px; text-align: center;">
                 <h3 id="shoot-title" style="margin-top: 0;">出局，請開槍</h3>
-                <p>請選擇要帶走的玩家：</p>
+                <p>請選擇要帶走的玩家</p>
                 <select id="shoot-target"></select>
                 <button onclick="submitShoot()" style="background-color: var(--btn-danger);">確認帶走並繼續</button>
             </div>
@@ -575,7 +591,7 @@
             charmedPlayer: 0, morningResultHtml: "", bearResultHtml: "", ekReflectUsed: false, hasVotedToday: false,
             wolfBroDead: false, wolfLittleBroHasRevenge: false, wolfLittleBroRejoined: false,
             merchantGift: { target: 0, type: 'none', used: false, isWolf: false },
-            mwStatus: { learned: false, target: 0, role: '', poisonUsed: false, justLearned: false, delayed: false }
+            mwStatus: { learned: false, target: 0, role: '', poisonUsed: false, justLearned: false, delayed: false, extraWolfKillUsed: false }
         };
         
         let gameHistory = [];
@@ -782,7 +798,7 @@ function handleSetupChange() {
             else if (currentPhase === 'shoot') {
                 let shooter = shootQueue[0];
                 let titleArea = document.getElementById('shoot-title');
-                titleArea.innerHTML = `💥 <span class="${shooter.class}">${shooter.role} (${shooter.id}號)</span> 出局，請選擇開槍目標`;
+                titleArea.innerHTML = `💥 <span class="${shooter.class}">${shooter.role} (${shooter.id}號)</span> 出局  請選擇開槍目標`;
                 populateAliveSelect('shoot-target', true, "放棄開槍 (不帶走人)");
                 document.getElementById('phase-shoot').classList.remove('hidden');
             } else if (currentPhase === 'vote') {
@@ -798,6 +814,7 @@ function handleSetupChange() {
         function autoSave() {
             const saveData = { playerCount, players, day, potions, nightData, historyData, state, gameHistory, shootQueue, currentPhase, gameConfig };
             localStorage.setItem('werewolf_save', JSON.stringify(saveData));
+             updateEarlyWinBanner();
         }
 
         function clearSaveAndReload() {
@@ -1014,15 +1031,24 @@ function handleSetupChange() {
             return `<span class="${c}" style="font-weight:bold;">${id}號 (${rName})</span>`;
         }
 
-        // =======================
+       // =======================
         // 核心死亡引擎
         // =======================
         function registerDeath(id, cause, deadList, deadCauses) {
-            if (!id || id === 0 || deadList.includes(id)) return;
+            if (!id || id === 0) return;
             let p = players.find(x => x.id === id);
             if (!p) return;
 
             if (p.role === '惡靈騎士' && ['wolf', 'poison', 'gift-poison', 'mw-poison'].includes(cause)) return;
+
+            // 【修正重點】如果玩家已經在死亡名單內，檢查是否需要覆蓋死因
+            if (deadList.includes(id)) {
+                // 毒藥會封印技能，優先級高於狼刀。如果同晚被毒，死因強制更新為毒殺
+                if (['poison', 'gift-poison', 'mw-poison'].includes(cause)) {
+                    deadCauses[id] = cause;
+                }
+                return; // 已經處理過死亡，跳出避免重複觸發下方的連帶死亡邏輯
+            }
 
             deadList.push(id);
             deadCauses[id] = cause;
@@ -1175,7 +1201,7 @@ function handleSetupChange() {
         }
 
         // --- 機械狼 (每晚第一個) ---
-        function hideAllMwActs() {
+       function hideAllMwActs() {
             document.getElementById('mw-act-psychic').classList.add('hidden');
             document.getElementById('mw-act-prophet').classList.add('hidden');
             document.getElementById('mw-act-witch').classList.add('hidden');
@@ -1185,9 +1211,10 @@ function handleSetupChange() {
             document.getElementById('mw-prophet-result').classList.add('hidden');
             let actWolf = document.getElementById('mw-act-wolf');
             if (actWolf) actWolf.classList.add('hidden');
+            let actWolfPassive = document.getElementById('mw-act-wolf-passive');
+            if (actWolfPassive) actWolfPassive.classList.add('hidden');
         }
-
-       function showMwActionUI() {
+function showMwActionUI() {
             document.getElementById('mw-action-container').classList.remove('hidden');
             document.getElementById('mw-learned-role').innerText = state.mwStatus.role;
             hideAllMwActs();
@@ -1196,12 +1223,41 @@ function handleSetupChange() {
             let signalDiv = document.getElementById('mw-signal-ui');
             let otherWolvesAlive = players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(p.role) && p.alive && p.role !== '機械狼').length > 0;
             
-            let signalHtml = `<h2>學到技能：${r}</h2>`;
+            // ===== 新增：剛學到技能當晚的「延遲使用」邏輯 =====
+            if (state.mwStatus.justLearned && r !== '待定') {
+                let signalHtml = `<h2>學到技能➡️${r}</h2>`;
+                if (r === '獵人') {
+                    signalHtml += `<p style="color:var(--btn-success); font-size:16px; font-weight:bold; margin-top:5px;">(已立刻擁有獵槍，請一併向機械狼比出 👉 開槍手勢)</p>`;
+                } else {
+                    signalHtml += `<p style="color:#aaa; font-size:16px; font-weight:normal; margin-top:5px;">(技能需等到明晚才能開始使用)</p>`;
+                }
+                signalDiv.innerHTML = signalHtml;
+
+                let passiveContainer = document.getElementById('mw-act-passive');
+                passiveContainer.classList.remove('hidden');
+                let pTag = passiveContainer.querySelector('p');
+                
+                if (r === '獵人') {
+                    pTag.innerHTML = "<strong style='color:var(--btn-danger);'>🔫 出局可以開槍帶走一名玩家</strong><br><span style='font-size:14px; color:#aaa;'>(無特殊夜間主動能力 上帝假裝詢問是否使用技能)</span>";
+                } else {
+                    pTag.innerHTML = "技能準備中...<br>今晚無法使用主動技能，請假裝詢問";
+                }
+                return; // 直接返回，強制不顯示任何下方的主動技能面板
+            }
+            // ===========================================
+
+            let signalHtml = `<h2>學到技能➡️${r}</h2>`;
             if (day > 1) {
                 if (otherWolvesAlive) {
-                    signalHtml += "<p style='color:var(--color-wolf); font-size:18px; font-weight:bold; margin-top:5px;'>🙅‍♂️ 雙手交叉 (X) <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(還有其他狼人存活，不可帶刀)</span></p>";
+                    signalHtml += "<p style='color:var(--color-wolf); font-size:18px; font-weight:bold; margin-top:5px;'>🙅‍♂️ 不能帶刀❌ <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(還有其他狼人存活，不可帶刀)</span></p>";
                 } else {
-                    signalHtml += "<p style='color:var(--btn-success); font-size:18px; font-weight:bold; margin-top:5px;'>👍 讚 (大拇指) <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(其他狼人已全滅，今晚開始帶刀)</span></p>";
+                    if (r === '狼人' && !state.mwStatus.extraWolfKillUsed) {
+                        signalHtml += "<p style='color:var(--btn-success); font-size:18px; font-weight:bold; margin-top:5px;'>👍 今晚可以帶刀🔪 <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(已無其他狼人 稍後在狼人環節帶刀)</span></p>";
+                    } else if (r === '狼人' && state.mwStatus.extraWolfKillUsed) {
+                        signalHtml += "<p style='color:var(--color-wolf); font-size:18px; font-weight:bold; margin-top:5px;'>🙅‍♂️ 不能帶刀❌ <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(獨立刀已用過 稍後在狼人環節帶刀)</span></p>";
+                    } else {
+                        signalHtml += "<p style='color:var(--btn-success); font-size:18px; font-weight:bold; margin-top:5px;'>👍 今晚可以帶刀🔪 <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(已無其他狼人 稍後在狼人環節帶刀)</span></p>";
+                    }
                 }
             }
             signalDiv.innerHTML = signalHtml;
@@ -1227,14 +1283,22 @@ function handleSetupChange() {
                 document.getElementById('mw-act-guard').classList.remove('hidden');
                 populateAliveSelect('mw-guard-target', true, "不守護");
             } else if (r === '狼人') {
-                if (!otherWolvesAlive) {
+                if (!otherWolvesAlive && !state.mwStatus.extraWolfKillUsed) {
                     document.getElementById('mw-act-wolf').classList.remove('hidden');
                     populateAliveSelect('mw-wolf-target', true, "不擊殺 (空刀)");
                 } else {
-                    document.getElementById('mw-act-passive').classList.remove('hidden');
+                    document.getElementById('mw-act-wolf-passive').classList.remove('hidden');
                 }
             } else {
-                document.getElementById('mw-act-passive').classList.remove('hidden');
+                let passiveContainer = document.getElementById('mw-act-passive');
+                passiveContainer.classList.remove('hidden');
+                let pTag = passiveContainer.querySelector('p');
+                
+                if (r === '獵人') {
+                    pTag.innerHTML = "<strong style='color:var(--btn-danger);'>🔫 出局可以開槍帶走一名玩家</strong><br><span style='font-size:14px; color:#aaa;'>(無特殊夜間主動能力 上帝假裝詢問是否使用技能)</span>";
+                } else {
+                    pTag.innerHTML = "無特殊夜間主動能力<br>上帝假裝詢問是否使用技能";
+                }
             }
         }
 
@@ -1282,7 +1346,7 @@ function handleSetupChange() {
             autoSave();
         }
 
-        function learnMwSkill() {
+function learnMwSkill() {
             let mwIdStr = document.getElementById('mw-id')?.value;
             if (day === 1 && (!mwIdStr || isNaN(parseInt(mwIdStr)))) {
                 return alert("請先選擇機械狼的號碼！");
@@ -1291,6 +1355,19 @@ function handleSetupChange() {
             let targetId = parseInt(document.getElementById('mw-learn-target').value);
             if (targetId === 0) {
                 state.mwStatus.delayed = true;
+                
+                if (day === 1) {
+                    let mId = parseInt(mwIdStr);
+                    if (!isNaN(mId)) {
+                        let p = players.find(x => x.id === mId);
+                        if (p) {
+                            p.role = '機械狼';
+                            p.class = 'color-wolf';
+                            updateAliveStatus();
+                        }
+                    }
+                }
+
                 document.getElementById('mw-learn-container').classList.add('hidden');
                 document.getElementById('mw-action-container').classList.remove('hidden');
                 document.getElementById('mw-learned-role').innerText = "未學習";
@@ -1298,7 +1375,6 @@ function handleSetupChange() {
                 document.getElementById('mw-act-passive').classList.remove('hidden');
                 document.getElementById('btn-mw-next').classList.remove('hidden');
                 
-                // 若是首夜延後學習，同樣隱藏設定與手勢
                 if (day === 1) {
                     document.getElementById('d1-mw-setup').classList.add('hidden');
                     document.getElementById('mw-signal-ui').classList.add('hidden');
@@ -1317,27 +1393,38 @@ function handleSetupChange() {
 
             state.mwStatus.target = targetId;
             state.mwStatus.learned = true;
-            state.mwStatus.justLearned = true;
+            state.mwStatus.justLearned = true; // 標記為「今晚剛學習」
             nightData.mwLearnTarget = targetId;
 
-            if (day === 1) {
+            // 提前取得真實身分
+            let trueRole = getTrueRole(targetId);
+
+            // 如果學到獵人，無視天數，立刻獲得獵槍身分
+            if (trueRole === '獵人') {
+                state.mwStatus.role = '獵人';
+            } else if (day === 1) {
                 state.mwStatus.role = '待定';
-                document.getElementById('mw-learn-container').classList.add('hidden');
-                document.getElementById('mw-action-container').classList.remove('hidden');
-                
-                // 1. 僅顯示待定，去除多餘括號文字
-                document.getElementById('mw-learned-role').innerText = "待定";
-                
-                hideAllMwActs();
-                document.getElementById('btn-mw-next').classList.remove('hidden');
-                
-                // 2. 點擊確認後，隱藏「選擇機械狼號碼」與「手勢提示」
-                document.getElementById('d1-mw-setup').classList.add('hidden');
-                document.getElementById('mw-signal-ui').classList.add('hidden');
             } else {
-                state.mwStatus.role = getTrueRole(targetId);
-                document.getElementById('mw-learn-container').classList.add('hidden');
-                document.getElementById('btn-mw-next').classList.remove('hidden');
+                state.mwStatus.role = trueRole;
+            }
+
+            document.getElementById('mw-learn-container').classList.add('hidden');
+            document.getElementById('mw-action-container').classList.remove('hidden');
+            document.getElementById('btn-mw-next').classList.remove('hidden');
+
+            if (state.mwStatus.role === '待定') {
+                // 首夜且非獵人，只顯示待定
+                document.getElementById('mw-learned-role').innerText = "待定";
+                hideAllMwActs();
+                if (day === 1) {
+                    document.getElementById('d1-mw-setup').classList.add('hidden');
+                    document.getElementById('mw-signal-ui').classList.add('hidden');
+                }
+            } else {
+                if (day === 1 && trueRole === '獵人') {
+                    document.getElementById('d1-mw-setup').classList.add('hidden');
+                    document.getElementById('mw-signal-ui').classList.remove('hidden');
+                }
                 showMwActionUI();
             }
         }
@@ -1407,6 +1494,7 @@ function handleSetupChange() {
                    let wTarget = document.getElementById('mw-wolf-target');
                    if (wTarget && !wTarget.parentElement.classList.contains('hidden')) {
                        nightData.mwWolfKill = parseInt(wTarget.value);
+                       state.mwStatus.extraWolfKillUsed = true; // 標記為已使用獨立刀
                    }
                }
             }
@@ -1427,9 +1515,9 @@ function handleSetupChange() {
             } else {
                 let otherWolvesAlive = players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(p.role) && p.alive).length > 0;
                 if (otherWolvesAlive) {
-                    document.getElementById('ss-signal').innerHTML = "<span style='color:var(--color-wolf);'>🙅‍♂️ 雙手交叉 (X)</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(還有其他狼人存活，不可帶刀)</span>";
+                    document.getElementById('ss-signal').innerHTML = "<span style='color:var(--color-wolf);'>🙅‍♂️ 不能帶刀❌</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(還有其他狼人存活)</span>";
                 } else {
-                    document.getElementById('ss-signal').innerHTML = "<span style='color:var(--btn-success);'>👍 讚 (大拇指)</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(其他狼人已全滅，今晚開始帶刀)</span>";
+                    document.getElementById('ss-signal').innerHTML = "<span style='color:var(--btn-success);'>👍 今晚可以帶刀🔪</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(其他狼人已全滅，今晚開始帶刀)</span>";
                 }
             }
             autoSave();
@@ -2052,7 +2140,7 @@ function handleSetupChange() {
             const actionArea = document.getElementById('prophet-action-area');
             
             if (day > 1 && prophet && !prophet.alive) {
-                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>預言家已陣亡 假裝詢問查驗目標</span>";
+                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>預言家已陣亡 假裝詢問查驗目標🔍</span>";
                 document.getElementById('btn-prophet-check').classList.add('hidden');
                 document.getElementById('btn-prophet-next').classList.remove('hidden');
                 document.getElementById('prophet-result').classList.add('hidden');
@@ -2343,7 +2431,7 @@ function handleSetupChange() {
             const actionArea = document.getElementById('psychic-action-area');
             
             if (day > 1 && psychic && !psychic.alive) {
-                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>通靈師已陣亡 假裝詢問查驗目標。</span>";
+                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>通靈師已陣亡 假裝詢問查驗目標🔍</span>";
                 document.getElementById('btn-psychic-check').classList.add('hidden');
                 document.getElementById('btn-psychic-next').classList.remove('hidden');
                 document.getElementById('psychic-result').classList.add('hidden');
@@ -2444,9 +2532,14 @@ function handleSetupChange() {
             else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(r)) c = "color-wolf";
             
             let el = document.getElementById('mw-result-role');
-            el.className = c;
-            el.innerText = r;
-            autoSave();
+el.className = c;
+// 加入學到獵人時的特殊手勢提醒
+if (r === '獵人') {
+    el.innerHTML = `${r}<br><span style="font-size:16px; color:#aaa; font-weight:normal;">(請一併向機械狼比出 👉 開槍手勢)</span>`;
+} else {
+    el.innerText = r;
+}
+autoSave();
         }
 
         function processMwResult() {
@@ -2657,7 +2750,7 @@ function handleSetupChange() {
 if (nightData.mwWolfKill !== 0 && nightData.mwWolfKill !== undefined) {
                 let actK = applyMagic(nightData.mwWolfKill);
                 let hitImmune = (gameConfig.dreamer && actK === actualDream);
-                logHtml += `<li>🐺 機械狼(狼人) 發動獨立刀，想殺 ${getPlayerStr(nightData.mwWolfKill, false)}${getSwapLogStr(nightData.mwWolfKill, actK)}${hitImmune ? ' (免疫)' : ''}。</li>`;
+                logHtml += `<li>🐺 機械狼(狼人) 發動獨立刀，擊殺 ${getPlayerStr(nightData.mwWolfKill, false)}${getSwapLogStr(nightData.mwWolfKill, actK)}${hitImmune ? ' (免疫)' : ''}。</li>`;
             }
             let kills = [nightData.wolfKill, nightData.wolfKill2].filter(k => k !== 0);
             if (kills.length > 0) {
@@ -2666,7 +2759,7 @@ if (nightData.mwWolfKill !== 0 && nightData.mwWolfKill !== undefined) {
                 kills.forEach(k => {
                     let actK = applyMagic(k);
                     let hitImmune = (gameConfig.dreamer && actK === actualDream);
-                    killStrs.push(`想殺 ${getPlayerStr(k, false)}${getSwapLogStr(k, actK)}${hitImmune ? ' (免疫)' : ''}`);
+                    killStrs.push(`擊殺 ${getPlayerStr(k, false)}${getSwapLogStr(k, actK)}${hitImmune ? ' (免疫)' : ''}`);
                 });
                 logHtml += killStrs.join('，且') + `。</li>`;
             } else {
@@ -2675,7 +2768,7 @@ if (nightData.mwWolfKill !== 0 && nightData.mwWolfKill !== undefined) {
 
             if (gameConfig.wolfBros && nightData.wolfRevengeKill !== 0) {
                 let hitImmune = (gameConfig.dreamer && actualRevenge === actualDream);
-                logHtml += `<li>🐺 ${getRoleStr('狼弟')} 發動復仇刀，想殺 ${getPlayerStr(nightData.wolfRevengeKill, false)}${getSwapLogStr(nightData.wolfRevengeKill, actualRevenge)}${hitImmune?' (免疫)':''}。</li>`;
+                logHtml += `<li>🐺 ${getRoleStr('狼弟')} 發動復仇刀，擊殺 ${getPlayerStr(nightData.wolfRevengeKill, false)}${getSwapLogStr(nightData.wolfRevengeKill, actualRevenge)}${hitImmune?' (免疫)':''}。</li>`;
             }
 
             if (gameConfig.wb && nightData.wbTarget !== 0) {
@@ -2783,7 +2876,7 @@ if (nightData.mwWolfKill !== 0 && nightData.mwWolfKill !== undefined) {
 
             let resultHtml = "";
 if (deadTonight.length === 0) {
-    resultHtml = "<h3 style='color:var(--btn-success); margin-bottom: 0;'>昨晚是平安夜！沒有人死亡。</h3>";
+    resultHtml = "<h3 style='color:var(--btn-success); margin-bottom: 0;'>昨晚是平安夜👏</h3>";
 } else {
     let displayIds = deadTonight.sort((a,b)=>a-b);
     // 透過迴圈將每個死亡玩家的號碼套用他們專屬的陣營顏色
@@ -2793,7 +2886,7 @@ if (deadTonight.length === 0) {
         let colorClass = p ? p.class : "color-unknown"; 
         return `<span class="${colorClass}" style="font-weight:bold;">${id} 號</span>`;
     });
-    resultHtml = `<h3 style='margin-bottom: 0;'>昨晚死亡的玩家：${coloredIds.join(' , ')}</h3>`;
+    resultHtml = `<h3 style='margin-bottom: 0;'>昨晚${coloredIds.join('   ')}死亡</h3>`;
 }
             
             state.morningResultHtml = resultHtml; 
@@ -2962,6 +3055,142 @@ if (deadTonight.length === 0) {
                 return true;
             }
             return false;
+        }// 強制提早進入天亮結算
+        function forceProcessMorning() {
+            document.querySelectorAll('.action-row').forEach(el => el.classList.add('hidden'));
+            document.getElementById('early-win-banner').classList.add('hidden');
+            processMorning();
+        }
+
+        // 背景即時模擬當晚死傷，判斷是否跳出屠邊按鈕
+        function updateEarlyWinBanner() {
+            let banner = document.getElementById('early-win-banner');
+            if (!banner) return;
+            
+            let isNight = ['shapeshifter','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','psychic','gift','hunter','mw-result'].includes(currentPhase);
+            if (!isNight) {
+                banner.classList.add('hidden');
+                return;
+            }
+
+            let simDead = [];
+            let simCauses = {};
+            
+            let actualDream = applyMagic(nightData.dreamerTarget);
+            let actualGuard = applyMagic(nightData.guardProtect);
+            let actualKill1 = applyMagic(nightData.wolfKill);
+            let actualKill2 = applyMagic(nightData.wolfKill2);
+            let actualRevenge = applyMagic(nightData.wolfRevengeKill);
+            let actualPoison = applyMagic(nightData.witchPoison);
+            let actualGiftPoison = applyMagic(nightData.giftPoison);
+            let actualMwPoison = applyMagic(nightData.mwPoisonTarget);
+            let actualMwGuard = applyMagic(nightData.mwGuardTarget);
+            let actualMwWolfKill = nightData.mwWolfKill !== undefined ? applyMagic(nightData.mwWolfKill) : 0;
+
+            function simRegister(id, cause) {
+                if (!id || id === 0) return;
+                let p = players.find(x => x.id === id);
+                if (!p) return;
+                if (p.role === '惡靈騎士' && ['wolf', 'poison', 'gift-poison', 'mw-poison'].includes(cause)) return;
+                if (simDead.includes(id)) {
+                    if (['poison', 'gift-poison', 'mw-poison'].includes(cause)) simCauses[id] = cause;
+                    return;
+                }
+                simDead.push(id);
+                simCauses[id] = cause;
+                let canTrigger = !['dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'milk-pierce', 'merchant-fail'].includes(cause);
+                if (canTrigger) {
+                    if ((p.role === '狼美人' || (p.role === '熊' && p.isCorrupted)) && state.charmedPlayer !== 0 && !simDead.includes(state.charmedPlayer)) {
+                        simRegister(state.charmedPlayer, 'wb-link');
+                    }
+                    let isNightCause = ['wolf', 'wolf-revenge', 'poison', 'gift-poison', 'mw-poison'].includes(cause);
+                    if (isNightCause && p.role === '攝夢人' && nightData.dreamerTarget !== 0 && !simDead.includes(nightData.dreamerTarget)) {
+                        simRegister(actualDream, 'dream-link');
+                    }
+                }
+            }
+
+            if (gameConfig.dreamer && actualDream !== 0 && actualDream === historyData.lastDreamTarget) {
+                simRegister(actualDream, 'dream-death');
+            }
+
+            [actualKill1, actualKill2, actualMwWolfKill].forEach(k => {
+                if (k !== 0) {
+                    if (!gameConfig.dreamer || k !== actualDream) {
+                        let isGuarded = (actualGuard === k);
+                        let isHealed = (nightData.witchHealTarget === k);
+                        if (isGuarded && isHealed) simRegister(k, 'milk-pierce');
+                        else if (!isGuarded && !isHealed) simRegister(k, 'wolf');
+                    }
+                }
+            });
+
+            if (actualRevenge !== 0 && (!gameConfig.dreamer || actualRevenge !== actualDream) && actualGuard !== actualRevenge) {
+                simRegister(actualRevenge, 'wolf-revenge');
+            }
+
+            if (gameConfig.witch && actualPoison !== 0) {
+                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actualMwGuard === actualPoison);
+                if (!mwBlocked && (!gameConfig.dreamer || actualPoison !== actualDream)) simRegister(actualPoison, 'poison');
+            }
+            
+            if (gameConfig.merchant && actualGiftPoison !== 0) {
+                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actualMwGuard === actualGiftPoison);
+                if (!mwBlocked && (!gameConfig.dreamer || actualGiftPoison !== actualDream)) simRegister(actualGiftPoison, 'gift-poison');
+            }
+
+            if (actualMwPoison !== 0 && (!gameConfig.dreamer || actualMwPoison !== actualDream)) simRegister(actualMwPoison, 'mw-poison');
+
+            let ek = players.find(p => p.role === '惡靈騎士');
+            if (ek && ek.alive && !state.ekReflectUsed) {
+                if (actualPoison === ek.id) {
+                    let poisoner = players.find(p => p.role === '女巫');
+                    if (poisoner && poisoner.alive) simRegister(poisoner.id, 'reflect');
+                } else if (actualMwPoison === ek.id) {
+                    let poisoner = players.find(p => p.role === '機械狼');
+                    if (poisoner && poisoner.alive) simRegister(poisoner.id, 'reflect');
+                } else if (actualGiftPoison === ek.id && state.merchantGift.target !== 0) {
+                    simRegister(state.merchantGift.target, 'reflect');
+                }
+                
+                let actualCheck = applyMagic(nightData.prophetCheck);
+                let actualPsychicCheck = applyMagic(nightData.psychicCheckTarget);
+                let actualGiftCheck = applyMagic(nightData.giftCheck);
+                
+                if (actualCheck === ek.id) {
+                    let checker = players.find(p => p.role === '預言家');
+                    if (checker && checker.alive) simRegister(checker.id, 'reflect');
+                } else if (actualPsychicCheck === ek.id) {
+                    let checker = players.find(p => p.role === '通靈師');
+                    if (checker && checker.alive) simRegister(checker.id, 'reflect');
+                } else if (nightData.mwCheckTarget === ek.id) {
+                    let checker = players.find(p => p.role === '機械狼');
+                    if (checker && checker.alive) simRegister(checker.id, 'reflect');
+                } else if (actualGiftCheck === ek.id && state.merchantGift.target !== 0) {
+                    simRegister(state.merchantGift.target, 'reflect');
+                }
+            }
+            
+            let simWolves = 0, simGods = 0, simVillagers = 0;
+            
+            players.forEach(p => {
+                if (p.alive && !simDead.includes(p.id)) {
+                    let role = p.role === '?' ? '平民' : p.role;
+                    if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) || p.isCorrupted) {
+                        simWolves++;
+                    } else if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師'].includes(role)) {
+                        simGods++;
+                    } else {
+                        simVillagers++;
+                    }
+                }
+            });
+            
+            if (simWolves === 0 || simGods === 0 || simVillagers === 0) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
         }
     </script>
 </body>
