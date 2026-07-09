@@ -105,7 +105,16 @@
         .role-check-label { display: inline-block; width: 48%; margin: 10px 0; font-size: 16px; cursor: pointer; text-align: left; padding-left: 10%; box-sizing: border-box; }
         .role-check-label input { width: 18px; height: 18px; margin-right: 8px; cursor: pointer; vertical-align: middle; accent-color: black; }
         
-        .status-badge { background: #333; padding: 6px 10px; border-radius: 6px; border: 1px solid #555; display: inline-block; white-space: nowrap; font-size: 14px; }
+      .status-badge { background: #333; padding: 6px 10px; border-radius: 6px; border: 1px solid #555; display: inline-block; white-space: nowrap; font-size: 14px; }
+        
+        /* 覆蓋先前的死亡玩家狀態 */
+        .dead { 
+            text-decoration: line-through; 
+            opacity: 0.6; 
+            background-color: #1a1a1a !important; 
+            color: #666 !important;               
+            border-color: #333 !important;        
+        }
     </style>
 </head>
 <body>
@@ -178,10 +187,14 @@
                 <button onclick="learnMwSkill()" style="background-color: var(--btn-warning); color:#000;">確認並進入下一步</button>
             </div>
             
-            <div id="mw-action-container" class="hidden">
-                <p style="color:var(--color-god); font-weight:bold; font-size:18px;">學到技能<span id="mw-learned-role"></span></p>
+          <div id="mw-action-container" class="hidden">
+                <p style="color:var(--color-god); font-weight:bold; font-size:18px;">學到技能：<span id="mw-learned-role"></span></p>
                 
-                <!-- 根據學習技能顯示對應UI -->
+                <div id="mw-act-wolf" class="hidden">
+                    <p style="color:var(--color-wolf); font-weight:bold;">🗡️ 帶刀 (僅限其他狼陣亡後)：</p>
+                    <select id="mw-wolf-target"></select>
+                </div>
+                
                 <div id="mw-act-psychic" class="hidden">
                     <p>選擇查驗目標 (每晚皆可)：</p><select id="mw-psychic-target"></select>
                     <button onclick="checkMwPsychic()" style="background-color: var(--btn-primary);">查驗</button>
@@ -614,13 +627,14 @@
             });
         }
 
-        function handleSetupChange() {
+function handleSetupChange() {
             updateSetupSelects();
             if (this.id === 'hunter-id') updateHunterStatus();
             if (this.id === 'dreamer-id') updateDreamerTarget();
             if (this.id === 'wb-id') updateWbTarget();
             if (this.id === 'witch-id' && currentPhase === 'witch') prepareWitch(); 
             if (this.id === 'merchant-id' && currentPhase === 'merchant') updateMerchantTarget(); 
+            if (this.id === 'mw-id' && currentPhase === 'mechwolf') prepareMechWolf();
         }
 
         function getMaxWolves() {
@@ -1141,7 +1155,7 @@
         function startNight(isResume = false) {
             if(!isResume) {
                 nightData = { 
-                    wolfKill: 0, wolfKill2: 0, witchHealTarget: 0, witchPoison: 0, prophetCheck: 0, 
+                    wolfKill: 0, wolfKill2: 0, mwWolfKill: 0, witchHealTarget: 0, witchPoison: 0, prophetCheck: 0, 
                     dreamerTarget: 0, wbTarget: 0, bearCharmTarget: 0, magicianSwap: {t1:0, t2:0},
                     guardProtect: 0, wolfRevengeKill: 0, merchantTarget: 0, merchantGift: 'none', giftPoison: 0, giftCheck: 0,
                     mwLearnTarget: 0, mwPoisonTarget: 0, mwGuardTarget: 0, mwCheckTarget: 0, psychicCheckTarget: 0
@@ -1169,14 +1183,29 @@
             document.getElementById('mw-act-passive').classList.add('hidden');
             document.getElementById('mw-psychic-result').classList.add('hidden');
             document.getElementById('mw-prophet-result').classList.add('hidden');
+            let actWolf = document.getElementById('mw-act-wolf');
+            if (actWolf) actWolf.classList.add('hidden');
         }
 
-        function showMwActionUI() {
+       function showMwActionUI() {
             document.getElementById('mw-action-container').classList.remove('hidden');
             document.getElementById('mw-learned-role').innerText = state.mwStatus.role;
             hideAllMwActs();
             
             let r = state.mwStatus.role;
+            let signalDiv = document.getElementById('mw-signal-ui');
+            let otherWolvesAlive = players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(p.role) && p.alive && p.role !== '機械狼').length > 0;
+            
+            let signalHtml = `<h2>學到技能：${r}</h2>`;
+            if (day > 1) {
+                if (otherWolvesAlive) {
+                    signalHtml += "<p style='color:var(--color-wolf); font-size:18px; font-weight:bold; margin-top:5px;'>🙅‍♂️ 雙手交叉 (X) <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(還有其他狼人存活，不可帶刀)</span></p>";
+                } else {
+                    signalHtml += "<p style='color:var(--btn-success); font-size:18px; font-weight:bold; margin-top:5px;'>👍 讚 (大拇指) <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(其他狼人已全滅，今晚開始帶刀)</span></p>";
+                }
+            }
+            signalDiv.innerHTML = signalHtml;
+            
             if (r === '通靈師') {
                 document.getElementById('mw-act-psychic').classList.remove('hidden');
                 populateAliveSelect('mw-psychic-target', true, "不查驗");
@@ -1191,12 +1220,19 @@
                     if(targetSel) targetSel.disabled = true;
                 } else {
                     document.getElementById('radio-mw-poison').disabled = false;
-                    document.getElementById('mw-poison-target').disabled = true; // wait for radio
+                    document.getElementById('mw-poison-target').disabled = true;
                     populateAliveSelect('mw-poison-target', true, "不選擇");
                 }
             } else if (r === '守衛') {
                 document.getElementById('mw-act-guard').classList.remove('hidden');
                 populateAliveSelect('mw-guard-target', true, "不守護");
+            } else if (r === '狼人') {
+                if (!otherWolvesAlive) {
+                    document.getElementById('mw-act-wolf').classList.remove('hidden');
+                    populateAliveSelect('mw-wolf-target', true, "不擊殺 (空刀)");
+                } else {
+                    document.getElementById('mw-act-passive').classList.remove('hidden');
+                }
             } else {
                 document.getElementById('mw-act-passive').classList.remove('hidden');
             }
@@ -1224,11 +1260,17 @@
                 document.getElementById('btn-mw-next').classList.remove('hidden');
             } else {
                 // 存活狀態下的邏輯：判斷是否已經學習過技能
-                if (!state.mwStatus.learned) {
+              if (!state.mwStatus.learned) {
                     document.getElementById('mw-learn-container').classList.remove('hidden');
                     document.getElementById('mw-action-container').classList.add('hidden');
                     document.getElementById('btn-mw-next').classList.add('hidden');
-                    populateAliveSelect('mw-learn-target', true, "不學習 (延後)", false, mw ? [mw.id] : []);
+                    
+                    let setupMwId = parseInt(document.getElementById('mw-id')?.value);
+                    let excludeIds = [];
+                    if (mw) excludeIds.push(mw.id);
+                    else if (!isNaN(setupMwId)) excludeIds.push(setupMwId);
+                    
+                    populateAliveSelect('mw-learn-target', true, "不學習 (延後)", false, excludeIds);
                     signalDiv.innerHTML = "<h2>選擇學習目標不帶刀</h2>";
                 } else {
                     document.getElementById('mw-learn-container').classList.add('hidden');
@@ -1361,6 +1403,11 @@
                    }
                } else if (r === '守衛') {
                    nightData.mwGuardTarget = parseInt(document.getElementById('mw-guard-target').value);
+               } else if (r === '狼人') {
+                   let wTarget = document.getElementById('mw-wolf-target');
+                   if (wTarget && !wTarget.parentElement.classList.contains('hidden')) {
+                       nightData.mwWolfKill = parseInt(wTarget.value);
+                   }
                }
             }
             document.getElementById('phase-mechwolf').classList.add('hidden');
@@ -1531,18 +1578,10 @@
             let excludeWolfKill = players.filter(p => ['狼美人', '惡靈騎士'].includes(p.role)).map(p => p.id);
             populateAliveSelect('wolf-target', true, "不擊殺 (空刀)", false, excludeWolfKill);
 
-            // 機械狼雙刀邏輯
-            let otherWolvesAlive = players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(p.role) && p.alive && p.role !== '機械狼').length > 0;
-            let mwCanDoubleKill = (gameConfig.mechWolf && state.mwStatus.role === '狼人' && !otherWolvesAlive && players.find(p=>p.role==='機械狼')?.alive);
-
-            if (mwCanDoubleKill) {
-                document.getElementById('wolf-target2').classList.remove('hidden');
-                populateAliveSelect('wolf-target2', true, "不擊殺 (第二刀)", false, excludeWolfKill);
-            } else {
-                document.getElementById('wolf-target2').classList.add('hidden');
-                let sel = document.getElementById('wolf-target2');
-                if(sel) sel.value = "0";
-            }
+      // 雙刀邏輯已移至機械狼階段，強制隱藏常規狼陣營的第二刀選單
+            document.getElementById('wolf-target2').classList.add('hidden');
+            let sel = document.getElementById('wolf-target2');
+            if(sel) sel.value = "0";
 
             if (gameConfig.wb) {
                 document.getElementById('wb-action-container').classList.remove('hidden');
@@ -2449,13 +2488,14 @@
             let actualMerchantTarget = applyMagic(nightData.merchantTarget);
             let actualMwPoison = applyMagic(nightData.mwPoisonTarget);
             let actualMwGuard = applyMagic(nightData.mwGuardTarget);
+            let actualMwWolfKill = nightData.mwWolfKill !== undefined ? applyMagic(nightData.mwWolfKill) : 0;
 
             if (gameConfig.dreamer && actualDream !== 0 && actualDream === historyData.lastDreamTarget) {
                 registerDeath(actualDream, 'dream-death', deadTonight, causes);
             }
 
-            // 狼刀結算 (含雙刀與奶穿)
-            [actualKill1, actualKill2].forEach(actualKill => {
+            // 狼刀結算 (含獨立刀與奶穿)
+            [actualKill1, actualKill2, actualMwWolfKill].forEach(actualKill => {
                 if (actualKill !== 0) {
                     if (!gameConfig.dreamer || actualKill !== actualDream) {
                         let isGuarded = (actualGuard === actualKill);
@@ -2614,6 +2654,11 @@
                 }
             }
 
+if (nightData.mwWolfKill !== 0 && nightData.mwWolfKill !== undefined) {
+                let actK = applyMagic(nightData.mwWolfKill);
+                let hitImmune = (gameConfig.dreamer && actK === actualDream);
+                logHtml += `<li>🐺 機械狼(狼人) 發動獨立刀，想殺 ${getPlayerStr(nightData.mwWolfKill, false)}${getSwapLogStr(nightData.mwWolfKill, actK)}${hitImmune ? ' (免疫)' : ''}。</li>`;
+            }
             let kills = [nightData.wolfKill, nightData.wolfKill2].filter(k => k !== 0);
             if (kills.length > 0) {
                 logHtml += `<li>🐺 狼陣營 `;
