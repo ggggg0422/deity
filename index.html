@@ -3068,7 +3068,9 @@ if (deadTonight.length === 0) {
             if (!banner) return;
             
             let isNight = ['shapeshifter','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','psychic','gift','hunter','mw-result'].includes(currentPhase);
-            if (!isNight) {
+            
+            // ===== 新增：如果不是夜晚，或是「第一天」，就直接隱藏按鈕不進行預算 =====
+            if (!isNight || day === 1) {
                 banner.classList.add('hidden');
                 return;
             }
