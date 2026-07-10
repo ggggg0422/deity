@@ -131,7 +131,7 @@
 
     <!-- 遊戲設定介面 -->
     <div id="setup-screen" style="text-align:center; padding: 10px 0;">
-        <button id="btn-resume" onclick="resumeGame()" class="hidden" style="background-color: var(--btn-warning); font-size: 18px; margin-bottom: 20px; color: #000; padding: 12px 24px;">🔄 發現未完成的對局，點此恢復</button>
+        
         
         <div style="margin-bottom: 20px;">
             <label style="font-size: 18px; font-weight: bold;">玩家人數：</label>
@@ -251,7 +251,7 @@
         <!-- 百變狼王帶刀確認階段 (第2晚開始) -->
         <div id="phase-shapeshifter" class="action-row hidden">
             <h3 class="color-wolf">🐺 百變狼王請睜眼</h3>
-            <p>請上帝確認百變狼王 (<span id="ss-role-name"></span>) 的帶刀狀態，並給予手勢：</p>
+            <p>上帝確認百變狼王 (<span id="ss-role-name"></span>) 的帶刀狀態</p>
             <div class="result-box">
                 <h2 id="ss-signal" style="margin: 0; font-size: 24px;"></h2>
             </div>
@@ -300,17 +300,17 @@
                 </div>
                 
                 <div id="bwk-setup-container">
-                    <p style="margin-top: 15px;">請選擇黑狼王：</p>
+                    <p style="margin-top: 15px;">請選擇黑狼王</p>
                     <select id="bwk-id"></select>
                 </div>
 
                 <div id="wb-setup-container">
-                    <p style="margin-top: 15px;">請選擇狼美人：</p>
+                    <p style="margin-top: 15px;">請選擇狼美人</p>
                     <select id="wb-id"></select>
                 </div>
 
                 <div id="ek-setup-container">
-                    <p style="margin-top: 15px;">請選擇惡靈騎士：</p>
+                    <p style="margin-top: 15px;">請選擇惡靈騎士</p>
                     <select id="ek-id"></select>
                 </div>
             </div>
@@ -322,12 +322,12 @@
             </div>
 
             <div id="wb-action-container" class="hidden" style="margin-top:15px; padding-top:15px; border-top:1px dashed #666;">
-                <p style="color:var(--color-wolf); font-weight:bold;">💋 狼美人請選擇魅惑玩家 (出局時隨之殉情)：</p>
+                <p style="color:var(--color-wolf); font-weight:bold;">💋 狼美人選擇魅惑玩家 (出局時隨之殉情)</p>
                 <select id="wb-target"></select>
-                <p id="wb-dead-msg" class="hidden" style="color:#aaa;">狼美人已陣亡，無法魅惑。</p>
+                <p id="wb-dead-msg" class="hidden" style="color:#aaa;">狼美人已陣亡 無法魅惑</p>
             </div>
 
-            <button onclick="processWolf()">確認動作並請狼陣營閉眼</button>
+            <button onclick="processWolf()">確認 請閉眼</button>
         </div>
 
         <!-- 女巫階段 -->
@@ -341,7 +341,7 @@
 
             <div id="witch-action-area">
                 <div id="witch-dead-msg" class="hidden" style="color:var(--color-wolf); font-weight:bold; margin-bottom:10px;">
-                    女巫已陣亡，無法執行動作。請假裝等待後點擊閉眼。
+                    女巫已陣亡 無法執行動作 請假裝等待後點擊閉眼
                 </div>
                 
                 <div id="witch-action-controls">
@@ -365,19 +365,19 @@
                     </div>
                 </div>
             </div>
-            <button onclick="processWitch()">確認操作並請閉眼</button>
+            <button onclick="processWitch()">確認 請閉眼</button>
         </div>
 
         <!-- 攝夢人階段 -->
         <div id="phase-dreamer" class="action-row hidden">
             <h3 class="color-god">💤 攝夢人請睜眼</h3>
             <div id="d1-dreamer-setup" class="setup-box hidden">
-                <p>選擇攝夢人號碼：</p>
+                <p>選擇攝夢人號碼</p>
                 <select id="dreamer-id"></select>
             </div>
             <p id="dreamer-history-msg" class="hidden" style="color:var(--color-god); background:#332244; padding:10px; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid var(--color-god); margin-bottom: 15px;"></p>
             
-            <p>請選擇今晚要攝的玩家 (不能攝自己，連兩晚同目標致死)：</p>
+            <p>不能攝自己 連兩晚同目標致死</p>
             <select id="dreamer-target"></select>
             <button onclick="processDreamer()">確認 請閉眼</button>
         </div>
@@ -386,7 +386,7 @@
         <div id="phase-magician" class="action-row hidden">
             <h3 class="color-god">🎩 魔術師請睜眼</h3>
             <div id="d1-magician-setup" class="setup-box hidden">
-                <p>選擇魔術師號碼：</p>
+                <p>選擇魔術師號碼</p>
                 <select id="magician-id"></select>
             </div>
             <p>請選擇今晚要交換的兩個號碼 (每人限換一次，可選擇不換)：</p>
@@ -422,17 +422,17 @@
         <div id="phase-bear" class="action-row hidden">
             <h3 class="color-god">🐻 熊請睜眼</h3>
             <div id="d1-bear-setup" class="setup-box hidden">
-                <p>選擇熊的號碼：</p>
+                <p>選擇熊的號碼</p>
                 <select id="bear-id"></select>
             </div>
             
             <div id="bear-charm-container" class="hidden" style="margin-top:15px; padding-top:15px; border-top:1px dashed #666; margin-bottom:15px;">
-                <p style="color:var(--color-wolf); font-weight:bold;">💋 百變狼王(熊) 專屬技能：請選擇魅惑玩家 (出局時隨之殉情)</p>
+                <p style="color:var(--color-wolf); font-weight:bold;">選擇魅惑玩家 (出局時隨之殉情)</p>
                 <select id="bear-charm-target"></select>
-                <p id="bear-charm-dead-msg" class="hidden" style="color:#aaa;">已陣亡，無法魅惑。</p>
+                <p id="bear-charm-dead-msg" class="hidden" style="color:#aaa;">已陣亡 無法魅惑</p>
             </div>
 
-            <p>請上帝確認熊的身分並給予相對應的手勢確認。</p>
+            <p>上帝確認熊的身分</p>
             <button onclick="processBear()">請閉眼</button>
         </div>
 
@@ -440,7 +440,7 @@
         <div id="phase-prophet" class="action-row hidden">
             <h3 class="color-god">👁️ 預言家請睜眼</h3>
             <div id="d1-prophet-setup" class="setup-box hidden">
-                <p>選擇預言家的號碼：</p>
+                <p>選擇預言家的號碼</p>
                 <select id="prophet-id"></select>
             </div>
             <div id="prophet-action-area">
@@ -492,7 +492,7 @@
         <div id="phase-hunter" class="action-row hidden">
             <h3 class="color-god">🏹 獵人請睜眼</h3>
             <div id="d1-hunter-setup" class="setup-box hidden">
-                <p>選擇獵人號碼：</p>
+                <p>選擇獵人號碼</p>
                 <select id="hunter-id"></select>
             </div>
             <div class="result-box">
@@ -549,7 +549,7 @@
                 <h3 style="color:var(--color-wolf); margin-top:0;">💣 狼人自爆</h3>
                 <p>選擇自爆的狼人 </p>
                 <select id="explode-target"></select>
-                <button onclick="processExplode()" style="background-color: var(--color-wolf); color: white;">確認自爆並進入天黑</button>
+                <button onclick="processExplode()" style="background-color: var(--color-wolf); color: white;">確認自爆 進入天黑</button>
             </div>
 
             <!-- 投票區塊 -->
@@ -604,10 +604,7 @@
         };
         let snapshots = []; 
 
-        window.onload = () => {
-            if (localStorage.getItem('werewolf_save')) {
-                document.getElementById('btn-resume').classList.remove('hidden');
-            }
+       window.onload = () => {
             bindSetupEvents();
         };
 
@@ -648,11 +645,12 @@ function handleSetupChange() {
             if (this.id === 'hunter-id') updateHunterStatus();
             if (this.id === 'dreamer-id') updateDreamerTarget();
             if (this.id === 'wb-id') updateWbTarget();
+            // 👇 新增下面這一行，讓熊在第一晚切換號碼時能即時排除自己 👇
+            if (this.id === 'bear-id' && currentPhase === 'bear') updateBearCharmTarget();
             if (this.id === 'witch-id' && currentPhase === 'witch') prepareWitch(); 
             if (this.id === 'merchant-id' && currentPhase === 'merchant') updateMerchantTarget(); 
             if (this.id === 'mw-id' && currentPhase === 'mechwolf') prepareMechWolf();
         }
-
         function getMaxWolves() {
             let baseMax = (playerCount <= 10) ? 3 : 4;
             let shapeShifterCount = gameConfig.shapeShifterMode ? 1 : 0;
@@ -823,30 +821,6 @@ function handleSetupChange() {
             location.reload();
         }
 
-        function resumeGame() {
-            const saved = JSON.parse(localStorage.getItem('werewolf_save'));
-            if (!saved) return;
-            
-            ({ playerCount, players, day, potions, nightData, historyData, state, gameHistory, shootQueue, currentPhase, gameConfig } = saved);
-
-            if(state.hasVotedToday === undefined) state.hasVotedToday = false; 
-
-            if (localStorage.getItem('werewolf_snapshots')) {
-                snapshots = JSON.parse(localStorage.getItem('werewolf_snapshots'));
-            }
-
-            document.getElementById('setup-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
-            
-            document.getElementById('bwk-setup-container').classList.toggle('hidden', !gameConfig.bwk);
-            document.getElementById('wb-setup-container').classList.toggle('hidden', !gameConfig.wb);
-            document.getElementById('wb-action-container').classList.toggle('hidden', !gameConfig.wb);
-            document.getElementById('ek-setup-container').classList.toggle('hidden', !gameConfig.ek);
-            updateWolfSelectVisibility();
-
-            updateAliveStatus();
-            restoreUI();
-        }
 
         function exportLog() {
             const logEl = document.getElementById('game-log');
@@ -1128,7 +1102,7 @@ function handleSetupChange() {
             }
             
             if (bear) {
-                let msg = (bearAlive && bearGrowled) ? "🐾 上帝宣布：熊叫了" : "🐾 上帝宣布：熊沒有叫";
+                let msg = (bearAlive && bearGrowled) ? "熊叫了" : "熊沒有叫";
                 let borderColor = bear.isCorrupted ? "var(--color-wolf)" : "var(--color-god)";
                 bearHtml = `<div class="bear-alert" style="border-color:${borderColor};"><h3>${msg}</h3></div>`;
                 
@@ -1249,12 +1223,12 @@ function showMwActionUI() {
             let signalHtml = `<h2>學到技能➡️${r}</h2>`;
             if (day > 1) {
                 if (otherWolvesAlive) {
-                    signalHtml += "<p style='color:var(--color-wolf); font-size:18px; font-weight:bold; margin-top:5px;'>🙅‍♂️ 不能帶刀❌ <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(還有其他狼人存活，不可帶刀)</span></p>";
+                    signalHtml += "<p style='color:var(--color-wolf); font-size:18px; font-weight:bold; margin-top:5px;'>👎 不能帶刀❌ <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(還有其他狼人存活，不可帶刀)</span></p>";
                 } else {
                     if (r === '狼人' && !state.mwStatus.extraWolfKillUsed) {
                         signalHtml += "<p style='color:var(--btn-success); font-size:18px; font-weight:bold; margin-top:5px;'>👍 今晚可以帶刀🔪 <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(已無其他狼人 稍後在狼人環節帶刀)</span></p>";
                     } else if (r === '狼人' && state.mwStatus.extraWolfKillUsed) {
-                        signalHtml += "<p style='color:var(--color-wolf); font-size:18px; font-weight:bold; margin-top:5px;'>🙅‍♂️ 不能帶刀❌ <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(獨立刀已用過 稍後在狼人環節帶刀)</span></p>";
+                        signalHtml += "<p style='color:var(--color-wolf); font-size:18px; font-weight:bold; margin-top:5px;'>👎 不能帶刀❌ <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(獨立刀已用過 稍後在狼人環節帶刀)</span></p>";
                     } else {
                         signalHtml += "<p style='color:var(--btn-success); font-size:18px; font-weight:bold; margin-top:5px;'>👍 今晚可以帶刀🔪 <br><span style='font-size:14px; color:#aaa; font-weight:normal;'>(已無其他狼人 稍後在狼人環節帶刀)</span></p>";
                     }
@@ -1303,7 +1277,9 @@ function showMwActionUI() {
         }
 
       function prepareMechWolf() {
-            if (!gameConfig.mechWolf) return gameConfig.shapeShifterMode ? prepareShapeShifter() : prepareGuard();
+            // 【修改處】加入 day > 1 判斷，第一晚直接跳過百變狼王，進入守衛階段
+            if (!gameConfig.mechWolf) return (gameConfig.shapeShifterMode && day > 1) ? prepareShapeShifter() : prepareGuard();
+            
             currentPhase = 'mechwolf';
             document.getElementById('phase-mechwolf').classList.remove('hidden');
             let mw = players.find(p => p.role === '機械狼');
@@ -1465,7 +1441,7 @@ function learnMwSkill() {
             res.innerHTML = isWolf ? "<h2 class='color-wolf' style='margin:0;'>查殺</h2>" : "<h2 class='color-gold' style='margin:0;'>金水</h2>";
         }
 
-        function processMechWolf() {
+       function processMechWolf() {
             if (day === 1 && !state.mwStatus.learned && !state.mwStatus.delayed) {
                let mwId = parseInt(document.getElementById('mw-id').value);
                if (!isNaN(mwId)) {
@@ -1475,7 +1451,7 @@ function learnMwSkill() {
                }
             }
 
-            takeSnapshot();
+            takeSnapshot(); 
             
             if (state.mwStatus.learned) {
                let r = state.mwStatus.role;
@@ -1499,7 +1475,9 @@ function learnMwSkill() {
                }
             }
             document.getElementById('phase-mechwolf').classList.add('hidden');
-            gameConfig.shapeShifterMode ? prepareShapeShifter() : prepareGuard();
+            
+            // 【修改處】加入 day > 1 判斷，第一晚直接跳過百變狼王，進入守衛階段
+            (gameConfig.shapeShifterMode && day > 1) ? prepareShapeShifter() : prepareGuard();
         }
 
         // --- 百變狼王單獨確認階段 ---
@@ -1510,12 +1488,15 @@ function learnMwSkill() {
             
             let ssPlayer = players.find(p => p.role === gameConfig.shapeShifterRole);
             
-            if (ssPlayer && !ssPlayer.alive) {
+            // 加入第一晚的判斷，隱藏帶刀狀態
+            if (day === 1) {
+                document.getElementById('ss-signal').innerHTML = "<span style='color:#aaa; font-size:20px;'>第一晚僅互相確認身分<br>無帶刀狀態指示</span>";
+            } else if (ssPlayer && !ssPlayer.alive) {
                 document.getElementById('ss-signal').innerHTML = "<span style='color:#aaa; font-size:20px;'>百變狼王已陣亡，無需給予手勢。</span>";
             } else {
                 let otherWolvesAlive = players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(p.role) && p.alive).length > 0;
                 if (otherWolvesAlive) {
-                    document.getElementById('ss-signal').innerHTML = "<span style='color:var(--color-wolf);'>🙅‍♂️ 不能帶刀❌</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(還有其他狼人存活)</span>";
+                    document.getElementById('ss-signal').innerHTML = "<span style='color:var(--color-wolf);'>👎 不能帶刀❌</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(還有其他狼人存活)</span>";
                 } else {
                     document.getElementById('ss-signal').innerHTML = "<span style='color:var(--btn-success);'>👍 今晚可以帶刀🔪</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(其他狼人已全滅，今晚開始帶刀)</span>";
                 }
@@ -1645,7 +1626,19 @@ function learnMwSkill() {
             }
             populateAliveSelect('wb-target', false, "", true, wId ? [wId] : []);
         }
-
+// --- 熊的目標更新函數 (新增這段) ---
+        function updateBearCharmTarget() {
+            let bId = null;
+            if (day === 1) {
+                let setupVal = parseInt(document.getElementById('bear-id').value);
+                if (!isNaN(setupVal)) bId = setupVal;
+            } else {
+                let bear = players.find(p => p.role === '熊');
+                if (bear) bId = bear.id;
+            }
+            // 重新產生選單，並將熊自己的 ID (bId) 放入排除清單中
+            populateAliveSelect('bear-charm-target', false, "", true, bId ? [bId] : []);
+        }
         function prepareWolf() {
             currentPhase = 'wolf';
             
@@ -1746,7 +1739,7 @@ function learnMwSkill() {
         }
 
         // --- 女巫 ---
-        function prepareWitch() {
+       function prepareWitch() {
             if (!gameConfig.witch) return prepareDreamer();
             currentPhase = 'witch';
 
@@ -1767,13 +1760,17 @@ function learnMwSkill() {
             } else {
                 if (witch) wId = witch.id;
             }
+            
+            // 👇【新增】判斷女巫是否為百變狼王 👇
+            let isCorruptedWitch = (gameConfig.shapeShifterRole === '女巫');
 
             if (day === 1) document.getElementById('d1-witch-setup').classList.remove('hidden');
             else document.getElementById('d1-witch-setup').classList.add('hidden');
 
             document.getElementById('radio-none').checked = true;
             const poisonSelect = document.getElementById('witch-target');
-            populateAliveSelect('witch-target', true, "不選擇");
+            // 👇 修改：將毒藥選單改為強制選擇 (拿掉"不選擇"選項，改為"請選擇目標...") 👇
+            populateAliveSelect('witch-target', false, "", true);
             
             if (!potions.poison) {
                 document.getElementById('radio-poison').disabled = true;
@@ -1811,7 +1808,9 @@ function learnMwSkill() {
                         healSelect.disabled = true;
                         healSelect.innerHTML = `<option value="0">無人被殺</option>`;
                     } else {
-                        let cannotSelfHeal = (playerCount > 9 && victims.includes(wId) && victims.length === 1);
+                        // 👇【修改】如果女巫是百變狼王，就不受無法自救的限制 👇
+                        let cannotSelfHeal = (!isCorruptedWitch && playerCount > 9 && victims.includes(wId) && victims.length === 1);
+                        
                         if (cannotSelfHeal) {
                             document.getElementById('radio-heal').disabled = true;
                             healSelect.disabled = true;
@@ -1820,7 +1819,8 @@ function learnMwSkill() {
                             document.getElementById('radio-heal').disabled = false;
                             healSelect.disabled = false;
                             victims.forEach(v => {
-                                if (playerCount > 9 && v === wId) return; // exclude self if >9
+                                // 👇【修改】如果女巫是百變狼王，就不跳過自己的號碼 👇
+                                if (!isCorruptedWitch && playerCount > 9 && v === wId) return; // exclude self if >9
                                 healSelect.innerHTML += `<option value="${v}">${v} 號</option>`;
                             });
                         }
@@ -1857,17 +1857,19 @@ function learnMwSkill() {
                 updateAliveStatus();
             }
 
-            let actionEle = document.querySelector('input[name="witch-action"]:checked');
+           let actionEle = document.querySelector('input[name="witch-action"]:checked');
             if (actionEle) {
                 if (actionEle.value === 'heal') {
                     nightData.witchHealTarget = parseInt(document.getElementById('witch-heal-target').value);
                     potions.heal = false;
                 } else if (actionEle.value === 'poison') {
                     const t = parseInt(document.getElementById('witch-target').value);
-                    if (t !== 0) {
-                        nightData.witchPoison = t;
-                        potions.poison = false;
+                    // 👇 修改：加入防呆機制，確保使用者有選擇具體號碼 👇
+                    if (isNaN(t) || t === 0) {
+                        return alert("請選擇要毒殺的目標！");
                     }
+                    nightData.witchPoison = t;
+                    potions.poison = false;
                 }
             }
             document.getElementById('phase-witch').classList.add('hidden');
@@ -2079,8 +2081,9 @@ function learnMwSkill() {
                 } else {
                     document.getElementById('bear-charm-target').classList.remove('hidden');
                     document.getElementById('bear-charm-dead-msg').classList.add('hidden');
-                    let bId = bear ? bear.id : (day===1 ? parseInt(document.getElementById('bear-id').value) : null);
-                    populateAliveSelect('bear-charm-target', false, "", true, bId ? [bId] : []);
+                    
+                    // 👇 原本寫死在這裡的邏輯，改為呼叫剛剛新增的函數 👇
+                    updateBearCharmTarget(); 
                 }
             } else {
                 document.getElementById('bear-charm-container').classList.add('hidden');
@@ -2121,12 +2124,14 @@ function learnMwSkill() {
             }
 
             document.getElementById('phase-bear').classList.add('hidden');
-            prepareProphet();
+            // 👇 修改：熊結束後，改為進入幸運兒(Gift)階段 👇
+            prepareGift();
         }
 
         // --- 預言家 ---
         function prepareProphet() {
-            if (!gameConfig.prophet) return prepareGift();
+            // 👇 修改：未開啟預言家時，跳到通靈師階段 👇
+            if (!gameConfig.prophet) return preparePsychic();
             currentPhase = 'prophet';
 
             applyCorruptedColor('phase-prophet', '預言家');
@@ -2177,9 +2182,12 @@ function learnMwSkill() {
                 resultText.className = "color-unknown";
             } else {
                 let role = getTrueRole(actualTarget);
+                let targetPlayer = players.find(p => p.id === actualTarget); // 新增這行：取得目標玩家資訊
                 const prophet = players.find(p => p.role === '預言家');
                 
-                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role);
+                // 修改這行：將百變狼王的狀態 (isCorrupted) 加入查殺判定
+                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) || (targetPlayer && targetPlayer.isCorrupted);
+                
                 // 狼弟在狼兄存活時，被查驗為好人
                 if (role === '狼弟' && !state.wolfBroDead) {
                     isWolfTarget = false;
@@ -2230,10 +2238,11 @@ function learnMwSkill() {
             autoSave();
         }
 
-        function processProphet() {
+       function processProphet() {
             takeSnapshot(); 
             document.getElementById('phase-prophet').classList.add('hidden');
-            prepareGift(); 
+            // 👇 修改：預言家結束後，改為進入通靈師階段 👇
+            preparePsychic(); 
         }
 
         // --- 幸運兒 禮物使用階段 (第二天以後) ---
@@ -2327,7 +2336,8 @@ function learnMwSkill() {
 
         // --- 獵人 ---
         function prepareHunter() {
-            if (!gameConfig.hunter) return preparePsychic();
+            // 👇 修改：未開啟獵人時，跳到預言家階段 👇
+            if (!gameConfig.hunter) return prepareProphet();
             currentPhase = 'hunter';
 
             applyCorruptedColor('phase-hunter', '獵人');
@@ -2412,7 +2422,8 @@ function learnMwSkill() {
                 updateAliveStatus();
             }
             document.getElementById('phase-hunter').classList.add('hidden');
-            preparePsychic(); 
+            // 👇 修改：獵人結束後，進入預言家階段 👇
+            prepareProphet(); 
         }
 
         // --- 通靈師 ---
