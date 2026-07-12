@@ -1401,7 +1401,7 @@ function showMwActionUI() {
         } // 🎯 函式在這裡乾淨地結束
 
       function prepareMechWolf() {
-            if (!gameConfig.mechWolf) return (gameConfig.shapeShifterMode && day > 1) ? prepareShapeShifter() : prepareGuard();
+            if (!gameConfig.mechWolf) return proceedToNextPhase();
             
             currentPhase = 'mechwolf';
             UIManager.show('phase-mechwolf');
@@ -1594,8 +1594,8 @@ function learnMwSkill() {
             }
             document.getElementById('phase-mechwolf').classList.add('hidden');
             
-            // 【修改處】加入 day > 1 判斷，第一晚直接跳過百變狼王，進入守衛階段
-            (gameConfig.shapeShifterMode && day > 1) ? prepareShapeShifter() : prepareGuard();
+            
+             proceedToNextPhase();
         }
 
         // --- 百變狼王單獨確認階段 ---
@@ -1630,7 +1630,7 @@ function learnMwSkill() {
 
         // --- 守衛 ---
         function prepareGuard() {
-            if (!gameConfig.guard) return prepareWolfBros();
+            
             currentPhase = 'guard';
 
             applyCorruptedColor('phase-guard', '守衛');
@@ -1677,12 +1677,12 @@ function learnMwSkill() {
             }
             
             document.getElementById('phase-guard').classList.add('hidden');
-            prepareWolfBros();
+            proceedToNextPhase();
         }
 
         // --- 狼兄與狼弟 ---
         function prepareWolfBros() {
-            if (!gameConfig.wolfBros) return prepareWolf();
+            
             currentPhase = 'wolfbros';
 
             document.getElementById('phase-wolfbros').classList.remove('hidden');
@@ -1853,12 +1853,12 @@ function learnMwSkill() {
             }
 
             document.getElementById('phase-wolf').classList.add('hidden');
-            prepareWitch();
+            proceedToNextPhase();
         }
 
         // --- 女巫 ---
        function prepareWitch() {
-            if (!gameConfig.witch) return prepareDreamer();
+            
             currentPhase = 'witch';
 
             applyCorruptedColor('phase-witch', '女巫');
@@ -1991,7 +1991,7 @@ function learnMwSkill() {
                 }
             }
             document.getElementById('phase-witch').classList.add('hidden');
-            prepareDreamer();
+            proceedToNextPhase();
         }
 
         // --- 攝夢人 ---
@@ -2008,7 +2008,7 @@ function learnMwSkill() {
         }
 
         function prepareDreamer() {
-            if (!gameConfig.dreamer) return prepareMagician();
+            
             currentPhase = 'dreamer';
             
             applyCorruptedColor('phase-dreamer', '攝夢人');
@@ -2072,12 +2072,12 @@ function learnMwSkill() {
             }
             
             document.getElementById('phase-dreamer').classList.add('hidden');
-            prepareMagician();
+            proceedToNextPhase();
         }
 
         // --- 魔術師 ---
         function prepareMagician() {
-            if (!gameConfig.magician) return prepareMerchant();
+            
             currentPhase = 'magician';
             
             applyCorruptedColor('phase-magician', '魔術師');
@@ -2139,7 +2139,7 @@ function learnMwSkill() {
             }
 
             document.getElementById('phase-magician').classList.add('hidden');
-            prepareMerchant();
+            proceedToNextPhase();
         }
 
         // --- 黑市商人 第一晚發送禮物階段 ---
@@ -2149,7 +2149,7 @@ function learnMwSkill() {
         }
 
         function prepareMerchant() {
-            if (!gameConfig.merchant || day > 1) return prepareBear();
+            
             
             currentPhase = 'merchant';
             applyCorruptedColor('phase-merchant', '黑市商人');
@@ -2176,12 +2176,12 @@ function learnMwSkill() {
             UIManager.updateAliveStatus();
 
             document.getElementById('phase-merchant').classList.add('hidden');
-            prepareBear();
+            proceedToNextPhase();
         }
 
         // --- 熊 ---
         function prepareBear() {
-    if (!gameConfig.bear) return prepareGift(); // ✅ 改為跳到幸運兒禮物階段 (若沒發禮物，它會自動正確跳到獵人)
+    
     currentPhase = 'bear';
     
     applyCorruptedColor('phase-bear', '熊');
@@ -2242,14 +2242,13 @@ function learnMwSkill() {
             }
 
             document.getElementById('phase-bear').classList.add('hidden');
-            // 👇 修改：熊結束後，改為進入幸運兒(Gift)階段 👇
-            prepareGift();
+           
+            proceedToNextPhase();
         }
 
         // --- 預言家 ---
         function prepareProphet() {
-            // 👇 修改：未開啟預言家時，跳到通靈師階段 👇
-            if (!gameConfig.prophet) return preparePsychic();
+           
             currentPhase = 'prophet';
 
             applyCorruptedColor('phase-prophet', '預言家');
@@ -2360,7 +2359,7 @@ function learnMwSkill() {
             takeSnapshot(); 
             document.getElementById('phase-prophet').classList.add('hidden');
             // 👇 修改：預言家結束後，改為進入通靈師階段 👇
-            preparePsychic(); 
+            proceedToNextPhase(); 
         }
 
         // --- 幸運兒 禮物使用階段 (第二天以後) ---
@@ -2449,13 +2448,12 @@ function learnMwSkill() {
                 }
             }
             document.getElementById('phase-gift').classList.add('hidden');
-            prepareHunter();
+            proceedToNextPhase();
         }
 
         // --- 獵人 ---
         function prepareHunter() {
-            // 👇 修改：未開啟獵人時，跳到預言家階段 👇
-            if (!gameConfig.hunter) return prepareProphet();
+            
             currentPhase = 'hunter';
 
             applyCorruptedColor('phase-hunter', '獵人');
@@ -2541,13 +2539,12 @@ function learnMwSkill() {
             }
             document.getElementById('phase-hunter').classList.add('hidden');
             // 👇 修改：獵人結束後，進入預言家階段 👇
-            prepareProphet(); 
+            proceedToNextPhase();
         }
 
         // --- 通靈師 ---
         function preparePsychic() {
-            // 改為判斷 justLearned，避免因角色已提前結算而跳過
-            if (!gameConfig.psychic) return (day === 1 && gameConfig.mechWolf && state.mwStatus.justLearned) ? prepareMwResult() : processMorning();
+            
             currentPhase = 'psychic';
 
             applyCorruptedColor('phase-psychic', '通靈師');
@@ -2640,12 +2637,9 @@ function learnMwSkill() {
         function processPsychic() {
             takeSnapshot(); 
             document.getElementById('phase-psychic').classList.add('hidden');
-            // 改為判斷 justLearned
-            if (day === 1 && gameConfig.mechWolf && state.mwStatus.justLearned) {
-                prepareMwResult();
-            } else {
-                processMorning(); 
-            }
+            
+            // 直接呼叫中央指揮所，它會自動判斷下一個是 mw-result 還是該天亮 (processMorning)
+            proceedToNextPhase(); 
         }
 
 
@@ -2674,7 +2668,7 @@ autoSave();
         function processMwResult() {
             takeSnapshot();
             document.getElementById('phase-mw-result').classList.add('hidden');
-            processMorning();
+            proceedToNextPhase();
         }
 
         // =======================
