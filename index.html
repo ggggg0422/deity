@@ -134,7 +134,7 @@
         
         
         <div style="margin-bottom: 20px;">
-            <label style="font-size: 18px; font-weight: bold;">玩家人數：</label>
+            <label style="font-size: 18px; font-weight: bold;">玩家人數</label>
             <select id="player-count-select" style="font-size: 18px; width: auto; display: inline-block; margin-left: 10px;">
                 <option value="9">9 人局</option>
                 <option value="10">10 人局</option>
@@ -194,7 +194,7 @@
             </div>
             
             <div id="mw-learn-container">
-                <p style="font-weight:bold; color:var(--color-gold);">選擇學習的對象 (僅限一次 可延後)</p>
+                <p style="font-weight:bold; color:var(--color-gold);">學習對象 (僅限一次 可延後)</p>
                 <select id="mw-learn-target"></select>
                 <button onclick="learnMwSkill()" style="background-color: var(--btn-warning); color:#000;">確認並進入下一步</button>
             </div>
@@ -547,7 +547,7 @@
             <!-- 自爆區塊 -->
             <div id="explode-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed var(--color-wolf); padding-top: 15px; text-align: center;">
                 <h3 style="color:var(--color-wolf); margin-top:0;">💣 狼人自爆</h3>
-                <p>選擇自爆的狼人 </p>
+                <p>自爆的狼人 </p>
                 <select id="explode-target"></select>
                 <button onclick="processExplode()" style="background-color: var(--color-wolf); color: white;">確認自爆 進入天黑</button>
             </div>
@@ -555,7 +555,7 @@
             <!-- 投票區塊 -->
             <div id="vote-section" class="hidden" style="margin-top: 20px; border-top: 1px solid #555; padding-top: 15px; text-align: center;">
                 <h3>🗳️ 白天投票環節</h3>
-                <p>選擇被放逐的玩家</p>
+                <p>被放逐的玩家</p>
                 <select id="vote-target"></select>
                 <button onclick="processVote()" style="background-color: var(--btn-warning); color: #000;">確認出局結算</button>
             </div>
@@ -2691,104 +2691,97 @@ autoSave();
             return "";
         }
 
-        function processMorning() {
-            // 安全防線：如果跳過了前面階段，還是要在早上強制轉平民
-            finalizeD1Roles();
-
-            document.getElementById('phase-morning').classList.remove('hidden');
-            
+       // ==========================================
+        // 1. 算帳部：純粹處理夜間的死傷邏輯運算
+        // ==========================================
+        function calculateNightActions() {
             let deadTonight = [];
             let causes = {};
+            let extraEventsHtml = "";
 
-            let actualDream = applyMagic(nightData.dreamerTarget);
-            let actualGuard = applyMagic(nightData.guardProtect);
-            let actualKill1 = applyMagic(nightData.wolfKill);
-            let actualKill2 = applyMagic(nightData.wolfKill2);
-            let actualRevenge = applyMagic(nightData.wolfRevengeKill);
-            let actualPoison = applyMagic(nightData.witchPoison);
-            let actualGiftPoison = applyMagic(nightData.giftPoison);
-            let actualCharm = applyMagic(nightData.wbTarget);
-            let actualBearCharm = applyMagic(nightData.bearCharmTarget);
-            let actualCheck = applyMagic(nightData.prophetCheck);
-            let actualPsychicCheck = applyMagic(nightData.psychicCheckTarget);
-            let actualGiftCheck = applyMagic(nightData.giftCheck);
-            let actualMerchantTarget = applyMagic(nightData.merchantTarget);
-            let actualMwPoison = applyMagic(nightData.mwPoisonTarget);
-            let actualMwGuard = applyMagic(nightData.mwGuardTarget);
-            let actualMwWolfKill = nightData.mwWolfKill !== undefined ? applyMagic(nightData.mwWolfKill) : 0;
+            // 1. 預先透過魔術師邏輯，算出「真正的受害者」是誰
+            let actuals = {
+                dream: applyMagic(nightData.dreamerTarget),
+                guard: applyMagic(nightData.guardProtect),
+                kill1: applyMagic(nightData.wolfKill),
+                kill2: applyMagic(nightData.wolfKill2),
+                revenge: applyMagic(nightData.wolfRevengeKill),
+                poison: applyMagic(nightData.witchPoison),
+                giftPoison: applyMagic(nightData.giftPoison),
+                charm: applyMagic(nightData.wbTarget),
+                bearCharm: applyMagic(nightData.bearCharmTarget),
+                check: applyMagic(nightData.prophetCheck),
+                psychicCheck: applyMagic(nightData.psychicCheckTarget),
+                giftCheck: applyMagic(nightData.giftCheck),
+                merchant: applyMagic(nightData.merchantTarget),
+                mwPoison: applyMagic(nightData.mwPoisonTarget),
+                mwGuard: applyMagic(nightData.mwGuardTarget),
+                mwWolfKill: nightData.mwWolfKill !== undefined ? applyMagic(nightData.mwWolfKill) : 0
+            };
 
-            if (gameConfig.dreamer && actualDream !== 0 && actualDream === historyData.lastDreamTarget) {
-                registerDeath(actualDream, 'dream-death', deadTonight, causes);
+            // 2. 結算攝夢人 (連兩晚同目標致死)
+            if (gameConfig.dreamer && actuals.dream !== 0 && actuals.dream === historyData.lastDreamTarget) {
+                registerDeath(actuals.dream, 'dream-death', deadTonight, causes);
             }
 
-            // 狼刀結算 (含獨立刀與奶穿)
-            [actualKill1, actualKill2, actualMwWolfKill].forEach(actualKill => {
+            // 3. 結算狼刀 (包含獨立刀與奶穿判定)
+            [actuals.kill1, actuals.kill2, actuals.mwWolfKill].forEach(actualKill => {
                 if (actualKill !== 0) {
-                    if (!gameConfig.dreamer || actualKill !== actualDream) {
-                        let isGuarded = (actualGuard === actualKill);
+                    if (!gameConfig.dreamer || actualKill !== actuals.dream) { // 夢中免疫狼刀
+                        let isGuarded = (actuals.guard === actualKill);
                         let isHealed = (nightData.witchHealTarget === actualKill);
                         if (isGuarded && isHealed) {
-                            registerDeath(actualKill, 'milk-pierce', deadTonight, causes);
+                            registerDeath(actualKill, 'milk-pierce', deadTonight, causes); // 奶穿
                         } else if (!isGuarded && !isHealed) {
-                            registerDeath(actualKill, 'wolf', deadTonight, causes);
+                            registerDeath(actualKill, 'wolf', deadTonight, causes); // 正常砍死
                         }
                     }
                 }
             });
 
-            // 狼弟復仇刀結算 (不互通解藥)
-            if (actualRevenge !== 0) {
-                if (!gameConfig.dreamer || actualRevenge !== actualDream) {
-                    let isGuarded = (actualGuard === actualRevenge);
-                    if (!isGuarded) {
-                        registerDeath(actualRevenge, 'wolf-revenge', deadTonight, causes);
-                    }
+            // 4. 結算狼弟復仇刀 (不互通解藥)
+            if (actuals.revenge !== 0) {
+                if (!gameConfig.dreamer || actuals.revenge !== actuals.dream) {
+                    let isGuarded = (actuals.guard === actuals.revenge);
+                    if (!isGuarded) registerDeath(actuals.revenge, 'wolf-revenge', deadTonight, causes);
                 }
             }
 
-            if (gameConfig.witch && actualPoison !== 0) {
-                // 機械狼防毒盾
-                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actualMwGuard === actualPoison);
-                if (!mwBlocked) {
-                    if (!gameConfig.dreamer || actualPoison !== actualDream) {
-                        registerDeath(actualPoison, 'poison', deadTonight, causes);
-                    }
+            // 5. 結算各類毒藥 (女巫、商人禮物、機械狼)
+            if (gameConfig.witch && actuals.poison !== 0) {
+                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actuals.mwGuard === actuals.poison);
+                if (!mwBlocked && (!gameConfig.dreamer || actuals.poison !== actuals.dream)) {
+                    registerDeath(actuals.poison, 'poison', deadTonight, causes);
                 }
             }
 
-            if (gameConfig.merchant && actualGiftPoison !== 0) {
-                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actualMwGuard === actualGiftPoison);
-                if (!mwBlocked) {
-                    if (!gameConfig.dreamer || actualGiftPoison !== actualDream) {
-                        registerDeath(actualGiftPoison, 'gift-poison', deadTonight, causes);
-                    }
+            if (gameConfig.merchant && actuals.giftPoison !== 0) {
+                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actuals.mwGuard === actuals.giftPoison);
+                if (!mwBlocked && (!gameConfig.dreamer || actuals.giftPoison !== actuals.dream)) {
+                    registerDeath(actuals.giftPoison, 'gift-poison', deadTonight, causes);
                 }
             }
 
-            if (actualMwPoison !== 0) {
-                if (!gameConfig.dreamer || actualMwPoison !== actualDream) {
-                    registerDeath(actualMwPoison, 'mw-poison', deadTonight, causes);
-                }
+            if (actuals.mwPoison !== 0 && (!gameConfig.dreamer || actuals.mwPoison !== actuals.dream)) {
+                registerDeath(actuals.mwPoison, 'mw-poison', deadTonight, causes);
             }
 
-            let extraEventsHtml = "";
+            // 6. 結算惡靈騎士反傷機制
             let ek = players.find(p => p.role === '惡靈騎士');
             if (ek && ek.alive) {
-                if ((actualPoison === ek.id || actualGiftPoison === ek.id || actualMwPoison === ek.id) && !state.ekReflectUsed) {
+                if ((actuals.poison === ek.id || actuals.giftPoison === ek.id || actuals.mwPoison === ek.id) && !state.ekReflectUsed) {
                     state.ekReflectUsed = true;
-                    // 反彈給放毒者
-                    let poisonerId = (actualPoison === ek.id) ? players.find(p => p.role === '女巫')?.id : ((actualMwPoison === ek.id) ? players.find(p => p.role === '機械狼')?.id : state.merchantGift.target);
+                    let poisonerId = (actuals.poison === ek.id) ? players.find(p => p.role === '女巫')?.id : ((actuals.mwPoison === ek.id) ? players.find(p => p.role === '機械狼')?.id : state.merchantGift.target);
                     if (poisonerId && players.find(p=>p.id===poisonerId).alive) {
                         registerDeath(poisonerId, 'reflect', deadTonight, causes);
                         extraEventsHtml += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">🏍️ 惡靈騎士被毒，觸發反傷彈死了 ${getPlayerStr(poisonerId, false)}！</div>`;
                     }
                 } 
-                else if ((actualCheck === ek.id || actualGiftCheck === ek.id || actualPsychicCheck === ek.id || nightData.mwCheckTarget === ek.id) && !state.ekReflectUsed) {
+                else if ((actuals.check === ek.id || actuals.giftCheck === ek.id || actuals.psychicCheck === ek.id || nightData.mwCheckTarget === ek.id) && !state.ekReflectUsed) {
                     state.ekReflectUsed = true;
-                    // 反彈給查驗者
                     let checkerId;
-                    if (actualCheck === ek.id) checkerId = players.find(p => p.role === '預言家')?.id;
-                    else if (actualPsychicCheck === ek.id) checkerId = players.find(p => p.role === '通靈師')?.id;
+                    if (actuals.check === ek.id) checkerId = players.find(p => p.role === '預言家')?.id;
+                    else if (actuals.psychicCheck === ek.id) checkerId = players.find(p => p.role === '通靈師')?.id;
                     else if (nightData.mwCheckTarget === ek.id) checkerId = players.find(p => p.role === '機械狼')?.id;
                     else checkerId = state.merchantGift.target;
 
@@ -2799,7 +2792,7 @@ autoSave();
                 }
             }
 
-            // 商人第一天早上驗證發送目標是否為狼
+            // 7. 結算黑市商人發送對象是否為狼的反噬
             if (day === 1 && gameConfig.merchant && nightData.merchantTarget !== 0) {
                 let tPlayer = players.find(p => p.id === nightData.merchantTarget);
                 let isWolf = false;
@@ -2817,83 +2810,53 @@ autoSave();
                 }
             }
 
-            deadTonight.forEach(id => {
-                let p = players.find(x => x.id === id);
-                if (p) p.alive = false;
-            });
+            return { actuals, deadTonight, causes, extraEventsHtml };
+        }
 
-            if (gameConfig.dreamer) historyData.lastDreamTarget = actualDream; 
-            if (gameConfig.guard) historyData.lastGuardProtect = actualGuard; 
-            if (gameConfig.magician && nightData.magicianSwap.t1 !== 0) {
-                historyData.magicianSwapped.push(nightData.magicianSwap.t1, nightData.magicianSwap.t2);
-            }
-
+        // ==========================================
+        // 2. 文書部：純粹排版 HTML 日誌文字
+        // ==========================================
+        function generateNightLog(actuals, deadTonight, causes, extraEventsHtml) {
             let logHtml = `<div class="log-entry">
                 <div style="color: #999; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 5px; font-weight:bold;">🌙 【第 ${day} 天夜晚】</div>
                 <ul style="margin: 5px 0; padding-left: 20px; list-style-type: none;">`;
 
-            if (gameConfig.guard && nightData.guardProtect !== 0) {
-                logHtml += `<li>🛡️ ${getRoleStr('守衛')} 守護了 ${getPlayerStr(nightData.guardProtect, false)}${getSwapLogStr(nightData.guardProtect, actualGuard)}。</li>`;
-            }
-
-            if (gameConfig.magician && nightData.magicianSwap.t1 !== 0) {
-                logHtml += `<li>🎩 ${getRoleStr('魔術師')} 交換了 ${getPlayerStr(nightData.magicianSwap.t1, false)} 與 ${getPlayerStr(nightData.magicianSwap.t2, false)}。</li>`;
-            }
-
-            if (gameConfig.dreamer && nightData.dreamerTarget !== 0) {
-                logHtml += `<li>💤 ${getRoleStr('攝夢人')} 攝了 ${getPlayerStr(nightData.dreamerTarget, false)}${getSwapLogStr(nightData.dreamerTarget, actualDream)}。</li>`;
-            }
+            if (gameConfig.guard && nightData.guardProtect !== 0) logHtml += `<li>🛡️ ${getRoleStr('守衛')} 守護了 ${getPlayerStr(nightData.guardProtect, false)}${getSwapLogStr(nightData.guardProtect, actuals.guard)}。</li>`;
+            if (gameConfig.magician && nightData.magicianSwap.t1 !== 0) logHtml += `<li>🎩 ${getRoleStr('魔術師')} 交換了 ${getPlayerStr(nightData.magicianSwap.t1, false)} 與 ${getPlayerStr(nightData.magicianSwap.t2, false)}。</li>`;
+            if (gameConfig.dreamer && nightData.dreamerTarget !== 0) logHtml += `<li>💤 ${getRoleStr('攝夢人')} 攝了 ${getPlayerStr(nightData.dreamerTarget, false)}${getSwapLogStr(nightData.dreamerTarget, actuals.dream)}。</li>`;
 
             if (gameConfig.mechWolf) {
-                if (day === 1 && state.mwStatus.learned && nightData.mwLearnTarget !== 0) {
-                    logHtml += `<li>🐺 ${getRoleStr('機械狼')} 學習了 ${getPlayerStr(nightData.mwLearnTarget, false)}，獲得了【${state.mwStatus.role}】的能力。</li>`;
-                } else if (day > 1 && state.mwStatus.justLearned) {
-                    logHtml += `<li>🐺 ${getRoleStr('機械狼')} 學習了 ${getPlayerStr(nightData.mwLearnTarget, false)}，獲得了【${state.mwStatus.role}】的能力。</li>`;
+                if (state.mwStatus.learned || state.mwStatus.justLearned) {
+                    if (nightData.mwLearnTarget !== 0) logHtml += `<li>🐺 ${getRoleStr('機械狼')} 學習了 ${getPlayerStr(nightData.mwLearnTarget, false)}，獲得了【${state.mwStatus.role}】的能力。</li>`;
                 }
-
                 if (state.mwStatus.learned) {
                     if (state.mwStatus.role === '女巫' && nightData.mwPoisonTarget !== 0) {
-                        let hitImmune = (gameConfig.dreamer && actualMwPoison === actualDream);
-                        logHtml += `<li>🐺 機械狼(女巫) 毒了 ${getPlayerStr(nightData.mwPoisonTarget, false)}${getSwapLogStr(nightData.mwPoisonTarget, actualMwPoison)}${hitImmune?' (免疫)':''}。</li>`;
+                        let hitImmune = (gameConfig.dreamer && actuals.mwPoison === actuals.dream);
+                        logHtml += `<li>🐺 機械狼(女巫) 毒了 ${getPlayerStr(nightData.mwPoisonTarget, false)}${getSwapLogStr(nightData.mwPoisonTarget, actuals.mwPoison)}${hitImmune?' (免疫)':''}。</li>`;
                     }
-                    if (state.mwStatus.role === '守衛' && nightData.mwGuardTarget !== 0) {
-                        logHtml += `<li>🐺 機械狼(守衛) 施加了防毒盾於 ${getPlayerStr(nightData.mwGuardTarget, false)}${getSwapLogStr(nightData.mwGuardTarget, actualMwGuard)}。</li>`;
-                    }
+                    if (state.mwStatus.role === '守衛' && nightData.mwGuardTarget !== 0) logHtml += `<li>🐺 機械狼(守衛) 施加了防毒盾於 ${getPlayerStr(nightData.mwGuardTarget, false)}${getSwapLogStr(nightData.mwGuardTarget, actuals.mwGuard)}。</li>`;
                     if ((state.mwStatus.role === '預言家' || state.mwStatus.role === '通靈師') && nightData.mwCheckTarget !== 0) {
                         let actT = applyMagic(nightData.mwCheckTarget);
                         let role = getTrueRole(actT);
-                        let isWolf = ['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role);
-                        if (role === '狼弟' && !state.wolfBroDead) isWolf = false; 
-
-                        let rTxt = "";
-                        if (state.mwStatus.role === '預言家') {
-                            rTxt = isWolf ? "<span class='color-wolf'>查殺</span>" : "<span class='color-gold'>金水</span>";
-                        } else {
-                            if (role === '機械狼' && state.mwStatus.learned) role = state.mwStatus.role;
-                            if (role === '狼弟' && !state.wolfBroDead) role = '平民'; 
-                            let c = "color-villager";
-                            if (['預言家','女巫','獵人','熊','守衛','黑市商人','攝夢人','魔術師','通靈師'].includes(role)) c = "color-god";
-                            else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role)) c = "color-wolf";
-                            rTxt = `<span class='${c}'>${role}</span>`;
-                        }
+                        let isWolf = ['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role) && !(role === '狼弟' && !state.wolfBroDead);
+                        let rTxt = (state.mwStatus.role === '預言家') ? (isWolf ? "<span class='color-wolf'>查殺</span>" : "<span class='color-gold'>金水</span>") : `<span class='${isWolf ? "color-wolf" : "color-god"}'>${role}</span>`;
                         logHtml += `<li>🐺 機械狼(查驗) 查驗了 ${getPlayerStr(nightData.mwCheckTarget, false)}${getSwapLogStr(nightData.mwCheckTarget, actT)}，結果為【${rTxt}】。</li>`;
                     }
                 }
             }
 
-if (nightData.mwWolfKill !== 0 && nightData.mwWolfKill !== undefined) {
-                let actK = applyMagic(nightData.mwWolfKill);
-                let hitImmune = (gameConfig.dreamer && actK === actualDream);
-                logHtml += `<li>🐺 機械狼(狼人) 發動獨立刀，擊殺 ${getPlayerStr(nightData.mwWolfKill, false)}${getSwapLogStr(nightData.mwWolfKill, actK)}${hitImmune ? ' (免疫)' : ''}。</li>`;
+            if (nightData.mwWolfKill !== 0 && nightData.mwWolfKill !== undefined) {
+                let hitImmune = (gameConfig.dreamer && actuals.mwWolfKill === actuals.dream);
+                logHtml += `<li>🐺 機械狼(狼人) 發動獨立刀，擊殺 ${getPlayerStr(nightData.mwWolfKill, false)}${getSwapLogStr(nightData.mwWolfKill, actuals.mwWolfKill)}${hitImmune ? ' (免疫)' : ''}。</li>`;
             }
+
             let kills = [nightData.wolfKill, nightData.wolfKill2].filter(k => k !== 0);
             if (kills.length > 0) {
                 logHtml += `<li>🐺 狼陣營 `;
-                let killStrs = [];
-                kills.forEach(k => {
+                let killStrs = kills.map(k => {
                     let actK = applyMagic(k);
-                    let hitImmune = (gameConfig.dreamer && actK === actualDream);
-                    killStrs.push(`擊殺 ${getPlayerStr(k, false)}${getSwapLogStr(k, actK)}${hitImmune ? ' (免疫)' : ''}`);
+                    let hitImmune = (gameConfig.dreamer && actK === actuals.dream);
+                    return `擊殺 ${getPlayerStr(k, false)}${getSwapLogStr(k, actK)}${hitImmune ? ' (免疫)' : ''}`;
                 });
                 logHtml += killStrs.join('，且') + `。</li>`;
             } else {
@@ -2901,94 +2864,68 @@ if (nightData.mwWolfKill !== 0 && nightData.mwWolfKill !== undefined) {
             }
 
             if (gameConfig.wolfBros && nightData.wolfRevengeKill !== 0) {
-                let hitImmune = (gameConfig.dreamer && actualRevenge === actualDream);
-                logHtml += `<li>🐺 ${getRoleStr('狼弟')} 發動復仇刀，擊殺 ${getPlayerStr(nightData.wolfRevengeKill, false)}${getSwapLogStr(nightData.wolfRevengeKill, actualRevenge)}${hitImmune?' (免疫)':''}。</li>`;
+                let hitImmune = (gameConfig.dreamer && actuals.revenge === actuals.dream);
+                logHtml += `<li>🐺 ${getRoleStr('狼弟')} 發動復仇刀，擊殺 ${getPlayerStr(nightData.wolfRevengeKill, false)}${getSwapLogStr(nightData.wolfRevengeKill, actuals.revenge)}${hitImmune?' (免疫)':''}。</li>`;
             }
 
-            if (gameConfig.wb && nightData.wbTarget !== 0) {
-                logHtml += `<li>💋 ${getRoleStr('狼美人')} 魅惑了 ${getPlayerStr(nightData.wbTarget, false)}${getSwapLogStr(nightData.wbTarget, actualCharm)}。</li>`;
-            }
-
-            if (gameConfig.shapeShifterRole === '熊' && nightData.bearCharmTarget !== 0) {
-                logHtml += `<li>💋 百變狼王(熊) 魅惑了 ${getPlayerStr(nightData.bearCharmTarget, false)}${getSwapLogStr(nightData.bearCharmTarget, actualBearCharm)}。</li>`;
-            }
+            if (gameConfig.wb && nightData.wbTarget !== 0) logHtml += `<li>💋 ${getRoleStr('狼美人')} 魅惑了 ${getPlayerStr(nightData.wbTarget, false)}${getSwapLogStr(nightData.wbTarget, actuals.charm)}。</li>`;
+            if (gameConfig.shapeShifterRole === '熊' && nightData.bearCharmTarget !== 0) logHtml += `<li>💋 百變狼王(熊) 魅惑了 ${getPlayerStr(nightData.bearCharmTarget, false)}${getSwapLogStr(nightData.bearCharmTarget, actuals.bearCharm)}。</li>`;
 
             if (gameConfig.witch) {
                 logHtml += `<li>🧪 ${getRoleStr('女巫')} `;
                 if (nightData.witchHealTarget !== 0) logHtml += `使用解藥，救起了 ${getPlayerStr(nightData.witchHealTarget, false)}。</li>`;
                 else if (nightData.witchPoison !== 0) {
-                    let hitImmune = (gameConfig.dreamer && actualPoison === actualDream);
-                    let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actualMwGuard === actualPoison);
-                    if (mwBlocked) logHtml += `毒了 ${getPlayerStr(nightData.witchPoison, false)}${getSwapLogStr(nightData.witchPoison, actualPoison)}，但被機械狼的防毒盾擋下。</li>`;
-                    else if (hitImmune) logHtml += `毒了 ${getPlayerStr(nightData.witchPoison, false)}${getSwapLogStr(nightData.witchPoison, actualPoison)}，但因在夢中免疫。</li>`;
-                    else logHtml += `毒了 ${getPlayerStr(nightData.witchPoison, false)}${getSwapLogStr(nightData.witchPoison, actualPoison)}。</li>`;
-                }
-                else logHtml += `未使用任何藥物。</li>`;
+                    let hitImmune = (gameConfig.dreamer && actuals.poison === actuals.dream);
+                    let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actuals.mwGuard === actuals.poison);
+                    if (mwBlocked) logHtml += `毒了 ${getPlayerStr(nightData.witchPoison, false)}${getSwapLogStr(nightData.witchPoison, actuals.poison)}，但被機械狼的防毒盾擋下。</li>`;
+                    else if (hitImmune) logHtml += `毒了 ${getPlayerStr(nightData.witchPoison, false)}${getSwapLogStr(nightData.witchPoison, actuals.poison)}，但因在夢中免疫。</li>`;
+                    else logHtml += `毒了 ${getPlayerStr(nightData.witchPoison, false)}${getSwapLogStr(nightData.witchPoison, actuals.poison)}。</li>`;
+                } else logHtml += `未使用任何藥物。</li>`;
             }
 
             if (day === 1 && gameConfig.merchant && nightData.merchantTarget !== 0 && nightData.merchantGift !== 'none') {
                 let giftName = nightData.merchantGift === 'prophet' ? '預言家的查驗' : (nightData.merchantGift === 'poison' ? '女巫的毒藥' : '獵人的槍');
-                logHtml += `<li>💼 ${getRoleStr('黑市商人')} 將 [${giftName}] 給予了 ${getPlayerStr(nightData.merchantTarget, false)}${getSwapLogStr(nightData.merchantTarget, actualMerchantTarget)}。</li>`;
+                logHtml += `<li>💼 ${getRoleStr('黑市商人')} 將 [${giftName}] 給予了 ${getPlayerStr(nightData.merchantTarget, false)}${getSwapLogStr(nightData.merchantTarget, actuals.merchant)}。</li>`;
             }
 
             if (day > 1 && nightData.giftCheck !== 0) {
-                let target = players.find(x => x.id === actualGiftCheck);
-                let role = getTrueRole(actualGiftCheck);
-                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role);
-                if (role === '狼弟' && !state.wolfBroDead) isWolf = false;
-                let resCol = isWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
-                let resTxt = isWolf ? '查殺' : '金水';
-                logHtml += `<li>🎁 禮物持有者 查驗了 ${getPlayerStr(nightData.giftCheck, false)}${getSwapLogStr(nightData.giftCheck, actualGiftCheck)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
+                let role = getTrueRole(actuals.giftCheck);
+                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) && !(role === '狼弟' && !state.wolfBroDead);
+                logHtml += `<li>🎁 禮物持有者 查驗了 ${getPlayerStr(nightData.giftCheck, false)}${getSwapLogStr(nightData.giftCheck, actuals.giftCheck)}，結果為 <span style="color:${isWolf ? 'var(--color-wolf)' : 'var(--color-gold)'}; font-weight:bold;">【${isWolf ? '查殺' : '金水'}】</span>。</li>`;
             }
 
             if (day > 1 && nightData.giftPoison !== 0) {
-                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actualMwGuard === actualGiftPoison);
-                if (mwBlocked) logHtml += `<li>🎁 禮物持有者 使用毒藥，毒了 ${getPlayerStr(nightData.giftPoison, false)}${getSwapLogStr(nightData.giftPoison, actualGiftPoison)}，但被防毒盾擋下。</li>`;
-                else logHtml += `<li>🎁 禮物持有者 使用毒藥，毒了 ${getPlayerStr(nightData.giftPoison, false)}${getSwapLogStr(nightData.giftPoison, actualGiftPoison)}。</li>`;
+                let mwBlocked = (gameConfig.mechWolf && state.mwStatus.role === '守衛' && actuals.mwGuard === actuals.giftPoison);
+                if (mwBlocked) logHtml += `<li>🎁 禮物持有者 使用毒藥，毒了 ${getPlayerStr(nightData.giftPoison, false)}${getSwapLogStr(nightData.giftPoison, actuals.giftPoison)}，但被防毒盾擋下。</li>`;
+                else logHtml += `<li>🎁 禮物持有者 使用毒藥，毒了 ${getPlayerStr(nightData.giftPoison, false)}${getSwapLogStr(nightData.giftPoison, actuals.giftPoison)}。</li>`;
             }
 
             if (gameConfig.prophet && nightData.prophetCheck !== 0) {
-                let role = getTrueRole(actualCheck);
-                let prophetP = players.find(p => p.role === '預言家');
-                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role);
-                if (role === '狼弟' && !state.wolfBroDead) isWolf = false;
+                let role = getTrueRole(actuals.check);
+                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) && !(role === '狼弟' && !state.wolfBroDead);
                 let resCol = isWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
                 let resTxt = isWolf ? '查殺' : '金水';
                 
+                let prophetP = players.find(p => p.role === '預言家');
                 if (prophetP && prophetP.isCorrupted) {
-                    let exact = role;
-                    let roleColor = 'var(--color-villager)';
-                    if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師'].includes(exact)) {
-                        roleColor = 'var(--color-god)';
-                    } else if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(exact)) {
-                        roleColor = 'var(--color-wolf)';
-                    }
-                    resCol = roleColor;
-                    resTxt = exact; 
+                    resTxt = role; 
+                    resCol = ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師'].includes(role) ? 'var(--color-god)' : 'var(--color-wolf)';
                 }
-                logHtml += `<li>👁️ ${getRoleStr('預言家')} 查驗了 ${getPlayerStr(nightData.prophetCheck, false)}${getSwapLogStr(nightData.prophetCheck, actualCheck)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
+                logHtml += `<li>👁️ ${getRoleStr('預言家')} 查驗了 ${getPlayerStr(nightData.prophetCheck, false)}${getSwapLogStr(nightData.prophetCheck, actuals.check)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
             }
 
             if (gameConfig.psychic && nightData.psychicCheckTarget !== 0) {
-                let role = getTrueRole(actualPsychicCheck);
-                let psychicP = players.find(p => p.role === '通靈師');
-                
+                let role = getTrueRole(actuals.psychicCheck);
                 if (role === '機械狼' && state.mwStatus.learned) role = state.mwStatus.role;
                 if (role === '狼弟' && !state.wolfBroDead) role = '平民';
-
-                let roleColor = 'var(--color-villager)';
-                if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師'].includes(role)) {
-                    roleColor = 'var(--color-god)';
-                } else if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role)) {
-                    roleColor = 'var(--color-wolf)';
-                }
-                logHtml += `<li>🔮 ${getRoleStr('通靈師')} 查驗了 ${getPlayerStr(nightData.psychicCheckTarget, false)}${getSwapLogStr(nightData.psychicCheckTarget, actualPsychicCheck)}，真實身分為 <span style="color:${roleColor}; font-weight:bold;">【${role}】</span>。</li>`;
+                let roleColor = ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師'].includes(role) ? 'var(--color-god)' : 'var(--color-wolf)';
+                logHtml += `<li>🔮 ${getRoleStr('通靈師')} 查驗了 ${getPlayerStr(nightData.psychicCheckTarget, false)}${getSwapLogStr(nightData.psychicCheckTarget, actuals.psychicCheck)}，真實身分為 <span style="color:${roleColor}; font-weight:bold;">【${role}】</span>。</li>`;
             }
 
             logHtml += `</ul>`;
-
             logHtml += `<div style="color: #aaa; margin-top: 15px; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 5px; font-weight:bold;">☀️ 【第 ${day} 天白天】</div>`;
             logHtml += `<div style="padding-left: 5px;">昨晚出局：`;
+            
             if (deadTonight.length > 0) {
                 let deadStrs = deadTonight.sort((a,b)=>a-b).map(id => {
                     let causeStr = "";
@@ -3004,34 +2941,60 @@ if (nightData.mwWolfKill !== 0 && nightData.mwWolfKill !== undefined) {
             } else {
                 logHtml += `<span style="color:var(--btn-success); font-weight:bold;">平安夜。</span>`;
             }
-            logHtml += `</div>${extraEventsHtml}`;
+            logHtml += `</div>${extraEventsHtml}</div>`;
 
+            return logHtml;
+        }
+
+        // ==========================================
+        // 3. 大總管：負責控制流程與畫面更新
+        // ==========================================
+        function processMorning() {
+            // 安全防線
+            finalizeD1Roles();
+            document.getElementById('phase-morning').classList.remove('hidden');
+
+            // 1. 叫算帳部去算死傷
+            let { actuals, deadTonight, causes, extraEventsHtml } = calculateNightActions();
+
+            // 2. 把算出來的死人標記為死亡，並記錄歷史狀態
+            deadTonight.forEach(id => {
+                let p = players.find(x => x.id === id);
+                if (p) p.alive = false;
+            });
+            if (gameConfig.dreamer) historyData.lastDreamTarget = actuals.dream; 
+            if (gameConfig.guard) historyData.lastGuardProtect = actuals.guard; 
+            if (gameConfig.magician && nightData.magicianSwap.t1 !== 0) {
+                historyData.magicianSwapped.push(nightData.magicianSwap.t1, nightData.magicianSwap.t2);
+            }
+
+            // 3. 叫文書部產生彩色日誌並存起來
+            let logHtml = generateNightLog(actuals, deadTonight, causes, extraEventsHtml);
             gameHistory.push(logHtml);
 
+            // 4. 更新畫面 UI (天亮結果框)
             let resultHtml = "";
-if (deadTonight.length === 0) {
-    resultHtml = "<h3 style='color:var(--btn-success); margin-bottom: 0;'>昨晚是平安夜👏</h3>";
-} else {
-    let displayIds = deadTonight.sort((a,b)=>a-b);
-    // 透過迴圈將每個死亡玩家的號碼套用他們專屬的陣營顏色
-    let coloredIds = displayIds.map(id => {
-        let p = players.find(x => x.id === id);
-        // 如果找不到玩家或角色未定，預設給予未知顏色，否則給予陣營專屬顏色 (color-villager / color-god / color-wolf)
-        let colorClass = p ? p.class : "color-unknown"; 
-        return `<span class="${colorClass}" style="font-weight:bold;">${id} 號</span>`;
-    });
-    resultHtml = `<h3 style='margin-bottom: 0;'>昨晚${coloredIds.join('   ')}死亡</h3>`;
-}
-            
+            if (deadTonight.length === 0) {
+                resultHtml = "<h3 style='color:var(--btn-success); margin-bottom: 0;'>昨晚是平安夜👏</h3>";
+            } else {
+                let displayIds = deadTonight.sort((a,b)=>a-b);
+                let coloredIds = displayIds.map(id => {
+                    let p = players.find(x => x.id === id);
+                    let colorClass = p ? p.class : "color-unknown"; 
+                    return `<span class="${colorClass}" style="font-weight:bold;">${id} 號</span>`;
+                });
+                resultHtml = `<h3 style='margin-bottom: 0;'>昨晚${coloredIds.join('   ')}死亡</h3>`;
+            }
             state.morningResultHtml = resultHtml; 
             document.getElementById('morning-result').innerHTML = state.morningResultHtml;
             UIManager.updateAliveStatus();
-
             state.mwStatus.justLearned = false; 
 
+            // 5. 檢查狼兄死否死亡，並安排遺言與開槍
             checkWolfBroDeath(deadTonight);
             deadTonight.forEach(id => { queueShooter(id, causes[id]); });
 
+            // 6. 指揮所宣布進入下一個白天環節
             processNextAction();
         }
 
