@@ -123,6 +123,27 @@
             color: #666 !important;               
             border-color: #333 !important;        
         }
+/* 讓所有按鈕擁有統一的點擊反饋效果 */
+button {
+    /* 確保有過渡動畫，這樣看起來更順暢 */
+    transition: transform 0.1s ease, background-color 0.1s ease, opacity 0.1s ease;
+    /* 防止在手機上長按時出現選取文字的藍色光條 */
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 按鈕按下去的瞬間 */
+button:active {
+    transform: scale(0.95);      /* 稍微縮小，模擬物理按壓 */
+    filter: brightness(0.7);    /* 變暗，提供明確的視覺變化 */
+    opacity: 0.9;               /* 稍微透明一點 */
+}
+
+/* 額外優化：讓所有下拉選單在被點擊時也有反饋 */
+select:active {
+    background-color: #444;
+    border-color: var(--btn-primary);
+}
     </style>
 </head>
 <body>
@@ -133,9 +154,9 @@
     <div id="setup-screen" style="text-align:center; padding: 10px 0;">
         
         
-        <div style="margin-bottom: 20px;">
+       <div style="margin-bottom: 20px;">
             <label style="font-size: 18px; font-weight: bold;">玩家人數</label>
-            <select id="player-count-select" style="font-size: 18px; width: auto; display: inline-block; margin-left: 10px;">
+            <select id="player-count-select" style="font-size: 18px; font-weight: bold; color: var(--color-good); width: auto; display: inline-block; margin-left: 10px;">
                 <option value="9">9 人局</option>
                 <option value="10">10 人局</option>
                 <option value="11">11 人局</option>
@@ -151,17 +172,18 @@
             <label class="role-check-label"><input type="checkbox" id="cfg-witch" checked> 🧪 女巫</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-hunter" checked> 🏹 獵人</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-guard"> 🛡️ 守衛</label>
-            <label class="role-check-label"><input type="checkbox" id="cfg-merchant"> 💼 黑市商人</label>
+            <label class="role-check-label"><input type="checkbox" id="cfg-merchant"> 💼 黑商</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-bear"> 🐻 熊</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-dreamer"> 💤 攝夢人</label>
             <label class="role-check-label" style="width: 100%; text-align: center; padding-left:0;"><input type="checkbox" id="cfg-magician"> 🎩 魔術師</label>
+<label class="role-check-label"><input type="checkbox" id="cfg-knight"> 🤺 騎士</label>
             
             <h3 style="margin-top: 15px; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-wolf);">配置特殊狼人</h3>
             <label class="role-check-label"><input type="checkbox" id="cfg-bwk"> 🐺 黑狼王</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-wb"> 💋 狼美人</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-ek"> 🏍️ 惡靈騎士</label>
             <label class="role-check-label"><input type="checkbox" id="cfg-mechwolf"> 🐺 機械狼</label>
-            <label class="role-check-label" style="width: 100%; text-align: center; padding-left:0;"><input type="checkbox" id="cfg-wolfbros"> 🐺 狼兄 與 狼弟</label>
+            <label class="role-check-label" style="width: 100%; text-align: center; padding-left:0;"><input type="checkbox" id="cfg-wolfbros"> 🐺 狼兄狼弟</label>
         </div>
         <br>
         <button onclick="startGame()" style="font-size: 20px; background-color: var(--btn-primary); padding: 14px 30px;">遊戲開始</button>
@@ -189,7 +211,7 @@
             <div id="mw-signal-ui" class="result-box" style="margin-bottom:15px; text-align:center;"></div>
             
             <div id="d1-mw-setup" class="setup-box hidden">
-                <p>選擇機械狼號碼</p>
+                <p>機械狼號碼</p>
                 <select id="mw-id"></select>
             </div>
             
@@ -257,15 +279,25 @@
             </div>
             <button onclick="processShapeShifter()">確認並請百變狼王閉眼</button>
         </div>
+      
+        <div id="phase-knight" class="action-row hidden">
+            <h3 class="color-god">🤺 騎士請睜眼</h3>
+            <div id="d1-knight-setup" class="setup-box hidden">
+                <p>騎士號碼</p>
+                <select id="knight-id"></select>
+            </div>
+            <p style="color:#aaa;">(騎士無夜間技能，僅由上帝確認身分)</p>
+            <button onclick="processKnight()">確認 請閉眼</button>
+        </div>
 
         <!-- 守衛階段 -->
         <div id="phase-guard" class="action-row hidden">
             <h3 class="color-god">🛡️ 守衛請睜眼</h3>
             <div id="d1-guard-setup" class="setup-box hidden">
-                <p>選擇守衛號碼：</p>
+                <p>守衛號碼</p>
                 <select id="guard-id"></select>
             </div>
-            <p>選擇要守護的號碼 (不能連守同一人)</p>
+            <p>要守護的號碼 (不能連守同一人)</p>
             <select id="guard-target"></select>
             <button onclick="processGuard()">確認 請閉眼</button>
         </div>
@@ -293,24 +325,24 @@
         <div id="phase-wolf" class="action-row hidden">
             <h3 class="color-wolf">🐺 狼陣營請睜眼</h3>
             <div id="d1-wolf-setup" class="setup-box hidden">
-                <p>選擇小狼號碼</p>
+                <p>小狼</p>
                 <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 8px;">
                     <select id="w1"></select> <select id="w2"></select> 
                     <select id="w3"></select> <select id="w4"></select>
                 </div>
                 
                 <div id="bwk-setup-container">
-                    <p style="margin-top: 15px;">請選擇黑狼王</p>
+                    <p style="margin-top: 15px;">黑狼王</p>
                     <select id="bwk-id"></select>
                 </div>
 
                 <div id="wb-setup-container">
-                    <p style="margin-top: 15px;">請選擇狼美人</p>
+                    <p style="margin-top: 15px;">狼美人</p>
                     <select id="wb-id"></select>
                 </div>
 
                 <div id="ek-setup-container">
-                    <p style="margin-top: 15px;">請選擇惡靈騎士</p>
+                    <p style="margin-top: 15px;">惡靈騎士</p>
                     <select id="ek-id"></select>
                 </div>
             </div>
@@ -322,7 +354,7 @@
             </div>
 
             <div id="wb-action-container" class="hidden" style="margin-top:15px; padding-top:15px; border-top:1px dashed #666;">
-                <p style="color:var(--color-wolf); font-weight:bold;">💋 狼美人選擇魅惑玩家 (出局時隨之殉情)</p>
+                <p style="color:var(--color-wolf); font-weight:bold;">💋 狼美人睡誰 (出局時隨之殉情)</p>
                 <select id="wb-target"></select>
                 <p id="wb-dead-msg" class="hidden" style="color:#aaa;">狼美人已陣亡 無法魅惑</p>
             </div>
@@ -335,7 +367,7 @@
             <h3 class="color-god">🧪 女巫請睜眼</h3>
             
             <div id="d1-witch-setup" class="setup-box hidden">
-                <p style="margin: 0;">選擇女巫號碼</p>
+                <p style="margin: 0;">女巫</p>
                 <select id="witch-id"></select>
             </div>
 
@@ -372,7 +404,7 @@
         <div id="phase-dreamer" class="action-row hidden">
             <h3 class="color-god">💤 攝夢人請睜眼</h3>
             <div id="d1-dreamer-setup" class="setup-box hidden">
-                <p>選擇攝夢人號碼</p>
+                <p>攝夢人</p>
                 <select id="dreamer-id"></select>
             </div>
             <p id="dreamer-history-msg" class="hidden" style="color:var(--color-god); background:#332244; padding:10px; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid var(--color-god); margin-bottom: 15px;"></p>
@@ -386,10 +418,10 @@
         <div id="phase-magician" class="action-row hidden">
             <h3 class="color-god">🎩 魔術師請睜眼</h3>
             <div id="d1-magician-setup" class="setup-box hidden">
-                <p>選擇魔術師號碼</p>
+                <p>魔術師</p>
                 <select id="magician-id"></select>
             </div>
-            <p>請選擇今晚要交換的兩個號碼 (每人限換一次，可選擇不換)：</p>
+            <p>要交換的兩個號碼 (每人限換一次，可不換)：</p>
             <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;">
                 <select id="magician-target1"></select>
                 <select id="magician-target2"></select>
@@ -402,12 +434,12 @@
             <h3 class="color-god">💼 黑市商人請睜眼</h3>
             <div id="merchant-night1-container">
                 <div id="d1-merchant-setup" class="setup-box">
-                    <p>黑市商人號碼</p>
+                    <p>黑市商人</p>
                     <select id="merchant-id"></select>
                 </div>
                 <p>要給予禮物的玩家 (不可給自己)</p>
                 <select id="merchant-target"></select>
-                <p>選擇給予的禮物</p>
+                <p>給予的禮物</p>
                 <select id="merchant-gift">
                     <option value="none" selected>不給予</option>
                     <option value="prophet">👁️ 預言家的查驗</option>
@@ -422,12 +454,12 @@
         <div id="phase-bear" class="action-row hidden">
             <h3 class="color-god">🐻 熊請睜眼</h3>
             <div id="d1-bear-setup" class="setup-box hidden">
-                <p>選擇熊的號碼</p>
+                <p>熊</p>
                 <select id="bear-id"></select>
             </div>
             
             <div id="bear-charm-container" class="hidden" style="margin-top:15px; padding-top:15px; border-top:1px dashed #666; margin-bottom:15px;">
-                <p style="color:var(--color-wolf); font-weight:bold;">選擇魅惑玩家 (出局時隨之殉情)</p>
+                <p style="color:var(--color-wolf); font-weight:bold;">魅惑目標 (出局時隨之殉情)</p>
                 <select id="bear-charm-target"></select>
                 <p id="bear-charm-dead-msg" class="hidden" style="color:#aaa;">已陣亡 無法魅惑</p>
             </div>
@@ -440,7 +472,7 @@
         <div id="phase-prophet" class="action-row hidden">
             <h3 class="color-god">👁️ 預言家請睜眼</h3>
             <div id="d1-prophet-setup" class="setup-box hidden">
-                <p>選擇預言家的號碼</p>
+                <p>預言家</p>
                 <select id="prophet-id"></select>
             </div>
             <div id="prophet-action-area">
@@ -462,7 +494,7 @@
                 <p style="font-weight:bold;">🎁 請喚醒收到禮物的幸運兒 (<span id="gift-recipient-text" class="color-good"></span>)，並詢問是否使用技能：</p>
                 
                 <div id="gift-prophet-ui" class="hidden">
-                    <p>選擇查驗目標🔍</p>
+                    <p>查驗目標🔍</p>
                     <select id="gift-prophet-target"></select>
                     <button onclick="checkGiftProphet()" id="btn-gift-prophet-check" style="background-color: var(--btn-primary);">確認查驗</button>
                     <div id="gift-prophet-result" class="result-box hidden">
@@ -492,7 +524,7 @@
         <div id="phase-hunter" class="action-row hidden">
             <h3 class="color-god">🏹 獵人請睜眼</h3>
             <div id="d1-hunter-setup" class="setup-box hidden">
-                <p>選擇獵人號碼</p>
+                <p>獵人</p>
                 <select id="hunter-id"></select>
             </div>
             <div class="result-box">
@@ -506,7 +538,7 @@
         <div id="phase-psychic" class="action-row hidden">
             <h3 class="color-god">🔮 通靈師請睜眼</h3>
             <div id="d1-psychic-setup" class="setup-box hidden">
-                <p>選擇通靈師號碼</p>
+                <p>通靈師</p>
                 <select id="psychic-id"></select>
             </div>
             <div id="psychic-action-area">
@@ -539,7 +571,7 @@
             <!-- 開槍區塊 -->
             <div id="phase-shoot" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--color-wolf); padding-top: 15px; background: #332222; padding: 15px; border-radius: 8px; text-align: center;">
                 <h3 id="shoot-title" style="margin-top: 0;">出局，請開槍</h3>
-                <p>請選擇要帶走的玩家</p>
+                <p>要射死誰</p>
                 <select id="shoot-target"></select>
                 <button onclick="submitShoot()" style="background-color: var(--btn-danger);">確認帶走並繼續</button>
             </div>
@@ -550,6 +582,13 @@
                 <p>自爆的狼人 </p>
                 <select id="explode-target"></select>
                 <button onclick="processExplode()" style="background-color: var(--color-wolf); color: white;">確認自爆 進入天黑</button>
+            </div>
+
+            <div id="knight-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed var(--color-god); padding-top: 15px; text-align: center;">
+                <h3 style="color:var(--color-god); margin-top:0;">🤺 騎士發動決鬥</h3>
+                <p style="font-size:14px; color:#aaa; margin-top:-10px;">(白天隨時可發動，每局限一次)</p>
+                <select id="knight-target"></select>
+                <button onclick="processKnightDuel()" style="background-color: var(--color-god); color: white;">確認決鬥對象</button>
             </div>
 
             <!-- 投票區塊 -->
@@ -597,7 +636,8 @@ const GAME_CONSTANTS = {
         MILK_PIERCE: 'milk-pierce',
         MERCHANT_FAIL: 'merchant-fail',
         SHOOT: 'shoot',
-        VOTE: 'vote'
+        VOTE: 'vote',
+        KNIGHT_DUEL: 'knight-duel'
     }
 };
 
@@ -633,7 +673,8 @@ const StateFactory = {
         charmedPlayer: 0, morningResultHtml: "", bearResultHtml: "", ekReflectUsed: false, hasVotedToday: false,
         wolfBroDead: false, wolfLittleBroHasRevenge: false, wolfLittleBroRejoined: false,
         merchantGift: { target: 0, type: 'none', used: false, isWolf: false },
-        mwStatus: { learned: false, target: 0, role: '', poisonUsed: false, justLearned: false, delayed: false, extraWolfKillUsed: false }
+        mwStatus: { learned: false, target: 0, role: '', poisonUsed: false, justLearned: false, delayed: false, extraWolfKillUsed: false },
+        knightSkillUsed: false
     }),
     getInitialNightData: () => ({ 
         wolfKill: 0, wolfKill2: 0, mwWolfKill: 0, witchHealTarget: 0, witchPoison: 0, prophetCheck: 0, 
@@ -689,7 +730,8 @@ const UIManager = {
 
         let gameConfig = { 
             prophet: true, psychic: false, witch: true, hunter: true, bear: false, guard: false, merchant: false, dreamer: false, magician: false,
-            bwk: false, wb: false, ek: false, mechWolf: false, wolfBros: false, shapeShifterMode: false, shapeShifterRole: null 
+            bwk: false, wb: false, ek: false, mechWolf: false, wolfBros: false, shapeShifterMode: false, shapeShifterRole: null, 
+          knight: false
         };
         let snapshots = [];
 
@@ -698,7 +740,7 @@ const UIManager = {
         };
 
         function bindSetupEvents() {
-            const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id', 'bear-id', 'prophet-id', 'psychic-id', 'dreamer-id', 'wb-id', 'magician-id', 'ek-id', 'guard-id', 'merchant-id', 'wolfbro-id', 'wolflittlebro-id', 'mw-id'];
+            const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id','knight-id', 'bear-id', 'prophet-id', 'psychic-id', 'dreamer-id', 'wb-id', 'magician-id', 'ek-id', 'guard-id', 'merchant-id', 'wolfbro-id', 'wolflittlebro-id', 'mw-id'];
             allSetupIds.forEach(id => {
                 let el = document.getElementById(id);
                 if(el) {
@@ -785,7 +827,7 @@ function handleSetupChange() {
             if (p && p.role !== '?') return p.role; 
             
             const roles = [
-                {id: 'prophet-id', role: '預言家'}, {id: 'witch-id', role: '女巫'}, {id: 'hunter-id', role: '獵人'},
+                {id: 'prophet-id', role: '預言家'}, {id: 'witch-id', role: '女巫'}, {id: 'hunter-id', role: '獵人'},{id: 'knight-id', role: '騎士'},
                 {id: 'bear-id', role: '熊'}, {id: 'guard-id', role: '守衛'}, {id: 'merchant-id', role: '黑市商人'},
                 {id: 'dreamer-id', role: '攝夢人'}, {id: 'magician-id', role: '魔術師'}, {id: 'psychic-id', role: '通靈師'},
                 {id: 'bwk-id', role: '黑狼王'}, {id: 'wb-id', role: '狼美人'}, {id: 'ek-id', role: '惡靈騎士'},
@@ -889,7 +931,7 @@ function handleSetupChange() {
             else if (currentPhase === 'shoot') {
                 let shooter = shootQueue[0];
                 let titleArea = document.getElementById('shoot-title');
-                titleArea.innerHTML = `💥 <span class="${shooter.class}">${shooter.role} (${shooter.id}號)</span> 出局  請選擇開槍目標`;
+                titleArea.innerHTML = `💥 <span class="${shooter.class}">${shooter.role} (${shooter.id}號)</span> 出局  開槍目標`;
                 populateAliveSelect('shoot-target', true, "放棄開槍 (不帶走人)");
                 document.getElementById('phase-shoot').classList.remove('hidden');
             } else if (currentPhase === 'vote') {
@@ -897,6 +939,14 @@ function handleSetupChange() {
                 document.getElementById('vote-section').classList.remove('hidden');
                 populateExplodeSelect();
                 document.getElementById('explode-section').classList.remove('hidden');
+                let knightPlayer = players.find(p => p.role === '騎士');
+                if (gameConfig.knight && knightPlayer && knightPlayer.alive && !state.knightSkillUsed) {
+                    document.getElementById('knight-section').classList.remove('hidden');
+                    populateAliveSelect('knight-target', false, "", true, [knightPlayer.id]); // 不能決鬥自己
+                } else {
+                    let el = document.getElementById('knight-section');
+                    if (el) el.classList.add('hidden');
+                }
             }
             
             if(snapshots.length === 0) document.getElementById('btn-undo').classList.add('hidden');
@@ -941,6 +991,7 @@ function handleSetupChange() {
             gameConfig.dreamer = document.getElementById('cfg-dreamer').checked;
             gameConfig.wb = document.getElementById('cfg-wb').checked;
             gameConfig.magician = document.getElementById('cfg-magician').checked;
+            gameConfig.knight = document.getElementById('cfg-knight').checked;
             gameConfig.ek = document.getElementById('cfg-ek').checked;
             gameConfig.mechWolf = document.getElementById('cfg-mechwolf').checked;
             gameConfig.wolfBros = document.getElementById('cfg-wolfbros').checked;
@@ -998,6 +1049,7 @@ function handleSetupChange() {
             if (gameConfig.bwk) ids.push('bwk-id');
             if (gameConfig.witch) ids.push('witch-id');
             if (gameConfig.hunter) ids.push('hunter-id');
+            if (gameConfig.knight) ids.push('knight-id');
             if (gameConfig.bear) ids.push('bear-id');
             if (gameConfig.guard) ids.push('guard-id');
             if (gameConfig.merchant) ids.push('merchant-id');
@@ -1127,7 +1179,7 @@ function handleSetupChange() {
         function queueShooter(id, cause) {
             let p = players.find(x => x.id === id);
             if (!p) return;
-            if (['poison', 'gift-poison', 'mw-poison', 'dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'merchant-fail'].includes(cause)) return; 
+            if (['poison', 'gift-poison', 'mw-poison','knight-duel', 'dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'merchant-fail'].includes(cause)) return; 
             
             if (p.role === '獵人' || p.role === '黑狼王' || (p.role === '獵人' && p.isCorrupted)) {
                 let roleDisp = p.isCorrupted ? `百變狼王(${p.role})` : p.role;
@@ -1202,7 +1254,7 @@ function handleSetupChange() {
             }
         }
 
-        function processNextAction() {
+       function processNextAction() {
             if (checkWinCondition()) {
                 localStorage.removeItem('werewolf_save'); 
                 return;
@@ -1225,6 +1277,12 @@ function handleSetupChange() {
                 if (state.hasVotedToday) {
                     document.getElementById('phase-morning').classList.add('hidden');
                     day++;
+                    
+                    // 👇 加入這兩行：徹底清空昨晚的行動紀錄，並允許今天重新投票 👇
+                    nightData = StateFactory.getInitialNightData();
+                    state.hasVotedToday = false;
+                    // 👆 👆 👆
+                    
                     startNight(false);
                 } else {
                     currentPhase = 'vote';
@@ -1234,6 +1292,14 @@ function handleSetupChange() {
                     populateAliveSelect('vote-target', true, "無人出局 (棄票/平票)");
                     populateExplodeSelect();
                     document.getElementById('explode-section').classList.remove('hidden');
+                    let knightPlayer = players.find(p => p.role === '騎士');
+                    if (gameConfig.knight && knightPlayer && knightPlayer.alive && !state.knightSkillUsed) {
+                        document.getElementById('knight-section').classList.remove('hidden');
+                        populateAliveSelect('knight-target', false, "", true, [knightPlayer.id]); // 不能決鬥自己
+                    } else {
+                        let el = document.getElementById('knight-section');
+                        if (el) el.classList.add('hidden');
+                    }
                 }
             }
             autoSave();
@@ -1267,6 +1333,7 @@ function handleSetupChange() {
         case 'mw-result': prepareMwResult(); break;
         case 'gift': prepareGift(); break;
         case 'hunter': prepareHunter(); break;
+        case 'knight': prepareKnight(); break;
         default: 
             console.error("未知的階段:", nextPhase);
             proceedToNextPhase(); // 防錯：如果遇到未知的，直接跳下一個
@@ -1289,6 +1356,7 @@ function handleSetupChange() {
                 if (gameConfig.dreamer) nightQueue.push('dreamer');
                 if (gameConfig.magician) nightQueue.push('magician');
                 if (gameConfig.merchant && day === 1) nightQueue.push('merchant'); // 商人只有第一天發禮物
+                if (gameConfig.knight && day === 1) nightQueue.push('knight');
                 if (gameConfig.bear) nightQueue.push('bear');
                 
                 // 判斷幸運兒階段 (第二天以後，且有發出禮物、尚未用掉、目標非狼)
@@ -1429,7 +1497,7 @@ function showMwActionUI() {
                     else if (!isNaN(setupMwId)) excludeIds.push(setupMwId);
                     
                     populateAliveSelect('mw-learn-target', true, "不學習 (延後)", false, excludeIds);
-                    UIManager.setHTML('mw-signal-ui', "<h2>選擇學習目標不帶刀</h2>");
+                    UIManager.setHTML('mw-signal-ui', "<h2>學習階段不帶刀</h2>");
                 } else {
                     UIManager.hide('mw-learn-container');
                     UIManager.show('btn-mw-next');
@@ -3034,6 +3102,88 @@ autoSave();
             document.getElementById('explode-section').classList.add('hidden');
             
             state.hasVotedToday = true;
+            processNextAction();
+        }
+         /* ========== 騎士技能邏輯 ========== */
+        function prepareKnight() {
+            currentPhase = 'knight';
+            applyCorruptedColor('phase-knight', '騎士');
+            document.getElementById('phase-knight').classList.remove('hidden');
+            if (day === 1) document.getElementById('d1-knight-setup').classList.remove('hidden');
+            else document.getElementById('d1-knight-setup').classList.add('hidden');
+            autoSave();
+        }
+
+        function processKnight() {
+            if (day === 1) {
+                let kId = parseInt(document.getElementById('knight-id').value);
+                if (isNaN(kId)) return alert("強制防呆：請在首夜設定中選擇「騎士」的號碼！");
+                
+                takeSnapshot();
+                let isCorrupted = gameConfig.shapeShifterRole === '騎士';
+                players.find(x => x.id === kId).role = '騎士';
+                players.find(x => x.id === kId).class = isCorrupted ? 'color-wolf' : 'color-god';
+                players.find(x => x.id === kId).isCorrupted = isCorrupted;
+                UIManager.updateAliveStatus();
+            } else {
+                takeSnapshot();
+            }
+            document.getElementById('phase-knight').classList.add('hidden');
+            proceedToNextPhase();
+        }
+
+        function processKnightDuel() {
+            let targetId = parseInt(document.getElementById('knight-target').value);
+            if (isNaN(targetId) || targetId === 0) return alert("選擇決鬥對象");
+            
+            
+
+            takeSnapshot();
+            state.knightSkillUsed = true; // 每局限一次
+            
+            let knight = players.find(p => p.role === '騎士');
+            let target = players.find(p => p.id === targetId);
+            let isTargetWolf = RoleUtils.isWolfCamp(target);
+            
+             
+
+            let newlyDead = [];
+            let causes = {};
+            
+            if (isTargetWolf) {
+                // 目標是狼人 -> 狼人直接死亡，技能封印 (無法開槍)，跳過投票
+                registerDeath(targetId, 'knight-duel', newlyDead, causes);
+                gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">🤺 <span style="color:var(--color-god); font-weight:bold;">騎士發動決鬥！</span>對象 ${getPlayerStr(targetId, false)} 是<span style="color:var(--color-wolf); font-weight:bold;">狼人陣營</span>，直接死亡且無法發動技能！跳過投票進入天黑。</div>`;
+                state.hasVotedToday = true; // 強制跳過投票
+            } else {
+                // 目標是好人 -> 騎士死亡，投票繼續
+                registerDeath(knight.id, 'knight-duel', newlyDead, causes);
+                gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">🤺 <span style="color:var(--color-god); font-weight:bold;">騎士發動決鬥！</span>對象 ${getPlayerStr(targetId, false)} 是<span style="color:var(--color-villager); font-weight:bold;">好人陣營</span>，騎士以死謝罪！</div>`;
+            }
+            
+            // 執行死亡結算與連帶死亡 (狼美人、攝夢人)
+            newlyDead.forEach(id => {
+                let p = players.find(x => x.id === id);
+                if (p) p.alive = false;
+            });
+            newlyDead.forEach(id => {
+                if (causes[id] === 'wb-link') gameHistory[gameHistory.length-1] += `<div style="padding-left: 20px; color: var(--color-wolf);">➔ 狼美人/百變狼王 出局，${getPlayerStr(id, false)} 隨之殉情 (技能封印)。</div>`;
+                else if (causes[id] === 'dream-link') gameHistory[gameHistory.length-1] += `<div style="padding-left: 20px; color: var(--color-god);">➔ 攝夢人出局，${getPlayerStr(id, false)} 隨之在夢中死亡 (技能封印)。</div>`;
+            });
+
+            checkWolfBroDeath(newlyDead);
+            newlyDead.forEach(id => queueShooter(id, causes[id]));
+            gameHistory[gameHistory.length-1] += `</div>`; 
+
+            UIManager.updateAliveStatus();
+            document.getElementById('knight-section').classList.add('hidden');
+            
+            // 如果騎士撞死狼人，直接進入天黑流程
+            if (state.hasVotedToday) {
+                document.getElementById('vote-section').classList.add('hidden');
+                document.getElementById('explode-section').classList.add('hidden');
+            }
+            
             processNextAction();
         }
 
