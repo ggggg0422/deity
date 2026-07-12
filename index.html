@@ -175,6 +175,7 @@
 
     <h1></h1>
 
+    <!-- 遊戲設定介面 -->
     <div id="setup-screen" style="text-align:center; padding: 10px 0;">
         
         <div style="margin-bottom: 20px;">
@@ -203,6 +204,11 @@
                 <label><input type="checkbox" id="cfg-knight"> 🤺 騎士</label>
             </div>
 
+            <h3 style="margin-top: 15px; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-villager);">配置特殊平民</h3>
+            <div class="role-grid">
+                <label><input type="checkbox" id="cfg-shadow"> 🏮 燈影</label>
+            </div>
+
             <h3 style="margin-top: 15px; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-wolf);">配置特殊狼人</h3>
             <div class="role-grid">
                 <label><input type="checkbox" id="cfg-bwk"> 👑 黑狼王</label>
@@ -216,18 +222,22 @@
         </div>
     </div>
 
+    <!-- 遊戲進行介面 -->
     <div id="game-screen" class="hidden">
         
+        <!-- 頂部資訊與復原按鈕區 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
             <h2 id="day-counter" style="margin: 0; border: none; padding: 0;">第 1 天 夜晚</h2>
             <button onclick="undoAction()" id="btn-undo" class="hidden" style="background-color: var(--btn-danger); padding: 8px 12px; margin: 0; font-size: 14px;">🔙 回到上一步</button>
         </div>
 
         <div id="alive-status" style="margin-bottom: 20px; text-align: center;"></div>
+        <!-- 提早結算橫幅 (智慧屠邊預警) -->
         <div id="early-win-banner" class="hidden early-win-btn" onclick="forceProcessMorning()">
             🚨 系統預測目前死傷已達成屠邊或全滅！<br><span style="font-size:14px; font-weight:normal;">(若後續已無神職可改變死傷，請點此跳過夜晚，直接天亮結算)</span>
         </div>
 
+        <!-- 機械狼階段 (每晚第一個睜眼) -->
         <div id="phase-mechwolf" class="action-row hidden">
             <h3 class="color-wolf">🐺 機械狼請睜眼</h3>
             
@@ -293,6 +303,7 @@
             <button onclick="processMechWolf()" id="btn-mw-next" class="hidden">確認 請閉眼</button>
         </div>
 
+        <!-- 百變狼王帶刀確認階段 (第2晚開始) -->
         <div id="phase-shapeshifter" class="action-row hidden">
             <h3 class="color-wolf">🐺 百變狼王請睜眼</h3>
             <p>上帝確認百變狼王 (<span id="ss-role-name"></span>) 的帶刀狀態</p>
@@ -312,6 +323,7 @@
             <button onclick="processKnight()">確認 請閉眼</button>
         </div>
 
+        <!-- 守衛階段 -->
         <div id="phase-guard" class="action-row hidden">
             <h3 class="color-god">🛡️ 守衛請睜眼</h3>
             <div id="d1-guard-setup" class="setup-box hidden">
@@ -323,6 +335,7 @@
             <button onclick="processGuard()">確認 請閉眼</button>
         </div>
 
+        <!-- 狼兄與狼弟階段 -->
         <div id="phase-wolfbros" class="action-row hidden">
             <h3 class="color-wolf">🐺 狼兄與狼弟請睜眼</h3>
             <div id="d1-wolfbros-setup" class="setup-box hidden">
@@ -341,6 +354,7 @@
             <button onclick="processWolfBros()">確認 請閉眼</button>
         </div>
 
+        <!-- 狼人與特殊狼階段合併 -->
         <div id="phase-wolf" class="action-row hidden">
             <h3 class="color-wolf">🐺 狼陣營請睜眼</h3>
             <div id="d1-wolf-setup" class="setup-box hidden">
@@ -381,6 +395,7 @@
             <button onclick="processWolf()">確認 請閉眼</button>
         </div>
 
+        <!-- 女巫階段 -->
         <div id="phase-witch" class="action-row hidden">
             <h3 class="color-god">🧪 女巫請睜眼</h3>
             
@@ -418,6 +433,7 @@
             <button onclick="processWitch()">確認 請閉眼</button>
         </div>
 
+        <!-- 攝夢人階段 -->
         <div id="phase-dreamer" class="action-row hidden">
             <h3 class="color-god">💤 攝夢人請睜眼</h3>
             <div id="d1-dreamer-setup" class="setup-box hidden">
@@ -431,6 +447,7 @@
             <button onclick="processDreamer()">確認 請閉眼</button>
         </div>
 
+        <!-- 魔術師階段 -->
         <div id="phase-magician" class="action-row hidden">
             <h3 class="color-god">🎩 魔術師請睜眼</h3>
             <div id="d1-magician-setup" class="setup-box hidden">
@@ -445,6 +462,7 @@
             <button onclick="processMagician()">確認 請閉眼</button>
         </div>
 
+        <!-- 黑市商人 第一晚發禮物階段 -->
         <div id="phase-merchant" class="action-row hidden">
             <h3 class="color-god">💼 黑市商人請睜眼</h3>
             <div id="merchant-night1-container">
@@ -465,6 +483,7 @@
             <button onclick="processMerchant()">確認 請閉眼</button>
         </div>
 
+        <!-- 熊階段 -->
         <div id="phase-bear" class="action-row hidden">
             <h3 class="color-god">🐻 熊請睜眼</h3>
             <div id="d1-bear-setup" class="setup-box hidden">
@@ -482,6 +501,7 @@
             <button onclick="processBear()">請閉眼</button>
         </div>
 
+        <!-- 預言家階段 -->
         <div id="phase-prophet" class="action-row hidden">
             <h3 class="color-god">👁️ 預言家請睜眼</h3>
             <div id="d1-prophet-setup" class="setup-box hidden">
@@ -500,6 +520,26 @@
             <button onclick="processProphet()" id="btn-prophet-next" class="hidden">請閉眼</button>
         </div>
 
+        <!-- 燈影階段 (上帝視角喚醒燈影) -->
+        <div id="phase-shadow" class="action-row hidden">
+            <h3 class="color-god">👁️ 預言家請睜眼 <span style="font-size:16px; color:#aaa;">(實為燈影)</span></h3>
+            <div id="d1-shadow-setup" class="setup-box hidden">
+                <p>燈影號碼 (以為自己是預言家)</p>
+                <select id="shadow-id"></select>
+            </div>
+            <div id="shadow-action-area">
+                <p>查驗目標🔍</p>
+                <select id="shadow-target"></select>
+                <button onclick="checkShadowTarget()" id="btn-shadow-check" style="background-color: var(--btn-primary);">確認查驗</button>
+            </div>
+            
+            <div id="shadow-result" class="result-box hidden">
+                <h2 id="shadow-result-text" style="margin: 0; font-size: 24px;"></h2>
+            </div>
+            <button onclick="processShadow()" id="btn-shadow-next" class="hidden">請閉眼</button>
+        </div>
+
+        <!-- 第二天以後 幸運兒禮物使用階段 (在預言家之後) -->
         <div id="phase-gift" class="action-row hidden">
             <h3 class="color-good">🎁 幸運兒請睜眼</h3>
             <div id="merchant-gift-container">
@@ -532,6 +572,7 @@
             <button onclick="processGift()" id="btn-gift-next">確認 請閉眼</button>
         </div>
 
+        <!-- 獵人階段 -->
         <div id="phase-hunter" class="action-row hidden">
             <h3 class="color-god">🏹 獵人請睜眼</h3>
             <div id="d1-hunter-setup" class="setup-box hidden">
@@ -545,6 +586,7 @@
             <button onclick="processHunter()">確認 請閉眼</button>
         </div>
 
+        <!-- 通靈師階段 (獵人之後) -->
         <div id="phase-psychic" class="action-row hidden">
             <h3 class="color-god">🔮 通靈師請睜眼</h3>
             <div id="d1-psychic-setup" class="setup-box hidden">
@@ -562,6 +604,7 @@
             <button onclick="processPsychic()" id="btn-psychic-next" class="hidden">請閉眼</button>
         </div>
 
+        <!-- 機械狼結果階段 (第一晚專用，通靈師之後) -->
         <div id="phase-mw-result" class="action-row hidden">
             <h3 class="color-wolf">🐺 機械狼請睜眼 (學習結果)</h3>
             <p>上帝請告知機械狼，他學習到的身分是：</p>
@@ -571,11 +614,13 @@
             <button onclick="processMwResult()">確認 請閉眼</button>
         </div>
 
+        <!-- 白天結算與投票階段 -->
         <div id="phase-morning" class="action-row hidden">
             <h2>☀️ 天亮了</h2>
             <div class="result-box" id="morning-result"></div>
             <div id="bear-result"></div>
             
+            <!-- 開槍區塊 -->
             <div id="phase-shoot" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--color-wolf); padding-top: 15px; background: #332222; padding: 15px; border-radius: 8px; text-align: center;">
                 <h3 id="shoot-title" style="margin-top: 0;">出局，請開槍</h3>
                 <p>要射死誰</p>
@@ -583,6 +628,7 @@
                 <button onclick="submitShoot()" style="background-color: var(--btn-danger);">確認帶走並繼續</button>
             </div>
 
+            <!-- 自爆區塊 -->
             <div id="explode-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed var(--color-wolf); padding-top: 15px; text-align: center;">
                 <h3 style="color:var(--color-wolf); margin-top:0;">💣 狼人自爆</h3>
                 <p>自爆的狼人 </p>
@@ -597,6 +643,7 @@
                 <button onclick="processKnightDuel()" style="background-color: var(--color-god); color: white;">確認決鬥對象</button>
             </div>
 
+            <!-- 投票區塊 -->
             <div id="vote-section" class="hidden" style="margin-top: 20px; border-top: 1px solid #555; padding-top: 15px; text-align: center;">
                 <h3>🗳️ 白天投票環節</h3>
                 <p>被放逐的玩家</p>
@@ -606,6 +653,7 @@
         </div>
     </div>
 
+    <!-- 遊戲結束介面 -->
     <div id="end-screen" class="hidden" style="text-align: center;">
         <h1 id="win-title" style="color: var(--color-villager); font-size: 28px; line-height: 1.4;"></h1>
         <div style="background: var(--panel-bg); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
@@ -621,7 +669,7 @@
             CAMP: {
                 WOLF: ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'],
                 GOD: ['預言家', '通靈師', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '騎士'],
-                VILLAGER: ['平民']
+                VILLAGER: ['平民', '燈影']
             },
             SKILL_CAUSE: {
                 WOLF_KILL: 'wolf',
@@ -653,7 +701,7 @@
                 if (isCorrupted) return "color-wolf";
                 if (RoleUtils.isGodCamp(role)) return "color-god";
                 if (GAME_CONSTANTS.CAMP.WOLF.includes(role)) return "color-wolf";
-                if (role === '平民') return "color-villager";
+                if (GAME_CONSTANTS.CAMP.VILLAGER.includes(role)) return "color-villager";
                 return "color-unknown";
             }
         };
@@ -669,7 +717,7 @@
                 knightSkillUsed: false
             }),
             getInitialNightData: () => ({ 
-                wolfKill: 0, wolfKill2: 0, mwWolfKill: 0, witchHealTarget: 0, witchPoison: 0, prophetCheck: 0, 
+                wolfKill: 0, wolfKill2: 0, mwWolfKill: 0, witchHealTarget: 0, witchPoison: 0, prophetCheck: 0, shadowCheck: 0,
                 dreamerTarget: 0, wbTarget: 0, bearCharmTarget: 0, magicianSwap: {t1: 0, t2: 0},
                 guardProtect: 0, wolfRevengeKill: 0, merchantTarget: 0, merchantGift: 'none', giftPoison: 0, giftCheck: 0,
                 mwLearnTarget: 0, mwPoisonTarget: 0, mwGuardTarget: 0, mwCheckTarget: 0, psychicCheckTarget: 0
@@ -717,7 +765,7 @@
         let gameConfig = { 
             prophet: true, psychic: false, witch: true, hunter: true, bear: false, guard: false, merchant: false, dreamer: false, magician: false,
             bwk: false, wb: false, ek: false, mechWolf: false, wolfBros: false, shapeShifterMode: false, shapeShifterRole: null, 
-            knight: false
+            knight: false, shadow: false
         };
         let snapshots = [];
 
@@ -726,7 +774,7 @@
         };
 
         function bindSetupEvents() {
-            const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id','knight-id', 'bear-id', 'prophet-id', 'psychic-id', 'dreamer-id', 'wb-id', 'magician-id', 'ek-id', 'guard-id', 'merchant-id', 'wolfbro-id', 'wolflittlebro-id', 'mw-id'];
+            const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id','knight-id', 'bear-id', 'prophet-id', 'shadow-id', 'psychic-id', 'dreamer-id', 'wb-id', 'magician-id', 'ek-id', 'guard-id', 'merchant-id', 'wolfbro-id', 'wolflittlebro-id', 'mw-id'];
             allSetupIds.forEach(id => {
                 let el = document.getElementById(id);
                 if(el) {
@@ -735,6 +783,13 @@
                 }
             });
             
+            document.getElementById('cfg-shadow').addEventListener('change', function() {
+                if(this.checked) document.getElementById('cfg-prophet').checked = true;
+            });
+            document.getElementById('cfg-prophet').addEventListener('change', function() {
+                if(!this.checked && document.getElementById('cfg-shadow').checked) document.getElementById('cfg-shadow').checked = false;
+            });
+
             document.querySelectorAll('input[name="witch-action"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     const poisonSelect = document.getElementById('witch-target');
@@ -766,6 +821,7 @@
             if (this.id === 'witch-id' && currentPhase === 'witch') prepareWitch(); 
             if (this.id === 'merchant-id' && currentPhase === 'merchant') updateMerchantTarget(); 
             if (this.id === 'mw-id' && currentPhase === 'mechwolf') prepareMechWolf();
+            if (this.id === 'shadow-id' && currentPhase === 'shadow') prepareShadow();
         }
 
         function getMaxWolves() {
@@ -813,7 +869,7 @@
             if (p && p.role !== '?') return p.role; 
             
             const roles = [
-                {id: 'prophet-id', role: '預言家'}, {id: 'witch-id', role: '女巫'}, {id: 'hunter-id', role: '獵人'},{id: 'knight-id', role: '騎士'},
+                {id: 'prophet-id', role: '預言家'}, {id: 'shadow-id', role: '燈影'}, {id: 'witch-id', role: '女巫'}, {id: 'hunter-id', role: '獵人'},{id: 'knight-id', role: '騎士'},
                 {id: 'bear-id', role: '熊'}, {id: 'guard-id', role: '守衛'}, {id: 'merchant-id', role: '黑市商人'},
                 {id: 'dreamer-id', role: '攝夢人'}, {id: 'magician-id', role: '魔術師'}, {id: 'psychic-id', role: '通靈師'},
                 {id: 'bwk-id', role: '黑狼王'}, {id: 'wb-id', role: '狼美人'}, {id: 'ek-id', role: '惡靈騎士'},
@@ -884,7 +940,7 @@
             UIManager.hide('vote-section');
             UIManager.hide('explode-section');
             
-            let isNight = ['shapeshifter','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','psychic','gift','hunter','mw-result', 'knight'].includes(currentPhase);
+            let isNight = ['shapeshifter','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','shadow','psychic','gift','hunter','mw-result', 'knight'].includes(currentPhase);
             UIManager.setText('day-counter', `第 ${day} 天 ${isNight ? '夜晚' : '白天'}`);
             
             if (['shoot', 'vote'].includes(currentPhase)) {
@@ -906,6 +962,7 @@
             else if (currentPhase === 'merchant') prepareMerchant();
             else if (currentPhase === 'bear') prepareBear();
             else if (currentPhase === 'prophet') prepareProphet();
+            else if (currentPhase === 'shadow') prepareShadow();
             else if (currentPhase === 'psychic') preparePsychic();
             else if (currentPhase === 'gift') prepareGift();
             else if (currentPhase === 'hunter') prepareHunter();
@@ -964,6 +1021,7 @@
         function startGame() {
             playerCount = parseInt(document.getElementById('player-count-select').value);
             gameConfig.prophet = document.getElementById('cfg-prophet').checked;
+            gameConfig.shadow = document.getElementById('cfg-shadow').checked;
             gameConfig.psychic = document.getElementById('cfg-psychic').checked;
             gameConfig.witch = document.getElementById('cfg-witch').checked;
             gameConfig.hunter = document.getElementById('cfg-hunter').checked;
@@ -1035,6 +1093,7 @@
             if (gameConfig.guard) ids.push('guard-id');
             if (gameConfig.merchant) ids.push('merchant-id');
             if (gameConfig.prophet) ids.push('prophet-id');
+            if (gameConfig.shadow) ids.push('shadow-id');
             if (gameConfig.psychic) ids.push('psychic-id');
             if (gameConfig.dreamer) ids.push('dreamer-id');
             if (gameConfig.wb) ids.push('wb-id');
@@ -1103,7 +1162,7 @@
             if (GAME_CONSTANTS.CAMP.WOLF.includes(roleName)) {
                 return `<span class="color-wolf">${roleName}</span>`;
             }
-            if (roleName === '平民') return `<span class="color-villager">${roleName}</span>`;
+            if (GAME_CONSTANTS.CAMP.VILLAGER.includes(roleName)) return `<span class="color-villager">${roleName}</span>`;
             
             return roleName;
         }
@@ -1293,6 +1352,7 @@
                 case 'merchant': prepareMerchant(); break;
                 case 'bear': prepareBear(); break;
                 case 'prophet': prepareProphet(); break;
+                case 'shadow': prepareShadow(); break;
                 case 'psychic': preparePsychic(); break;
                 case 'mw-result': prepareMwResult(); break;
                 case 'gift': prepareGift(); break;
@@ -1328,6 +1388,7 @@
 
                 if (gameConfig.hunter) nightQueue.push('hunter');
                 if (gameConfig.prophet) nightQueue.push('prophet');
+                if (gameConfig.shadow) nightQueue.push('shadow');
                 if (gameConfig.psychic) nightQueue.push('psychic');
                 if (day === 1 && gameConfig.mechWolf) nightQueue.push('mw-result'); 
                 
@@ -1393,7 +1454,7 @@
             if (r === '通靈師') {
                 UIManager.show('mw-act-psychic');
                 populateAliveSelect('mw-psychic-target', true, "不查驗");
-            } else if (r === '預言家') {
+            } else if (r === '預言家' || r === '燈影') {
                 UIManager.show('mw-act-prophet');
                 populateAliveSelect('mw-prophet-target', true, "不查驗");
             } else if (r === '女巫') {
@@ -1579,6 +1640,10 @@
             let role = getTrueRole(actualTarget);
             let isWolf = ['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role);
             if (role === '狼弟' && !state.wolfBroDead) isWolf = false;
+
+            if (state.mwStatus.role === '燈影') {
+                isWolf = !isWolf;
+            }
             
             res.innerHTML = isWolf ? "<h2 class='color-wolf' style='margin:0;'>查殺</h2>" : "<h2 class='color-gold' style='margin:0;'>金水</h2>";
         }
@@ -2380,6 +2445,103 @@
             proceedToNextPhase(); 
         }
 
+        // --- 燈影 ---
+        function prepareShadow() {
+            currentPhase = 'shadow';
+            document.getElementById('phase-shadow').classList.remove('hidden');
+            let shadow = players.find(p => p.role === '燈影');
+
+            if (day === 1) document.getElementById('d1-shadow-setup').classList.remove('hidden');
+            else document.getElementById('d1-shadow-setup').classList.add('hidden');
+
+            const actionArea = document.getElementById('shadow-action-area');
+            
+            if (day > 1 && shadow && !shadow.alive) {
+                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>燈影已陣亡 假裝詢問查驗目標🔍</span>";
+                document.getElementById('btn-shadow-check').classList.add('hidden');
+                document.getElementById('btn-shadow-next').classList.remove('hidden');
+                document.getElementById('shadow-result').classList.add('hidden');
+            } else {
+                actionArea.innerHTML = actionArea.getAttribute('data-original') || actionArea.innerHTML;
+                if(!actionArea.getAttribute('data-original')) actionArea.setAttribute('data-original', actionArea.innerHTML);
+                
+                populateAliveSelect('shadow-target', true, "不查驗");
+                
+                if (nightData.shadowCheck !== 0) {
+                    document.getElementById('shadow-target').value = nightData.shadowCheck;
+                    showShadowResultUI(nightData.shadowCheck);
+                } else {
+                    document.getElementById('shadow-result').classList.add('hidden');
+                    document.getElementById('btn-shadow-check').classList.remove('hidden');
+                    document.getElementById('btn-shadow-next').classList.add('hidden');
+                }
+            }
+            autoSave();
+        }
+
+        function showShadowResultUI(targetId) {
+            document.getElementById('shadow-result').classList.remove('hidden');
+            document.getElementById('btn-shadow-check').classList.add('hidden');
+            document.getElementById('btn-shadow-next').classList.remove('hidden');
+
+            const resultText = document.getElementById('shadow-result-text');
+            
+            let actualTarget = applyMagic(targetId);
+            let swapMsg = (actualTarget !== targetId && actualTarget !== 0) ? `<br><span style="font-size:16px; color:#aaa;">(受魔術影響，實際查驗為 ${actualTarget} 號)</span>` : "";
+
+            if (actualTarget === 0) {
+                resultText.innerText = "未查驗";
+                resultText.className = "color-unknown";
+            } else {
+                let role = getTrueRole(actualTarget);
+                let targetPlayer = players.find(p => p.id === actualTarget); 
+                
+                // 預言家基礎邏輯
+                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) || (targetPlayer && targetPlayer.isCorrupted);
+                if (role === '狼弟' && !state.wolfBroDead) {
+                    isWolfTarget = false;
+                }
+
+                // 燈影反轉邏輯
+                isWolfTarget = !isWolfTarget;
+
+                if (isWolfTarget) {
+                    resultText.innerHTML = `查殺${swapMsg}`;
+                    resultText.className = "color-wolf";
+                } else {
+                    resultText.innerHTML = `金水${swapMsg}`;
+                    resultText.className = "color-gold";
+                }
+            }
+        }
+
+        function checkShadowTarget() {
+            let sId = null;
+            if (day === 1) {
+                sId = parseInt(document.getElementById('shadow-id').value);
+                if (isNaN(sId)) return alert("強制防呆：請在首夜設定中選擇「燈影」的號碼！");
+            }
+
+            takeSnapshot(); 
+
+            if (day === 1 && sId !== null) {
+                players.find(x => x.id === sId).role = '燈影';
+                players.find(x => x.id === sId).class = 'color-villager';
+                UIManager.updateAliveStatus(); 
+            }
+
+            const targetId = parseInt(document.getElementById('shadow-target').value);
+            nightData.shadowCheck = targetId;
+            showShadowResultUI(targetId);
+            autoSave();
+        }
+
+        function processShadow() {
+            takeSnapshot(); 
+            document.getElementById('phase-shadow').classList.add('hidden');
+            proceedToNextPhase(); 
+        }
+
         // --- 幸運兒 ---
         function prepareGift() {
             if (day === 1 || state.merchantGift.target === 0 || state.merchantGift.used || state.merchantGift.isWolf) {
@@ -2709,6 +2871,7 @@
                 charm: applyMagic(nightData.wbTarget),
                 bearCharm: applyMagic(nightData.bearCharmTarget),
                 check: applyMagic(nightData.prophetCheck),
+                shadowCheck: applyMagic(nightData.shadowCheck),
                 psychicCheck: applyMagic(nightData.psychicCheckTarget),
                 giftCheck: applyMagic(nightData.giftCheck),
                 merchant: applyMagic(nightData.merchantTarget),
@@ -2770,10 +2933,11 @@
                         extraEventsHtml += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">🏍️ 惡靈騎士被毒，觸發反傷彈死了 ${getPlayerStr(poisonerId, false)}！</div>`;
                     }
                 } 
-                else if ((actuals.check === ek.id || actuals.giftCheck === ek.id || actuals.psychicCheck === ek.id || nightData.mwCheckTarget === ek.id) && !state.ekReflectUsed) {
+                else if ((actuals.check === ek.id || actuals.shadowCheck === ek.id || actuals.giftCheck === ek.id || actuals.psychicCheck === ek.id || nightData.mwCheckTarget === ek.id) && !state.ekReflectUsed) {
                     state.ekReflectUsed = true;
                     let checkerId;
                     if (actuals.check === ek.id) checkerId = players.find(p => p.role === '預言家')?.id;
+                    else if (actuals.shadowCheck === ek.id) checkerId = players.find(p => p.role === '燈影')?.id;
                     else if (actuals.psychicCheck === ek.id) checkerId = players.find(p => p.role === '通靈師')?.id;
                     else if (nightData.mwCheckTarget === ek.id) checkerId = players.find(p => p.role === '機械狼')?.id;
                     else checkerId = state.merchantGift.target;
@@ -2824,11 +2988,19 @@
                         logHtml += `<li>🐺 機械狼(女巫) 毒了 ${getPlayerStr(nightData.mwPoisonTarget, false)}${getSwapLogStr(nightData.mwPoisonTarget, actuals.mwPoison)}${hitImmune?' (免疫)':''}。</li>`;
                     }
                     if (state.mwStatus.role === '守衛' && nightData.mwGuardTarget !== 0) logHtml += `<li>🐺 機械狼(守衛) 施加了防毒盾於 ${getPlayerStr(nightData.mwGuardTarget, false)}${getSwapLogStr(nightData.mwGuardTarget, actuals.mwGuard)}。</li>`;
-                    if ((state.mwStatus.role === '預言家' || state.mwStatus.role === '通靈師') && nightData.mwCheckTarget !== 0) {
+                    if ((state.mwStatus.role === '預言家' || state.mwStatus.role === '通靈師' || state.mwStatus.role === '燈影') && nightData.mwCheckTarget !== 0) {
                         let actT = applyMagic(nightData.mwCheckTarget);
                         let role = getTrueRole(actT);
                         let isWolf = ['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role) && !(role === '狼弟' && !state.wolfBroDead);
-                        let rTxt = (state.mwStatus.role === '預言家') ? (isWolf ? "<span class='color-wolf'>查殺</span>" : "<span class='color-gold'>金水</span>") : `<span class='${isWolf ? "color-wolf" : "color-god"}'>${role}</span>`;
+                        
+                        let rTxt = "";
+                        if (state.mwStatus.role === '預言家') {
+                            rTxt = isWolf ? "<span class='color-wolf'>查殺</span>" : "<span class='color-gold'>金水</span>";
+                        } else if (state.mwStatus.role === '燈影') {
+                            rTxt = !isWolf ? "<span class='color-wolf'>查殺</span>" : "<span class='color-gold'>金水</span>";
+                        } else {
+                            rTxt = `<span class='${isWolf ? "color-wolf" : "color-god"}'>${role}</span>`;
+                        }
                         logHtml += `<li>🐺 機械狼(查驗) 查驗了 ${getPlayerStr(nightData.mwCheckTarget, false)}${getSwapLogStr(nightData.mwCheckTarget, actT)}，結果為【${rTxt}】。</li>`;
                     }
                 }
@@ -2901,6 +3073,15 @@
                     resCol = ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師', '騎士'].includes(role) ? 'var(--color-god)' : 'var(--color-wolf)';
                 }
                 logHtml += `<li>👁️ ${getRoleStr('預言家')} 查驗了 ${getPlayerStr(nightData.prophetCheck, false)}${getSwapLogStr(nightData.prophetCheck, actuals.check)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
+            }
+
+            if (gameConfig.shadow && nightData.shadowCheck !== 0) {
+                let role = getTrueRole(actuals.shadowCheck);
+                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) && !(role === '狼弟' && !state.wolfBroDead);
+                let shadowSawWolf = !isWolf;
+                let resCol = shadowSawWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
+                let resTxt = shadowSawWolf ? '查殺' : '金水';
+                logHtml += `<li>🏮 ${getRoleStr('燈影')} 查驗了 ${getPlayerStr(nightData.shadowCheck, false)}${getSwapLogStr(nightData.shadowCheck, actuals.shadowCheck)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
             }
 
             if (gameConfig.psychic && nightData.psychicCheckTarget !== 0) {
@@ -3179,7 +3360,7 @@
         function checkWinCondition() {
             let wolves = players.filter(p => (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(p.role) || p.isCorrupted) && p.alive).length;
             let gods = players.filter(p => ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師', '騎士'].includes(p.role) && !p.isCorrupted && p.alive).length;
-            let villagers = players.filter(p => p.role === '平民' && p.alive).length;
+            let villagers = players.filter(p => ['平民', '燈影'].includes(p.role) && p.alive).length;
 
             let endMsg = "";
             let wolfWin = (gods === 0 || villagers === 0);
@@ -3218,7 +3399,7 @@
             let banner = document.getElementById('early-win-banner');
             if (!banner) return;
             
-            let isNight = ['shapeshifter','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','psychic','gift','hunter','mw-result','knight'].includes(currentPhase);
+            let isNight = ['shapeshifter','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','shadow','psychic','gift','hunter','mw-result','knight'].includes(currentPhase);
             
             if (!isNight || day === 1) {
                 banner.classList.add('hidden');
@@ -3306,11 +3487,15 @@
                 }
                 
                 let actualCheck = applyMagic(nightData.prophetCheck);
+                let actualShadowCheck = applyMagic(nightData.shadowCheck);
                 let actualPsychicCheck = applyMagic(nightData.psychicCheckTarget);
                 let actualGiftCheck = applyMagic(nightData.giftCheck);
                 
                 if (actualCheck === ek.id) {
                     let checker = players.find(p => p.role === '預言家');
+                    if (checker && checker.alive) simRegister(checker.id, 'reflect');
+                } else if (actualShadowCheck === ek.id) {
+                    let checker = players.find(p => p.role === '燈影');
                     if (checker && checker.alive) simRegister(checker.id, 'reflect');
                 } else if (actualPsychicCheck === ek.id) {
                     let checker = players.find(p => p.role === '通靈師');
@@ -3332,7 +3517,7 @@
                         simWolves++;
                     } else if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師', '騎士'].includes(role)) {
                         simGods++;
-                    } else {
+                    } else if (['平民', '燈影'].includes(role)) {
                         simVillagers++;
                     }
                 }
