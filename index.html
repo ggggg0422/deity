@@ -274,9 +274,9 @@
         <div id="phase-wolfbros" class="action-row hidden">
             <h3 class="color-wolf">🐺 狼兄與狼弟請睜眼</h3>
             <div id="d1-wolfbros-setup" class="setup-box hidden">
-                <p>選擇狼兄號碼：</p>
+                <p>狼兄號碼</p>
                 <select id="wolfbro-id"></select>
-                <p>選擇狼弟號碼：</p>
+                <p>狼弟號碼</p>
                 <select id="wolflittlebro-id"></select>
             </div>
             <div id="wolfbros-revenge-container" class="hidden">
@@ -284,7 +284,7 @@
                 <select id="wolfbros-target"></select>
             </div>
             <div id="wolfbros-idle-container" class="hidden">
-                <p style="color:#aaa; font-weight:bold;">無復仇刀行動，請上帝確認雙方相認/狀態後點擊閉眼。</p>
+                <p style="color:#aaa; font-weight:bold;">雙方相認後閉眼</p>
             </div>
             <button onclick="processWolfBros()">確認 請閉眼</button>
         </div>
@@ -402,12 +402,12 @@
             <h3 class="color-god">💼 黑市商人請睜眼</h3>
             <div id="merchant-night1-container">
                 <div id="d1-merchant-setup" class="setup-box">
-                    <p>選擇黑市商人號碼：</p>
+                    <p>黑市商人號碼</p>
                     <select id="merchant-id"></select>
                 </div>
-                <p>請選擇要給予禮物的玩家 (不可給自己)：</p>
+                <p>要給予禮物的玩家 (不可給自己)</p>
                 <select id="merchant-target"></select>
-                <p>請選擇給予的禮物：</p>
+                <p>選擇給予的禮物</p>
                 <select id="merchant-gift">
                     <option value="none" selected>不給予</option>
                     <option value="prophet">👁️ 預言家的查驗</option>
@@ -1729,7 +1729,7 @@ function learnMwSkill() {
             }
             
             document.getElementById('phase-wolfbros').classList.add('hidden');
-            prepareWolf();
+            proceedToNextPhase();
         }
 
         // --- 狼陣營 ---
@@ -1762,9 +1762,9 @@ function learnMwSkill() {
             
             let h3 = document.querySelector('#phase-wolf h3');
             if (gameConfig.wolfBros && state.wolfLittleBroRejoined) {
-                h3.innerHTML = "🐺 狼陣營請睜眼 <br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(狼弟已回歸狼群，請一同喚醒)</span>";
+                h3.innerHTML = "🐺 狼陣營請睜眼 <br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(狼弟回歸狼群 一同睜眼)</span>";
             } else if (gameConfig.wolfBros && !state.wolfBroDead) {
-                h3.innerHTML = "🐺 狼陣營請睜眼 <br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(狼兄請與一般狼群一同睜眼，狼弟不睜眼)</span>";
+                h3.innerHTML = "🐺 狼陣營請睜眼 <br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(狼兄與小狼睜眼 狼弟不睜眼)</span>";
             } else {
                 h3.innerHTML = "🐺 狼陣營請睜眼";
             }
@@ -2161,8 +2161,19 @@ function learnMwSkill() {
         function processMerchant() {
             let mId = parseInt(document.getElementById('merchant-id').value);
             if (isNaN(mId)) return alert("強制防呆：請在首夜設定中選擇「黑市商人」的號碼！");
+            
             let targetId = parseInt(document.getElementById('merchant-target').value);
+            let giftType = document.getElementById('merchant-gift').value; // 取得目前選的禮物
+
             if (targetId === mId) return alert("防呆機制啟動：黑市商人不能將禮物給自己！");
+
+            // 👇 新增這兩行防呆機制 👇
+            if (targetId !== 0 && giftType === 'none') {
+                return alert("既然選擇了給予對象，就必須選擇給予哪一種禮物！");
+            }
+            if (targetId === 0 && giftType !== 'none') {
+                return alert("既然選擇了給予禮物，就必須選擇給予對象！（或者請將禮物改為「不給予」）");
+            }
 
             takeSnapshot(); 
             
@@ -2172,7 +2183,7 @@ function learnMwSkill() {
             players.find(x => x.id === mId).isCorrupted = isCorrupted;
             
             nightData.merchantTarget = targetId;
-            nightData.merchantGift = document.getElementById('merchant-gift').value;
+            nightData.merchantGift = giftType; // 改用剛剛取好的變數
             UIManager.updateAliveStatus();
 
             document.getElementById('phase-merchant').classList.add('hidden');
