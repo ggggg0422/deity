@@ -13,23 +13,59 @@
             margin-bottom: 10px;
         }
 
-        .role-grid label {
-            flex: 0 0 calc(50% - 5px);
+/* 角色方塊容器與卡片樣式 */
+        .role-grid {
             display: flex;
-            align-items: center;
-            cursor: pointer;
-            font-size: 16px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .role-card {
+            flex: 0 0 calc(50% - 5px); /* 一行兩個 */
             box-sizing: border-box;
-        }
-
-        .role-grid label input {
-            width: 18px;
-            height: 18px;
-            margin-right: 8px;
+            padding: 12px 8px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            text-align: center;
             cursor: pointer;
-            accent-color: #333;
+            background: #333;
+            transition: all 0.15s ease;
+            user-select: none;
+            font-size: 16px;
+            color: #ccc;
         }
 
+        /* 神職選中時的發光樣式 (紫色) */
+        .role-card.god.selected {
+            border-color: var(--color-god);
+            background: rgba(200, 121, 255, 0.15);
+            color: white;
+            box-shadow: 0 0 8px rgba(200, 121, 255, 0.4);
+            font-weight: bold;
+        }
+
+        /* 平民選中時的發光樣式 (黃色) */
+        .role-card.villager.selected {
+            border-color: var(--color-villager);
+            background: rgba(255, 204, 0, 0.15);
+            color: white;
+            box-shadow: 0 0 8px rgba(255, 204, 0, 0.4);
+            font-weight: bold;
+        }
+
+        /* 狼人選中時的發光樣式 (紅色) */
+        .role-card.wolf.selected {
+            border-color: var(--color-wolf);
+            background: rgba(255, 77, 77, 0.15);
+            color: white;
+            box-shadow: 0 0 8px rgba(255, 77, 77, 0.4);
+            font-weight: bold;
+        }
+        .role-card:active {
+            transform: scale(0.95);
+        }
         @keyframes alertPulse {
             0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
@@ -189,35 +225,54 @@
         </div>
 
         <div style="background: var(--panel-bg); padding: 20px; border-radius: 8px; display: inline-block; text-align: center; max-width: 440px; box-sizing: border-box; width: 100%;">
-            <h3 style="margin-top: 0; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-god);">配置神職陣營</h3>
+<h3 style="margin-top: 0; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-god);">配置神職陣營</h3>
             <p style="font-size: 13px; color: #aaa; margin-top:-5px;">※ 勾選任意五個神職將自動觸發【百變狼王模式】</p>
-            <div class="role-grid">
-                <label><input type="checkbox" id="cfg-prophet" checked> 👁️ 預言家</label>
-                <label><input type="checkbox" id="cfg-psychic"> 🔮 通靈師</label>
-                <label><input type="checkbox" id="cfg-witch" checked> 🧙‍♀ 女巫</label>
-                <label><input type="checkbox" id="cfg-hunter" checked> 🏹 獵人</label>
-                <label><input type="checkbox" id="cfg-guard"> 🛡️ 守衛</label>
-                <label><input type="checkbox" id="cfg-merchant"> 💰 黑市商人</label>
-                <label><input type="checkbox" id="cfg-bear"> 🐻 熊</label>
-                <label><input type="checkbox" id="cfg-dreamer"> 💤 攝夢人</label>
-                <label><input type="checkbox" id="cfg-magician"> 🎩 魔術師</label>
-                <label><input type="checkbox" id="cfg-knight"> 🤺 騎士</label>
+            
+            <div style="display: none;">
+                <input type="checkbox" id="cfg-prophet" checked>
+                <input type="checkbox" id="cfg-psychic">
+                <input type="checkbox" id="cfg-witch" checked>
+                <input type="checkbox" id="cfg-hunter" checked>
+                <input type="checkbox" id="cfg-guard">
+                <input type="checkbox" id="cfg-merchant">
+                <input type="checkbox" id="cfg-bear">
+                <input type="checkbox" id="cfg-dreamer">
+                <input type="checkbox" id="cfg-magician">
+                <input type="checkbox" id="cfg-knight">
+                <input type="checkbox" id="cfg-shadow">
+                <input type="checkbox" id="cfg-bwk">
+                <input type="checkbox" id="cfg-wb">
+                <input type="checkbox" id="cfg-ek">
+                <input type="checkbox" id="cfg-mechwolf">
+                <input type="checkbox" id="cfg-wolfbros">
+            </div>
+
+ <div class="role-grid">
+                <div class="role-card god selected" id="card-prophet" onclick="toggleRole('prophet')">👁️ 預言家</div>
+                <div class="role-card god" id="card-psychic" onclick="toggleRole('psychic')">🔮 通靈師</div>
+                <div class="role-card god selected" id="card-witch" onclick="toggleRole('witch')">🧙‍♀ 女巫</div>
+                <div class="role-card god selected" id="card-hunter" onclick="toggleRole('hunter')">🏹 獵人</div>
+                <div class="role-card god" id="card-guard" onclick="toggleRole('guard')">🛡️ 守衛</div>
+                <div class="role-card god" id="card-merchant" onclick="toggleRole('merchant')">💰 黑市商人</div>
+                <div class="role-card god" id="card-bear" onclick="toggleRole('bear')">🐻 熊</div>
+                <div class="role-card god" id="card-dreamer" onclick="toggleRole('dreamer')">💤 攝夢人</div>
+                <div class="role-card god" id="card-magician" onclick="toggleRole('magician')">🎩 魔術師</div>
+                <div class="role-card god" id="card-knight" onclick="toggleRole('knight')">🤺 騎士</div>
             </div>
 
             <h3 style="margin-top: 15px; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-villager);">配置特殊平民</h3>
             <div class="role-grid">
-                <label><input type="checkbox" id="cfg-shadow"> 🏮 燈影</label>
+                <div class="role-card villager" id="card-shadow" onclick="toggleRole('shadow')">🏮 燈影</div>
             </div>
 
             <h3 style="margin-top: 15px; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-wolf);">配置特殊狼人</h3>
             <div class="role-grid">
-                <label><input type="checkbox" id="cfg-bwk"> 👑 黑狼王</label>
-                <label><input type="checkbox" id="cfg-wb"> 👠 狼美人</label>
-                <label><input type="checkbox" id="cfg-ek"> 💀 惡靈騎士</label>
-                <label><input type="checkbox" id="cfg-mechwolf"> ⚒️ 機械狼</label>
-                <label><input type="checkbox" id="cfg-wolfbros"> 👬 狼兄狼弟</label>
-            </div>
-            <br>
+                <div class="role-card wolf" id="card-bwk" onclick="toggleRole('bwk')">👑 黑狼王</div>
+                <div class="role-card wolf" id="card-wb" onclick="toggleRole('wb')">👠 狼美人</div>
+                <div class="role-card wolf" id="card-ek" onclick="toggleRole('ek')">💀 惡靈騎士</div>
+                <div class="role-card wolf" id="card-mechwolf" onclick="toggleRole('mechwolf')">⚒️ 機械狼</div>
+                <div class="role-card wolf" id="card-wolfbros" onclick="toggleRole('wolfbros')">👬 狼兄狼弟</div>
+            </div>            <br>
             <button onclick="startGame()" style="font-size: 20px; background-color: var(--btn-primary); padding: 14px 30px;">遊戲開始</button>
         </div>
     </div>
@@ -772,6 +827,36 @@
         window.onload = () => {
             bindSetupEvents();
         };
+// 處理角色卡片點擊與連動邏輯
+        function toggleRole(roleName) {
+            const card = document.getElementById('card-' + roleName);
+            const checkbox = document.getElementById('cfg-' + roleName);
+            
+            if (!card || !checkbox) return;
+
+            // 切換選取狀態
+            const isSelected = !card.classList.contains('selected');
+            
+            if (isSelected) {
+                card.classList.add('selected');
+                checkbox.checked = true;
+            } else {
+                card.classList.remove('selected');
+                checkbox.checked = false;
+            }
+
+            // 處理「燈影」與「預言家」的連動防呆邏輯
+            if (roleName === 'shadow' && isSelected) {
+                // 選了燈影，自動勾選預言家
+                document.getElementById('card-prophet').classList.add('selected');
+                document.getElementById('cfg-prophet').checked = true;
+            }
+            if (roleName === 'prophet' && !isSelected) {
+                // 取消預言家，自動取消燈影
+                document.getElementById('card-shadow').classList.remove('selected');
+                document.getElementById('cfg-shadow').checked = false;
+            }
+        }
 
         function bindSetupEvents() {
             const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id','knight-id', 'bear-id', 'prophet-id', 'shadow-id', 'psychic-id', 'dreamer-id', 'wb-id', 'magician-id', 'ek-id', 'guard-id', 'merchant-id', 'wolfbro-id', 'wolflittlebro-id', 'mw-id'];
@@ -783,12 +868,7 @@
                 }
             });
             
-            document.getElementById('cfg-shadow').addEventListener('change', function() {
-                if(this.checked) document.getElementById('cfg-prophet').checked = true;
-            });
-            document.getElementById('cfg-prophet').addEventListener('change', function() {
-                if(!this.checked && document.getElementById('cfg-shadow').checked) document.getElementById('cfg-shadow').checked = false;
-            });
+    
 
             document.querySelectorAll('input[name="witch-action"]').forEach(radio => {
                 radio.addEventListener('change', function() {
