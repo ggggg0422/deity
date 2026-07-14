@@ -520,7 +520,7 @@
                             <div class="potion-box" id="box-poison">
                                 <span style="font-size:20px; font-weight:bold;">🧪 使用毒藥毒</span> 
                                 <select id="witch-target" disabled style="margin-left: 10px; padding: 6px; font-size:18px; border-radius:4px; min-width:100px;"></select>
-                                <span id="poison-status-msg" class="hidden" style="color:var(--btn-danger); font-weight:bold; margin-left:8px; font-size: 16px;">(已用盡)</span>
+                                <span id="poison-status-msg" class="hidden" style="color:var(--btn-danger); font-weight:bold; margin-left:8px; font-size: 16px;">(已使用)</span>
                             </div>
                         </label>
 
@@ -987,12 +987,12 @@ function applyCorruptedColor(phaseId, roleName) {
                 // 改變顏色
                 h3.className = isCorrupted ? 'color-wolf' : 'color-god';
                 
-                // 處理 (已變身成百變狼王) 的括弧文字
+                // 處理 (變身成百變狼王) 的括弧文字
                 let noteSpan = h3.querySelector('.corrupted-note');
                 if (isCorrupted) {
-                    // 如果被腐化且還沒有加過標籤，就加上去
+                    // 如果被腐化且還沒有加過標籤，就加上去（顏色改為 var(--color-wolf) 紅色）
                     if (!noteSpan) {
-                        h3.innerHTML += `<br><span class="corrupted-note" style="font-size:16px; color:#aaa; font-weight:normal;">(變身成百變狼王)</span>`;
+                        h3.innerHTML += `<br><span class="corrupted-note" style="font-size:16px; color:var(--color-wolf); font-weight:bold;">(變身成百變狼王)</span>`;
                     }
                 } else {
                     // 如果沒有被腐化但有標籤 (例如重開局時)，就移除它
@@ -1001,8 +1001,7 @@ function applyCorruptedColor(phaseId, roleName) {
                     }
                 }
             }
-        }
-        function applyMagic(id) {
+        }        function applyMagic(id) {
             if (!id || id === 0) return 0;
             if (gameConfig.magician && nightData.magicianSwap.t1 !== 0) {
                 if (id === nightData.magicianSwap.t1) return nightData.magicianSwap.t2;
@@ -1911,7 +1910,7 @@ if (['shoot', 'vote'].includes(currentPhase)) {
             else document.getElementById('d1-guard-setup').classList.add('hidden');
 
             if (day > 1 && guard && !guard.alive) {
-                populateAliveSelect('guard-target', true, "已死，無動作", false, null);
+                populateAliveSelect('guard-target', true, "已經死亡", false, null);
                 document.getElementById('guard-target').disabled = true;
             } else {
                 let disabledList = historyData.lastGuardProtect !== 0 ? [historyData.lastGuardProtect] : [];
@@ -2226,7 +2225,7 @@ document.getElementById('radio-none').checked = true;
                         </div>`;
                     document.getElementById('radio-heal').disabled = true;
                     boxHeal.classList.add('disabled');
-                    healText.innerHTML = "<span style='font-size:18px;'>已用盡</span>";
+                    healText.innerHTML = "<span style='font-size:18px;'>已使用</span>";
                     healHidden.value = "0";
                 }
             }            autoSave();
@@ -2302,7 +2301,7 @@ document.getElementById('radio-none').checked = true;
             }
 
             if (day > 1 && dreamer && !dreamer.alive) {
-                populateAliveSelect('dreamer-target', true, "已死，無動作", false, null);
+                populateAliveSelect('dreamer-target', true, "已經死亡", false, null);
                 document.getElementById('dreamer-target').disabled = true;
             } else {
                 updateDreamerTarget();
@@ -2361,8 +2360,8 @@ document.getElementById('radio-none').checked = true;
             else document.getElementById('d1-magician-setup').classList.add('hidden');
 
             if (day > 1 && mag && !mag.alive) {
-                populateAliveSelect('magician-target1', true, "已死，無動作");
-                populateAliveSelect('magician-target2', true, "已死，無動作");
+                populateAliveSelect('magician-target1', true, "已經死亡");
+                populateAliveSelect('magician-target2', true, "已經死亡");
                 document.getElementById('magician-target1').disabled = true;
                 document.getElementById('magician-target2').disabled = true;
             } else {
