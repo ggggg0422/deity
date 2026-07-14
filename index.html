@@ -691,11 +691,14 @@
                 <button onclick="processExplode()" style="background-color: var(--color-wolf); color: white;">確認自爆 進入天黑</button>
             </div>
 
-            <div id="knight-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed var(--color-god); padding-top: 15px; text-align: center;">
-                <h3 style="color:var(--color-god); margin-top:0;">🤺 騎士發動決鬥</h3>
-                <p style="font-size:14px; color:#aaa; margin-top:-10px;">(白天隨時可發動，每局限一次)</p>
-                <select id="knight-target"></select>
-                <button onclick="processKnightDuel()" style="background-color: var(--color-god); color: white;">確認決鬥對象</button>
+           <div id="knight-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed var(--color-god); padding-top: 15px; text-align: center;">
+                <div id="knight-action-area">
+                    <h3 style="color:var(--color-god); margin-top:0;">🤺 騎士發動決鬥</h3>
+                    <p style="font-size:14px; color:#aaa; margin-top:-10px;">(白天隨時可發動，每局限一次)</p>
+                    <select id="knight-target"></select>
+                    <button onclick="processKnightDuel()" style="background-color: var(--color-god); color: white;">確認決鬥對象</button>
+                </div>
+                <div id="knight-result-area" class="hidden"></div>
             </div>
 
             <!-- 投票區塊 -->
@@ -1024,12 +1027,17 @@
             let isNight = ['shapeshifter','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','shadow','psychic','gift','hunter','mw-result', 'knight'].includes(currentPhase);
             UIManager.setText('day-counter', `第 ${day} 天 ${isNight ? '夜晚' : '白天'}`);
             
-            if (['shoot', 'vote'].includes(currentPhase)) {
+if (['shoot', 'vote'].includes(currentPhase)) {
                 UIManager.show('phase-morning');
                 UIManager.setHTML('morning-result', state.morningResultHtml || "");
                 UIManager.setHTML('bear-result', state.bearResultHtml || "");
-            } else {
-                UIManager.hide('phase-morning');
+                
+                // 確保從騎士決鬥復原時，被隱藏的上方標題能正常顯示
+                let h2 = document.querySelector('#phase-morning h2');
+                if (h2) h2.classList.remove('hidden');
+                document.getElementById('morning-result').classList.remove('hidden');
+                document.getElementById('bear-result').classList.remove('hidden');
+            } else {                UIManager.hide('phase-morning');
             }
 
             if (currentPhase === 'mechwolf') prepareMechWolf();
@@ -1062,9 +1070,11 @@
                 document.getElementById('explode-section').classList.remove('hidden');
                 let knightPlayer = players.find(p => p.role === '騎士');
                 if (gameConfig.knight && knightPlayer && knightPlayer.alive && !state.knightSkillUsed) {
-                    document.getElementById('knight-section').classList.remove('hidden');
-                    populateAliveSelect('knight-target', false, "", true, [knightPlayer.id]);
-                } else {
+                        document.getElementById('knight-section').classList.remove('hidden');
+                        document.getElementById('knight-action-area').classList.remove('hidden');
+                        document.getElementById('knight-result-area').classList.add('hidden');
+                        populateAliveSelect('knight-target', false, "", true, [knightPlayer.id]);
+                    } else {
                     let el = document.getElementById('knight-section');
                     if (el) el.classList.add('hidden');
                 }
@@ -1421,6 +1431,8 @@
                     let knightPlayer = players.find(p => p.role === '騎士');
                     if (gameConfig.knight && knightPlayer && knightPlayer.alive && !state.knightSkillUsed) {
                         document.getElementById('knight-section').classList.remove('hidden');
+                        document.getElementById('knight-action-area').classList.remove('hidden');
+                        document.getElementById('knight-result-area').classList.add('hidden');
                         populateAliveSelect('knight-target', false, "", true, [knightPlayer.id]);
                     } else {
                         let el = document.getElementById('knight-section');
@@ -3347,9 +3359,9 @@
             proceedToNextPhase();
         }
 
-        function processKnightDuel() {
+function processKnightDuel() {
             let targetId = parseInt(document.getElementById('knight-target').value);
-            if (isNaN(targetId) || targetId === 0) return alert("選擇決鬥對象");
+            if (isNaN(targetId) || targetId === 0) return alert("請選擇決鬥對象");
 
             takeSnapshot();
             state.knightSkillUsed = true; 
@@ -3360,15 +3372,32 @@
             
             let newlyDead = [];
             let causes = {};
+            let resultHtml = "";
             
             if (isTargetWolf) {
                 registerDeath(targetId, 'knight-duel', newlyDead, causes);
                 gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">🤺 <span style="color:var(--color-god); font-weight:bold;">騎士發動決鬥！</span>對象 ${getPlayerStr(targetId, false)} 是<span style="color:var(--color-wolf); font-weight:bold;">狼人陣營</span>，直接死亡且無法發動技能！跳過投票進入天黑。</div>`;
                 state.hasVotedToday = true; 
+
+                // 決鬥成功標題金色，「狼人」紅字
+                resultHtml = `
+                    <h3 style="color:var(--color-gold); margin-top:0;">🎇決鬥成功</h3>
+                    <p style="font-size:20px; margin: 10px 0;"><strong>${targetId} 號是 <span style="color:var(--color-wolf);">狼人</span></strong></p>
+                    <p style="color:#aaa; font-size:14px;">(該玩家直接出局，跳過投票環節)</p>
+                    <button onclick="finishKnightDuel()" style="background-color: var(--color-wolf); color: white;">確認並進入天黑</button>
+                `;
             } else {
                 registerDeath(knight.id, 'knight-duel', newlyDead, causes);
                 state.knightConfirmedGoodId = targetId;
                 gameHistory[gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">🤺 <span style="color:var(--color-god); font-weight:bold;">騎士發動決鬥！</span>對象 ${getPlayerStr(targetId, false)} 是<span style="color:var(--color-villager); font-weight:bold;">好人陣營</span>，騎士以死謝罪！</div>`;
+
+                // 決鬥失敗標題紅色，「好人」金字
+                resultHtml = `
+                    <h3 style="color:var(--btn-danger); margin-top:0;">💢決鬥失敗</h3>
+                    <p style="font-size:20px; margin: 10px 0;"><strong>${targetId} 號是 <span style="color:var(--color-gold);">好人</span></strong></p>
+                    <p style="color:#aaa; font-size:14px;">(騎士以死謝罪！)</p>
+                    <button onclick="finishKnightDuel()" style="background-color: var(--btn-primary); color: white;">確認並繼續投票</button>
+                `;
             }
             
             newlyDead.forEach(id => {
@@ -3385,17 +3414,35 @@
             gameHistory[gameHistory.length-1] += `</div>`; 
 
             UIManager.updateAliveStatus();
+
+            // 隱藏操作區，顯示結果區
+            document.getElementById('knight-action-area').classList.add('hidden');
+            let resultArea = document.getElementById('knight-result-area');
+            resultArea.innerHTML = resultHtml;
+            resultArea.classList.remove('hidden');
+            
+            // 隱藏上方的天亮與死傷資訊、以及投票區，讓畫面完全乾淨專注於決鬥結果
+            let h2 = document.querySelector('#phase-morning h2');
+            if (h2) h2.classList.add('hidden');
+            document.getElementById('morning-result').classList.add('hidden');
+            document.getElementById('bear-result').classList.add('hidden');
+            document.getElementById('vote-section').classList.add('hidden');
+            document.getElementById('explode-section').classList.add('hidden');
+            
+            autoSave();
+        }
+        // 按下確認後才進入下一階段，並還原上方資訊
+        function finishKnightDuel() {
             document.getElementById('knight-section').classList.add('hidden');
             
-            if (state.hasVotedToday) {
-                document.getElementById('vote-section').classList.add('hidden');
-                document.getElementById('explode-section').classList.add('hidden');
-            }
-            
-            processNextAction();
-        }
+            // 恢復顯示上方的天亮資訊
+            let h2 = document.querySelector('#phase-morning h2');
+            if (h2) h2.classList.remove('hidden');
+            document.getElementById('morning-result').classList.remove('hidden');
+            document.getElementById('bear-result').classList.remove('hidden');
 
-        /* ========== 開槍與投票 ========== */
+            processNextAction();
+        }        /* ========== 開槍與投票 ========== */
         function submitShoot() {
             takeSnapshot(); 
 
