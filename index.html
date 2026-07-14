@@ -510,7 +510,7 @@
                         <label style="cursor: pointer; margin:0; width: 100%;">
                             <input type="radio" name="witch-action" value="heal" id="radio-heal" class="hidden"> 
                             <div class="potion-box" id="box-heal">
-                                <span style="font-size:20px; font-weight:bold;">💉 使用解藥救 <span id="witch-heal-text" style="color:var(--color-god); font-size:24px;">?</span> 號</span>
+                                <span style="font-size:20px; font-weight:white;">💉 使用解藥救 <span id="witch-heal-text" style="color:var(--color-god); font-size:24px;">?</span> 號</span>
                                 <input type="hidden" id="witch-heal-target" value="0">
                             </div>
                         </label>
@@ -979,13 +979,29 @@
             }
         }
 
-        function applyCorruptedColor(phaseId, roleName) {
+function applyCorruptedColor(phaseId, roleName) {
             const h3 = document.querySelector(`#${phaseId} h3`);
             if (h3) {
-                h3.className = (gameConfig.shapeShifterRole === roleName) ? 'color-wolf' : 'color-god';
+                let isCorrupted = (gameConfig.shapeShifterRole === roleName);
+                
+                // 改變顏色
+                h3.className = isCorrupted ? 'color-wolf' : 'color-god';
+                
+                // 處理 (已變身成百變狼王) 的括弧文字
+                let noteSpan = h3.querySelector('.corrupted-note');
+                if (isCorrupted) {
+                    // 如果被腐化且還沒有加過標籤，就加上去
+                    if (!noteSpan) {
+                        h3.innerHTML += `<br><span class="corrupted-note" style="font-size:16px; color:#aaa; font-weight:normal;">(變身成百變狼王)</span>`;
+                    }
+                } else {
+                    // 如果沒有被腐化但有標籤 (例如重開局時)，就移除它
+                    if (noteSpan) {
+                        noteSpan.remove();
+                    }
+                }
             }
         }
-
         function applyMagic(id) {
             if (!id || id === 0) return 0;
             if (gameConfig.magician && nightData.magicianSwap.t1 !== 0) {
@@ -2168,11 +2184,11 @@ document.getElementById('radio-none').checked = true;
 
                 if (potions.heal) {
                     let victimText = victims.length === 0 ? '無人被殺' : victims.join(' 號 與 ') + ' 號';
-document.getElementById('witch-info').innerHTML = `
+                  document.getElementById('witch-info').innerHTML = `
                         <div class="witch-alert-active">
-                            今晚被殺的是 <span style="color:var(--color-wolf); font-size:24px; font-weight:bold;">${victimText}</span>
-                        </div>`;                    
-                    if (victims.length === 0) {
+                            今晚被殺的是 <span style="color:white; font-size:24px; font-weight:bold;">${victimText}</span>
+                        </div>`;
+                     if (victims.length === 0) {
                         document.getElementById('radio-heal').disabled = true;
                         boxHeal.classList.add('disabled');
                         healText.innerHTML = "<span style='font-size:18px;'>無人</span>";
