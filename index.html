@@ -492,7 +492,7 @@
 
         <!-- 女巫階段 -->
         <div id="phase-witch" class="action-row hidden">
-            <h3 class="color-god">🧪 女巫請睜眼</h3>
+            <h3 class="color-god">🧙‍♀️ 女巫請睜眼</h3>
             
             <div id="d1-witch-setup" class="setup-box hidden">
                 <p style="margin: 0;">女巫</p>
@@ -2168,12 +2168,10 @@ document.getElementById('radio-none').checked = true;
 
                 if (potions.heal) {
                     let victimText = victims.length === 0 ? '無人被殺' : victims.join(' 號 與 ') + ' 號';
-                    document.getElementById('witch-info').innerHTML = `
+document.getElementById('witch-info').innerHTML = `
                         <div class="witch-alert-active">
-                            👉 <strong>上帝向女巫比出手勢</strong><br>
                             今晚被殺的是 <span style="color:var(--color-wolf); font-size:24px; font-weight:bold;">${victimText}</span>
-                        </div>`;
-                    
+                        </div>`;                    
                     if (victims.length === 0) {
                         document.getElementById('radio-heal').disabled = true;
                         boxHeal.classList.add('disabled');
