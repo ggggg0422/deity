@@ -66,6 +66,46 @@
         .role-card:active {
             transform: scale(0.95);
         }
+        /* 藥水按鈕框框樣式 */
+        .potion-box {
+            padding: 12px 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #555;
+            background: #2a2a2a;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+        }
+        
+        /* 藥水用盡時的禁用樣式 */
+        .potion-box.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(100%);
+        }
+        
+        /* 選中時的樣式：解藥(綠) / 毒藥(紅) / 不使用(灰) */
+        input[value="heal"]:checked + .potion-box {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: var(--btn-success);
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+            color: white;
+        }
+        input[value="poison"]:checked + .potion-box {
+            background: rgba(255, 77, 77, 0.2);
+            border-color: var(--btn-danger);
+            box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
+            color: white;
+        }
+        input[value="none"]:checked + .potion-box {
+            background: #444;
+            border-color: #aaa;
+            color: white;
+        }
+
         @keyframes alertPulse {
             0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
@@ -466,24 +506,31 @@
                 
                 <div id="witch-action-controls">
                     <div id="witch-info"></div>
-                    <div id="witch-actions" style="margin-top: 15px; background: #222; padding: 15px; border-radius: 6px; display: flex; flex-direction: column; align-items: center;">
-                        <label style="margin-bottom: 12px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                            <input type="radio" name="witch-action" value="heal" id="radio-heal" style="width:20px; height:20px; margin-right: 8px;"> 
-                            使用解藥 救 ➔ <select id="witch-heal-target" style="margin: 0 0 0 10px; padding: 8px; min-width: 120px;"></select>
+<div id="witch-actions" style="margin-top: 15px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto;">
+                        <label style="cursor: pointer; margin:0; width: 100%;">
+                            <input type="radio" name="witch-action" value="heal" id="radio-heal" class="hidden"> 
+                            <div class="potion-box" id="box-heal">
+                                <span style="font-size:20px; font-weight:bold;">💉 使用解藥救 <span id="witch-heal-text" style="color:var(--color-god); font-size:24px;">?</span> 號</span>
+                                <input type="hidden" id="witch-heal-target" value="0">
+                            </div>
                         </label>
                         
-                        <label id="label-poison" style="margin-bottom: 12px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                            <input type="radio" name="witch-action" value="poison" id="radio-poison" style="width:20px; height:20px; margin-right: 8px;"> 
-                            使用毒藥 ➔ <select id="witch-target" disabled style="margin: 0 0 0 10px; padding: 8px; min-width: 120px;"></select>
-                            <span id="poison-status-msg" class="hidden" style="color:var(--color-wolf); font-weight:bold; margin-left:8px; font-size: 16px;">(已使用)</span>
+                        <label style="cursor: pointer; margin:0; width: 100%;">
+                            <input type="radio" name="witch-action" value="poison" id="radio-poison" class="hidden"> 
+                            <div class="potion-box" id="box-poison">
+                                <span style="font-size:20px; font-weight:bold;">🧪 使用毒藥毒</span> 
+                                <select id="witch-target" disabled style="margin-left: 10px; padding: 6px; font-size:18px; border-radius:4px; min-width:100px;"></select>
+                                <span id="poison-status-msg" class="hidden" style="color:var(--btn-danger); font-weight:bold; margin-left:8px; font-size: 16px;">(已用盡)</span>
+                            </div>
                         </label>
 
-                        <label style="font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                            <input type="radio" name="witch-action" value="none" id="radio-none" checked style="width:20px; height:20px; margin-right: 8px;"> 
-                            不使用藥物
+                        <label style="cursor: pointer; margin:0; width: 100%;">
+                            <input type="radio" name="witch-action" value="none" id="radio-none" checked class="hidden"> 
+                            <div class="potion-box" id="box-none">
+                                <span style="font-size:20px; font-weight:bold;">🙅 不使用藥物</span>
+                            </div>
                         </label>
-                    </div>
-                </div>
+                    </div>                </div>
             </div>
             <button onclick="processWitch()">確認 請閉眼</button>
         </div>
@@ -2089,20 +2136,21 @@ if (['shoot', 'vote'].includes(currentPhase)) {
             if (day === 1) document.getElementById('d1-witch-setup').classList.remove('hidden');
             else document.getElementById('d1-witch-setup').classList.add('hidden');
 
-            document.getElementById('radio-none').checked = true;
+document.getElementById('radio-none').checked = true;
             const poisonSelect = document.getElementById('witch-target');
             populateAliveSelect('witch-target', false, "", true);
             
+            // 處理毒藥狀態與 UI 框
             if (!potions.poison) {
                 document.getElementById('radio-poison').disabled = true;
+                document.getElementById('box-poison').classList.add('disabled');
                 if(poisonSelect) poisonSelect.disabled = true;
                 document.getElementById('poison-status-msg').classList.remove('hidden');
-                document.getElementById('label-poison').style.color = '#888';
             } else {
                 document.getElementById('radio-poison').disabled = false;
-                if(poisonSelect) poisonSelect.disabled = true; 
+                document.getElementById('box-poison').classList.remove('disabled');
+                if(poisonSelect) poisonSelect.disabled = true; // 預設下拉選單禁用，點擊紅框後啟動
                 document.getElementById('poison-status-msg').classList.add('hidden');
-                document.getElementById('label-poison').style.color = 'inherit';
             }
 
             let witchSafeFromWolves = !victims.includes(witch?.id);
@@ -2114,6 +2162,10 @@ if (['shoot', 'vote'].includes(currentPhase)) {
                 document.getElementById('witch-dead-msg').classList.add('hidden');
                 document.getElementById('witch-action-controls').classList.remove('hidden');
 
+                let boxHeal = document.getElementById('box-heal');
+                let healText = document.getElementById('witch-heal-text');
+                let healHidden = document.getElementById('witch-heal-target');
+
                 if (potions.heal) {
                     let victimText = victims.length === 0 ? '無人被殺' : victims.join(' 號 與 ') + ' 號';
                     document.getElementById('witch-info').innerHTML = `
@@ -2122,26 +2174,34 @@ if (['shoot', 'vote'].includes(currentPhase)) {
                             今晚被殺的是 <span style="color:var(--color-wolf); font-size:24px; font-weight:bold;">${victimText}</span>
                         </div>`;
                     
-                    let healSelect = document.getElementById('witch-heal-target');
-                    healSelect.innerHTML = "";
                     if (victims.length === 0) {
                         document.getElementById('radio-heal').disabled = true;
-                        healSelect.disabled = true;
-                        healSelect.innerHTML = `<option value="0">無人被殺</option>`;
+                        boxHeal.classList.add('disabled');
+                        healText.innerHTML = "<span style='font-size:18px;'>無人</span>";
+                        healHidden.value = "0";
                     } else {
                         let cannotSelfHeal = (!isCorruptedWitch && playerCount > 9 && victims.includes(wId) && victims.length === 1);
                         
                         if (cannotSelfHeal) {
                             document.getElementById('radio-heal').disabled = true;
-                            healSelect.disabled = true;
-                            healSelect.innerHTML = `<option value="0">不可自救</option>`;
+                            boxHeal.classList.add('disabled');
+                            healText.innerHTML = "<span style='font-size:18px;'>不可自救</span>";
+                            healHidden.value = "0";
                         } else {
                             document.getElementById('radio-heal').disabled = false;
-                            healSelect.disabled = false;
-                            victims.forEach(v => {
-                                if (!isCorruptedWitch && playerCount > 9 && v === wId) return; 
-                                healSelect.innerHTML += `<option value="${v}">${v} 號</option>`;
-                            });
+                            boxHeal.classList.remove('disabled');
+                            
+                            // 濾掉不可自救的情況，抓出要顯示的號碼
+                            let validVictims = victims.filter(v => isCorruptedWitch || playerCount <= 9 || v !== wId);
+                            if (validVictims.length > 0) {
+                                healText.innerText = validVictims.join(' / ');
+                                healHidden.value = validVictims[0]; // 設定隱藏欄位的值供 processWitch 使用
+                            } else {
+                                document.getElementById('radio-heal').disabled = true;
+                                boxHeal.classList.add('disabled');
+                                healText.innerHTML = "<span style='font-size:18px;'>不可自救</span>";
+                                healHidden.value = "0";
+                            }
                         }
                     }
                 } else {
@@ -2151,12 +2211,11 @@ if (['shoot', 'vote'].includes(currentPhase)) {
                             <strong>上帝不給手勢</strong>不要告知死訊
                         </div>`;
                     document.getElementById('radio-heal').disabled = true;
-                    let healSelect = document.getElementById('witch-heal-target');
-                    healSelect.disabled = true;
-                    healSelect.innerHTML = `<option value="0">無</option>`;
+                    boxHeal.classList.add('disabled');
+                    healText.innerHTML = "<span style='font-size:18px;'>已用盡</span>";
+                    healHidden.value = "0";
                 }
-            }
-            autoSave();
+            }            autoSave();
         }
 
         function processWitch() {
