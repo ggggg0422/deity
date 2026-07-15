@@ -425,7 +425,7 @@
 
         <!-- 新增：夢魘階段 -->
         <div id="phase-nightmare" class="action-row hidden">
-            <h3 class="color-wolf">🌑 夢魘請睜眼</h3>
+            <h3 class="color-wolf">👻 夢魘請睜眼</h3>
             <div id="d1-nightmare-setup" class="setup-box hidden">
                 <p>夢魘號碼</p>
                 <select id="nightmare-id"></select>
@@ -607,7 +607,7 @@
                         <label style="cursor: pointer; margin:0; width: 100%;">
                             <input type="radio" name="witch-action" value="heal" id="radio-heal" class="hidden"> 
                             <div class="potion-box" id="box-heal">
-                                <span style="font-size:20px; font-weight:white;">💉 使用解藥救 <span id="witch-heal-text" style="color:var(--color-god); font-size:24px;">?</span> 號</span>
+<span style="font-size:20px; font-weight:bold; color:white;">💉 使用解藥救 <span id="witch-heal-text" style="color:var(--color-god); font-size:24px;">?</span> 號</span>
                                 <input type="hidden" id="witch-heal-target" value="0">
                             </div>
                         </label>
@@ -1088,6 +1088,7 @@
             shootQueue: [],
             gameHistory: [],
             snapshots: [],
+            initialDraft: {},
 
             init(playerCount, newConfig) {
                 this.playerCount = playerCount;
@@ -1106,6 +1107,7 @@
                 this.resetNightData();
                 this.historyData = { lastDreamTarget: 0, magicianSwapped: [], lastGuardProtect: 0, lastNightmareTarget: 0 };
                 this.potions = { heal: true, poison: true };
+                this.initialDraft = {};
                 this.flags = { 
                     charmedPlayer: 0, morningResultHtml: "", bearResultHtml: "", ekReflectUsed: false, hasVotedToday: false,
                     wolfBroDead: false, wolfLittleBroHasRevenge: false, wolfLittleBroRejoined: false,
@@ -1129,7 +1131,8 @@
                     playerCount: this.playerCount, players: this.players, day: this.day, 
                     potions: this.potions, nightData: this.nightData, historyData: this.historyData, 
                     flags: this.flags, gameHistory: this.gameHistory, shootQueue: this.shootQueue, 
-                    currentPhase: this.currentPhase, config: this.config, nightQueue: this.nightQueue
+                    currentPhase: this.currentPhase, config: this.config, nightQueue: this.nightQueue,
+                    initialDraft: this.initialDraft
                 });
                 this.snapshots.push(snap);
                 if (this.snapshots.length > 30) this.snapshots.shift(); 
@@ -1322,25 +1325,17 @@ if (GameState.currentPhase === 'nightmare' && this.id === 'nightmare-id') prepar
             return id;
         }
 
-        function getTrueRole(id) {
+            function getTrueRole(id) {
+            // 1. 先確認正式的 players 陣列中，是否已經寫入確定的身分
             let p = GameState.players.find(x => x.id === id);
             if (p && p.role !== '?') return p.role; 
             
-            const roles = [
-                {id: 'prophet-id', role: '預言家'}, {id: 'shadow-id', role: '燈影'}, {id: 'witch-id', role: '女巫'}, {id: 'hunter-id', role: '獵人'},{id: 'knight-id', role: '騎士'},
-                {id: 'bear-id', role: '熊'}, {id: 'guard-id', role: '守衛'}, {id: 'merchant-id', role: '黑市商人'},
-                {id: 'dreamer-id', role: '攝夢人'}, {id: 'magician-id', role: '魔術師'}, {id: 'psychic-id', role: '通靈師'},
-                {id: 'bwk-id', role: '黑狼王'}, {id: 'wb-id', role: '狼美人'}, {id: 'ek-id', role: '惡靈騎士'},
-                {id: 'wolfbro-id', role: '狼兄'}, {id: 'wolflittlebro-id', role: '狼弟'}, {id: 'mw-id', role: '機械狼'}, {id: 'nightmare-id', role: '夢魘'}
-            ];
-            for (let r of roles) {
-                let el = document.getElementById(r.id);
-                if (el && parseInt(el.value) === id) return r.role;
+            // 2. 如果狀態還是 '?' (代表第一天夜晚該角色還沒被上帝確認到)，則查 initialDraft 暫存表
+            if (GameState.initialDraft && GameState.initialDraft[id]) {
+                return GameState.initialDraft[id];
             }
-            for (let i=1; i<=4; i++) {
-                let el = document.getElementById('w'+i);
-                if (el && parseInt(el.value) === id) return '狼人';
-            }
+            
+            // 3. 都沒有配對到，就是平民
             return '平民';
         }
 
@@ -1550,6 +1545,37 @@ if (GameState.currentPhase === 'nightmare' && this.id === 'nightmare-id') prepar
             document.getElementById('game-screen').classList.remove('hidden');
             document.getElementById('btn-undo').classList.add('hidden');
             localStorage.removeItem('werewolf_snapshots');
+
+            GameState.initialDraft = {};
+            const rolesMapping = [
+                { id: 'prophet-id', role: '預言家' }, { id: 'shadow-id', role: '燈影' },
+                { id: 'witch-id', role: '女巫' }, { id: 'hunter-id', role: '獵人' },
+                { id: 'knight-id', role: '騎士' }, { id: 'bear-id', role: '熊' },
+                { id: 'guard-id', role: '守衛' }, { id: 'merchant-id', role: '黑市商人' },
+                { id: 'dreamer-id', role: '攝夢人' }, { id: 'magician-id', role: '魔術師' },
+                { id: 'psychic-id', role: '通靈師' }, { id: 'bwk-id', role: '黑狼王' },
+                { id: 'wb-id', role: '狼美人' }, { id: 'ek-id', role: '惡靈騎士' },
+                { id: 'wolfbro-id', role: '狼兄' }, { id: 'wolflittlebro-id', role: '狼弟' },
+                { id: 'mw-id', role: '機械狼' }, { id: 'nightmare-id', role: '夢魘' }
+            ];
+
+            // 存入特殊角色
+            rolesMapping.forEach(item => {
+                let el = document.getElementById(item.id);
+                if (el && el.value !== "") {
+                    let val = parseInt(el.value);
+                    if (!isNaN(val)) GameState.initialDraft[val] = item.role;
+                }
+            });
+
+            // 存入普通狼人
+            for (let i = 1; i <= 4; i++) {
+                let el = document.getElementById('w' + i);
+                if (el && el.style.display !== 'none' && el.value !== "") {
+                    let val = parseInt(el.value);
+                    if (!isNaN(val)) GameState.initialDraft[val] = '狼人';
+                }
+            }
 
             updateSetupSelects();
             startNight(false);
@@ -4057,7 +4083,6 @@ if (GameState.config.dreamer) GameState.historyData.lastDreamTarget = actuals.dr
             if (GameState.config.guard) GameState.historyData.lastGuardProtect = actuals.guard; 
             // 【修正 3】記錄昨晚夢魘恐懼的目標，以供明晚禁用
             if (GameState.config.nightmare) GameState.historyData.lastNightmareTarget = actuals.nightmare; 
-if (GameState.config.guard) GameState.historyData.lastGuardProtect = actuals.guard; 
 if (GameState.config.magician && GameState.nightData.magicianSwap.t1 !== 0) {
     GameState.historyData.magicianSwapped.push(GameState.nightData.magicianSwap.t1, GameState.nightData.magicianSwap.t2);
 }
