@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>狼人殺上帝專用小幫手 (百變狼王 擴充版)</title>
+    <title>狼人殺上帝專用小幫手 (百變狼王 + 夢魘 擴充版)</title>
     <style>
         .role-grid {
             display: flex;
@@ -282,7 +282,7 @@
 
 
 /* =========================================
-           玩家網格選單樣式 (取代 Select)
+            玩家網格選單樣式 (取代 Select)
         ========================================= */
         .player-grid-container {
             display: flex;
@@ -337,6 +337,11 @@
         }
         .player-grid-btn .num { font-size: 22px; font-weight: bold; line-height: 1.1; }
         .player-grid-btn .role-text { font-size: 13px; margin-top: 4px; }
+        
+        .fear-alert {
+            background:#442222; border:1px solid var(--color-wolf); padding:10px; border-radius:6px; margin-bottom:15px; text-align:center;
+            animation: alertPulse 2s infinite;
+        }
     </style>
 </head>
 <body>
@@ -376,6 +381,7 @@
                 <input type="checkbox" id="cfg-ek">
                 <input type="checkbox" id="cfg-mechwolf">
                 <input type="checkbox" id="cfg-wolfbros">
+                <input type="checkbox" id="cfg-nightmare">
             </div>
 
             <div class="role-grid">
@@ -403,6 +409,7 @@
                 <div class="role-card wolf" id="card-ek" onclick="toggleRole('ek')">💀 惡靈騎士</div>
                 <div class="role-card wolf" id="card-mechwolf" onclick="toggleRole('mechwolf')">⚒️ 機械狼</div>
                 <div class="role-card wolf" id="card-wolfbros" onclick="toggleRole('wolfbros')">👬 狼兄狼弟</div>
+                <div class="role-card wolf" id="card-nightmare" onclick="toggleRole('nightmare')">🌑 夢魘</div>
             </div>            <br>
             <button onclick="startGame()" style="font-size: 20px; background-color: var(--btn-primary); padding: 14px 30px;">遊戲開始</button>
         </div>
@@ -418,6 +425,18 @@
         <div id="alive-status" style="margin-bottom: 20px; text-align: center;"></div>
         <div id="early-win-banner" class="hidden early-win-btn" onclick="forceProcessMorning()">
             🚨 系統預測目前死傷已達成屠邊或全滅！<br><span style="font-size:14px; font-weight:normal;">(若後續已無神職可改變死傷，請點此跳過夜晚，直接天亮結算)</span>
+        </div>
+
+        <!-- 新增：夢魘階段 -->
+        <div id="phase-nightmare" class="action-row hidden">
+            <h3 class="color-wolf">🌑 夢魘請睜眼</h3>
+            <div id="d1-nightmare-setup" class="setup-box hidden">
+                <p>夢魘號碼</p>
+                <select id="nightmare-id"></select>
+            </div>
+            <p>請選擇要恐懼的玩家 (當晚無法使用技能)：</p>
+            <select id="nightmare-target"></select>
+            <button onclick="processNightmare()">確認 請閉眼</button>
         </div>
 
         <div id="phase-mechwolf" class="action-row hidden">
@@ -835,9 +854,9 @@
         <button onclick="exportLog()" style="background-color: var(--btn-primary); margin-bottom: 10px;">📋 複製純文字賽報</button>
         <button onclick="clearSaveAndReload()" style="background-color: var(--btn-danger);">重新開始新局 (清除紀錄)</button>
     </div>
+    
     <script>
-
-// =========================================
+        // =========================================
         // 夜晚傷害結算池 (Damage Pool)
         // =========================================
         const DamagePool = {
@@ -850,22 +869,18 @@
                 this.extraLog = "";      // 特殊事件賽報
             },
 
-            // 將傷害丟入池中 (分為 物理刀、魔法毒、絕對死亡)
             addAttack(targetId, cause, type = 'physical') {
                 if (targetId !== 0) this.attacks.push({ targetId, cause, type });
             },
 
-            // 將防禦丟入池中
             addDefense(targetId, type) {
                 if (targetId !== 0) this.defenses.push({ targetId, type });
             },
 
-            // 建立連帶死亡關係 (源頭死 ➔ 目標跟著死)
             addLink(sourceId, targetId, cause) {
                 if (sourceId !== 0 && targetId !== 0) this.links.push({ sourceId, targetId, cause });
             },
 
-            // 執行結算！
             resolve() {
                 let guardTargets = this.defenses.filter(d => d.type === 'guard').map(d => d.targetId);
                 let healTargets  = this.defenses.filter(d => d.type === 'heal').map(d => d.targetId);
@@ -878,29 +893,25 @@
                 this.attacks.forEach(attack => {
                     let target = attack.targetId;
                     
-                    // 絕對傷害 (奶穿、反傷、反噬、夢死)：無視一切防禦與免疫
                     if (attack.type === 'absolute') {
                         this.markDead(target, attack.cause);
                         return;
                     }
 
-                    // 攝夢人目標免疫常規刀與毒
                     let isImmune = this.defenses.some(d => d.type === 'immunity' && d.targetId === target);
                     if (isImmune) return;
 
                     let ekPlayer = GameState.players.find(p => p.role === '惡靈騎士');
                     let ekId = (ekPlayer && ekPlayer.alive) ? ekPlayer.id : 0;
 
-                    // 物理傷害 (狼刀)
                     if (attack.type === 'physical') {
                         if (!guardTargets.includes(target) && !healTargets.includes(target)) {
                             this.markDead(target, attack.cause);
                         }
                     }
 
-                    // 魔法傷害 (女巫/商人/機械狼 毒)
                     if (attack.type === 'magic') {
-                        if (target === ekId) return; // 惡靈騎士自身免疫毒
+                        if (target === ekId) return; 
 
                         let mwGuarded = this.defenses.some(d => d.type === 'mw-guard' && d.targetId === target);
                         if (!mwGuarded) {
@@ -910,7 +921,6 @@
                 });
 
                 // 3. 結算連帶死亡 (殉情、夢裡連帶死)
-                // 使用迴圈確保「連環殉情」也能正確被觸發
                 let newDeath;
                 do {
                     newDeath = false;
@@ -929,7 +939,6 @@
                 };
             },
 
-            // 標記死亡 (毒殺優先級最高，因為會封印技能)
             markDead(targetId, cause) {
                 if (!this.deadCauses[targetId] || ['poison', 'gift-poison', 'mw-poison'].includes(cause)) {
                     this.deadCauses[targetId] = cause;
@@ -937,89 +946,66 @@
             }
         };
 
-// =========================================
-// Toast 吐司提示系統模組
-// =========================================
-const Toast = {
-    show: function(message, type = 'error', duration = 3000) {
-        // 1. 確保容器存在
-        let container = document.getElementById('toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toast-container';
-            document.body.appendChild(container);
-        }
+        const Toast = {
+            show: function(message, type = 'error', duration = 3000) {
+                let container = document.getElementById('toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'toast-container';
+                    document.body.appendChild(container);
+                }
 
-        // 2. 建立 Toast 元素
-        const toast = document.createElement('div');
-        toast.className = `custom-toast ${type}`;
-        
-        // 根據類型自動加上表情符號 (如果訊息裡沒有的話)
-        let icon = type === 'error' ? '⚠️ ' : (type === 'success' ? '✅ ' : '💡 ');
-        toast.innerHTML = icon + message;
+                const toast = document.createElement('div');
+                toast.className = `custom-toast ${type}`;
+                let icon = type === 'error' ? '⚠️ ' : (type === 'success' ? '✅ ' : '💡 ');
+                toast.innerHTML = icon + message;
 
-        // 3. 加入畫面
-        container.appendChild(toast);
+                container.appendChild(toast);
 
-        // 4. 觸發顯示動畫 (延遲一幀以確保 transition 生效)
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                toast.classList.add('show');
-            });
-        });
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        toast.classList.add('show');
+                    });
+                });
 
-        // 5. 設定定時移除
-        setTimeout(() => {
-            toast.classList.remove('show');
-            // 等待動畫結束 (0.3s) 後將 DOM 節點完全移除
-            setTimeout(() => toast.remove(), 300);
-        }, duration);
-    }
-};
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            }
+        };
 
-// =========================================
-// 覆寫原生 alert()，無痛替換所有舊有提示
-// =========================================
-window.alert = function(message) {
-    // 預設將所有原本的 alert 視為 error 提示
-    // 若原訊息已有表情符號（例如"防呆機制啟動："），可以用 replace 稍作修飾，但直接傳入也是沒問題的
-    Toast.show(message, 'error');
-};
+        window.alert = function(message) {
+            Toast.show(message, 'error');
+        };
 
-// =========================================
-        // 自動將 Select 轉換為網格按鈕的工具
-        // =========================================
         function renderGridForSelect(selectId) {
             const select = document.getElementById(selectId);
             if (!select) return;
 
-            select.style.display = 'none'; // 隱藏原本的下拉選單
+            select.style.display = 'none';
 
             let gridContainer = document.getElementById(selectId + '-grid');
             if (!gridContainer) {
                 gridContainer = document.createElement('div');
                 gridContainer.id = selectId + '-grid';
                 gridContainer.className = 'player-grid-container';
-                // 插入在原本的 select 後面
                 select.parentNode.insertBefore(gridContainer, select.nextSibling);
             }
 
-            gridContainer.innerHTML = ''; // 清空重建
+            gridContainer.innerHTML = '';
 
             Array.from(select.options).forEach(option => {
-                if (option.disabled && option.value === "") return; // 跳過預設的「請選擇目標...」
+                if (option.disabled && option.value === "") return;
 
                 const btn = document.createElement('div');
-                // 繼承 option 上的顏色 class (如 color-wolf, color-god)
                 const colorClass = Array.from(option.classList).find(c => c.startsWith('color-')) || 'color-unknown';
                 btn.className = `player-grid-btn ${colorClass}`;
                 
-                // 如果選項被禁用，或整個 select 被禁用
                 if (option.disabled || select.disabled) {
                     btn.classList.add('disabled');
                 }
 
-                // 排版文字：把 "1 號 (預言家)" 拆成大數字與小字體
                 if (option.value === "0") {
                     btn.innerHTML = option.text;
                     btn.classList.add('zero-btn');
@@ -1033,16 +1019,11 @@ window.alert = function(message) {
                     }
                 }
 
-                // 標記當前選中狀態
                 if (select.value === option.value) btn.classList.add('selected');
 
-                // 綁定點擊事件
                 btn.addEventListener('click', () => {
                     if (option.disabled || select.disabled) return;
-                    
-                    select.value = option.value; // 更新隱藏選單的值
-                    
-                    // 更新 UI 發光狀態
+                    select.value = option.value;
                     Array.from(gridContainer.children).forEach(c => c.classList.remove('selected'));
                     btn.classList.add('selected');
                 });
@@ -1054,7 +1035,7 @@ window.alert = function(message) {
 
         const GAME_CONSTANTS = {
             CAMP: {
-                WOLF: ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'],
+                WOLF: ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'],
                 GOD: ['預言家', '通靈師', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '騎士'],
                 VILLAGER: ['平民', '燈影']
             },
@@ -1096,7 +1077,7 @@ window.alert = function(message) {
         const GameState = {
             config: { 
                 prophet: true, psychic: false, witch: true, hunter: true, bear: false, guard: false, merchant: false, dreamer: false, magician: false,
-                bwk: false, wb: false, ek: false, mechWolf: false, wolfBros: false, shapeShifterMode: false, shapeShifterRole: null, 
+                bwk: false, wb: false, ek: false, mechWolf: false, wolfBros: false, nightmare: false, shapeShifterMode: false, shapeShifterRole: null, 
                 knight: false, shadow: false
             },
             playerCount: 12,
@@ -1143,7 +1124,7 @@ window.alert = function(message) {
                     wolfKill: 0, wolfKill2: 0, mwWolfKill: 0, witchHealTarget: 0, witchPoison: 0, prophetCheck: 0, shadowCheck: 0,
                     dreamerTarget: 0, wbTarget: 0, bearCharmTarget: 0, magicianSwap: {t1: 0, t2: 0},
                     guardProtect: 0, wolfRevengeKill: 0, merchantTarget: 0, merchantGift: 'none', giftPoison: 0, giftCheck: 0,
-                    mwLearnTarget: 0, mwPoisonTarget: 0, mwGuardTarget: 0, mwCheckTarget: 0, psychicCheckTarget: 0
+                    mwLearnTarget: 0, mwPoisonTarget: 0, mwGuardTarget: 0, mwCheckTarget: 0, psychicCheckTarget: 0, nightmareTarget: 0
                 };
             },
 
@@ -1197,14 +1178,12 @@ window.alert = function(message) {
             bindSetupEvents();
         };
 
-        // 處理角色卡片點擊與連動邏輯
         function toggleRole(roleName) {
             const card = document.getElementById('card-' + roleName);
             const checkbox = document.getElementById('cfg-' + roleName);
             
             if (!card || !checkbox) return;
 
-            // 切換選取狀態
             const isSelected = !card.classList.contains('selected');
             
             if (isSelected) {
@@ -1215,21 +1194,18 @@ window.alert = function(message) {
                 checkbox.checked = false;
             }
 
-            // 處理「燈影」與「預言家」的連動防呆邏輯
             if (roleName === 'shadow' && isSelected) {
-                // 選了燈影，自動勾選預言家
                 document.getElementById('card-prophet').classList.add('selected');
                 document.getElementById('cfg-prophet').checked = true;
             }
             if (roleName === 'prophet' && !isSelected) {
-                // 取消預言家，自動取消燈影
                 document.getElementById('card-shadow').classList.remove('selected');
                 document.getElementById('cfg-shadow').checked = false;
             }
         }
 
-function bindSetupEvents() {
-            const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id','knight-id', 'bear-id', 'prophet-id', 'shadow-id', 'psychic-id', 'dreamer-id', 'wb-id', 'magician-id', 'ek-id', 'guard-id', 'merchant-id', 'wolfbro-id', 'wolflittlebro-id', 'mw-id'];
+        function bindSetupEvents() {
+            const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id','knight-id', 'bear-id', 'prophet-id', 'shadow-id', 'psychic-id', 'dreamer-id', 'wb-id', 'magician-id', 'ek-id', 'guard-id', 'merchant-id', 'wolfbro-id', 'wolflittlebro-id', 'mw-id', 'nightmare-id'];
             allSetupIds.forEach(id => {
                 let el = document.getElementById(id);
                 if(el) {
@@ -1243,7 +1219,7 @@ function bindSetupEvents() {
                     const poisonSelect = document.getElementById('witch-target');
                     if (poisonSelect) {
                         poisonSelect.disabled = (this.value !== 'poison' || !GameState.potions.poison);
-                        renderGridForSelect('witch-target'); // 🚀 同步更新網格
+                        renderGridForSelect('witch-target');
                     }
                 });
             });
@@ -1253,7 +1229,7 @@ function bindSetupEvents() {
                     const poisonSelect = document.getElementById('gift-poison-target');
                     if (poisonSelect) {
                         poisonSelect.disabled = (this.value !== 'poison');
-                        renderGridForSelect('gift-poison-target'); // 🚀 同步更新網格
+                        renderGridForSelect('gift-poison-target');
                     }
                 });
             });
@@ -1263,25 +1239,39 @@ function bindSetupEvents() {
                     const poisonSelect = document.getElementById('mw-poison-target');
                     if (poisonSelect) {
                         poisonSelect.disabled = (this.value !== 'poison');
-                        renderGridForSelect('mw-poison-target'); // 🚀 同步更新網格
+                        renderGridForSelect('mw-poison-target');
                     }
                 });
             });
         }
 
-        function handleSetupChange() {
-            updateSetupSelects();
-            if (this.id === 'hunter-id') updateHunterStatus();
-            if (this.id === 'dreamer-id') updateDreamerTarget();
-            if (this.id === 'wb-id') updateWbTarget();
-            if (this.id === 'bear-id' && GameState.currentPhase === 'bear') updateBearCharmTarget();
-            if (this.id === 'witch-id' && GameState.currentPhase === 'witch') prepareWitch(); 
-            if (this.id === 'merchant-id' && GameState.currentPhase === 'merchant') updateMerchantTarget(); 
-            if (this.id === 'mw-id' && GameState.currentPhase === 'mechwolf') prepareMechWolf();
-            if (this.id === 'shadow-id' && GameState.currentPhase === 'shadow') prepareShadow();
-            if (this.id === 'prophet-id' && GameState.currentPhase === 'prophet') prepareProphet();
-        }
+function handleSetupChange() {
+    updateSetupSelects();
+    
+    // 核心修正 1：當上帝在第一夜選擇號碼時，立刻重新渲染該階段的 UI，即時觸發恐懼警告
+    if (GameState.currentPhase === 'hunter' && this.id === 'hunter-id') prepareHunter();
+    if (GameState.currentPhase === 'dreamer' && this.id === 'dreamer-id') prepareDreamer();
+    if (GameState.currentPhase === 'witch' && this.id === 'witch-id') prepareWitch();
+    if (GameState.currentPhase === 'merchant' && this.id === 'merchant-id') prepareMerchant();
+    if (GameState.currentPhase === 'bear' && this.id === 'bear-id') prepareBear();
+    if (GameState.currentPhase === 'mechwolf' && this.id === 'mw-id') prepareMechWolf();
+    if (GameState.currentPhase === 'shadow' && this.id === 'shadow-id') prepareShadow();
+    if (GameState.currentPhase === 'prophet' && this.id === 'prophet-id') prepareProphet();
+    if (GameState.currentPhase === 'guard' && this.id === 'guard-id') prepareGuard();
+    if (GameState.currentPhase === 'magician' && this.id === 'magician-id') prepareMagician();
+    if (GameState.currentPhase === 'psychic' && this.id === 'psychic-id') preparePsychic();
+    if (GameState.currentPhase === 'wolfbros' && (this.id === 'wolfbro-id' || this.id === 'wolflittlebro-id')) prepareWolfBros();
+    if (GameState.currentPhase === 'knight' && this.id === 'knight-id') prepareKnight();
+    // 狼人陣營若選擇號碼，也要即時判斷是否被恐懼
+    if (GameState.currentPhase === 'wolf' && ['w1','w2','w3','w4','bwk-id','wb-id','ek-id'].includes(this.id)) prepareWolf();
 
+    // 輔助更新
+    if (this.id === 'hunter-id') updateHunterStatus();
+    if (this.id === 'dreamer-id') updateDreamerTarget();
+    if (this.id === 'wb-id') updateWbTarget();
+    if (this.id === 'bear-id' && GameState.currentPhase === 'bear') updateBearCharmTarget();
+    if (this.id === 'merchant-id' && GameState.currentPhase === 'merchant') updateMerchantTarget();
+}
         function getMaxWolves() {
             let baseMax = (GameState.playerCount <= 10) ? 3 : 4;
             let shapeShifterCount = GameState.config.shapeShifterMode ? 1 : 0;
@@ -1289,7 +1279,7 @@ function bindSetupEvents() {
         }
 
         function updateWolfSelectVisibility() {
-            let specialWolfCount = (GameState.config.bwk ? 1 : 0) + (GameState.config.wb ? 1 : 0) + (GameState.config.ek ? 1 : 0) + (GameState.config.wolfBros ? 2 : 0) + (GameState.config.mechWolf ? 1 : 0);
+            let specialWolfCount = (GameState.config.bwk ? 1 : 0) + (GameState.config.wb ? 1 : 0) + (GameState.config.ek ? 1 : 0) + (GameState.config.wolfBros ? 2 : 0) + (GameState.config.mechWolf ? 1 : 0) + (GameState.config.nightmare ? 1 : 0);
             let maxDraftable = getMaxWolves();
             let normalWolfCount = Math.max(0, maxDraftable - specialWolfCount);
             
@@ -1311,18 +1301,14 @@ function bindSetupEvents() {
             if (h3) {
                 let isCorrupted = (GameState.config.shapeShifterRole === roleName);
                 
-                // 改變顏色
                 h3.className = isCorrupted ? 'color-wolf' : 'color-god';
                 
-                // 處理 (變身成百變狼王) 的括弧文字
                 let noteSpan = h3.querySelector('.corrupted-note');
                 if (isCorrupted) {
-                    // 如果被腐化且還沒有加過標籤，就加上去（顏色改為 var(--color-wolf) 紅色）
                     if (!noteSpan) {
                         h3.innerHTML += `<br><span class="corrupted-note" style="font-size:16px; color:var(--color-wolf); font-weight:bold;">(變身成百變狼王)</span>`;
                     }
                 } else {
-                    // 如果沒有被腐化但有標籤 (例如重開局時)，就移除它
                     if (noteSpan) {
                         noteSpan.remove();
                     }
@@ -1348,7 +1334,7 @@ function bindSetupEvents() {
                 {id: 'bear-id', role: '熊'}, {id: 'guard-id', role: '守衛'}, {id: 'merchant-id', role: '黑市商人'},
                 {id: 'dreamer-id', role: '攝夢人'}, {id: 'magician-id', role: '魔術師'}, {id: 'psychic-id', role: '通靈師'},
                 {id: 'bwk-id', role: '黑狼王'}, {id: 'wb-id', role: '狼美人'}, {id: 'ek-id', role: '惡靈騎士'},
-                {id: 'wolfbro-id', role: '狼兄'}, {id: 'wolflittlebro-id', role: '狼弟'}, {id: 'mw-id', role: '機械狼'}
+                {id: 'wolfbro-id', role: '狼兄'}, {id: 'wolflittlebro-id', role: '狼弟'}, {id: 'mw-id', role: '機械狼'}, {id: 'nightmare-id', role: '夢魘'}
             ];
             for (let r of roles) {
                 let el = document.getElementById(r.id);
@@ -1392,6 +1378,7 @@ function bindSetupEvents() {
             document.getElementById('wb-setup-container').classList.toggle('hidden', !GameState.config.wb);
             document.getElementById('wb-action-container').classList.toggle('hidden', !GameState.config.wb);
             document.getElementById('ek-setup-container').classList.toggle('hidden', !GameState.config.ek);
+            document.getElementById('nightmare-setup-container')?.classList.toggle('hidden', !GameState.config.nightmare);
             updateWolfSelectVisibility();
 
             UIManager.updateAliveStatus();
@@ -1400,13 +1387,32 @@ function bindSetupEvents() {
             if(GameState.snapshots.length === 0) document.getElementById('btn-undo').classList.add('hidden');
         }
 
+        // Helper to check if feared and render UI alert
+        function checkFearedUI(phaseId, roleId) {
+            let container = document.getElementById(phaseId);
+            if (!container) return false;
+            
+            let existingAlert = container.querySelector('.fear-alert');
+            if (existingAlert) existingAlert.remove();
+
+            if (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === roleId) {
+                let alertHtml = `<div class="fear-alert">
+                    <h4 style="color:var(--btn-danger); margin:0 0 5px 0;">⚠️ 被夢魘恐懼！</h4>
+                    <span style="color:#ddd; font-size:14px;">請向他比出 🙅 手勢，告知被恐懼，今晚無法使用技能，然後請他閉眼。</span>
+                </div>`;
+                container.querySelector('h3').insertAdjacentHTML('afterend', alertHtml);
+                return true; 
+            }
+            return false;
+        }
+
         function restoreUI() {
             UIManager.hideAllActionRows();
             UIManager.hide('phase-shoot');
             UIManager.hide('vote-section');
             UIManager.hide('explode-section');
             
-            let isNight = ['shapeshifter','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','shadow','psychic','gift','hunter','mw-result', 'knight'].includes(GameState.currentPhase);
+            let isNight = ['shapeshifter','nightmare','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','shadow','psychic','gift','hunter','mw-result', 'knight'].includes(GameState.currentPhase);
             UIManager.setText('day-counter', `第 ${GameState.day} 天${isNight ? '夜晚' : '白天'}`);
             
             if (['shoot', 'vote'].includes(GameState.currentPhase)) {
@@ -1414,7 +1420,6 @@ function bindSetupEvents() {
                 UIManager.setHTML('morning-result', GameState.flags.morningResultHtml || "");
                 UIManager.setHTML('bear-result', GameState.flags.bearResultHtml || "");
                 
-                // 確保從騎士決鬥復原時，被隱藏的上方標題能正常顯示
                 let h2 = document.querySelector('#phase-morning h2');
                 if (h2) h2.classList.remove('hidden');
                 document.getElementById('morning-result').classList.remove('hidden');
@@ -1425,6 +1430,7 @@ function bindSetupEvents() {
 
             if (GameState.currentPhase === 'mechwolf') prepareMechWolf();
             else if (GameState.currentPhase === 'shapeshifter') prepareShapeShifter();
+            else if (GameState.currentPhase === 'nightmare') prepareNightmare();
             else if (GameState.currentPhase === 'guard') prepareGuard();
             else if (GameState.currentPhase === 'wolfbros') prepareWolfBros();
             else if (GameState.currentPhase === 'wolf') prepareWolf();
@@ -1508,6 +1514,7 @@ function bindSetupEvents() {
                 mechWolf: document.getElementById('cfg-mechwolf').checked,
                 wolfBros: document.getElementById('cfg-wolfbros').checked,
                 shadow: document.getElementById('cfg-shadow').checked,
+                nightmare: document.getElementById('cfg-nightmare').checked,
                 shapeShifterMode: false,
                 shapeShifterRole: null
             };
@@ -1521,14 +1528,24 @@ function bindSetupEvents() {
                 alert(`🌟 觸發【百變狼王模式】！\n本局被腐化為狼陣營的神職是：${newConfig.shapeShifterRole}`);
             }
 
-            // 初始化狀態
             GameState.init(pCount, newConfig);
 
-            // 更新 UI 狀態
             document.getElementById('bwk-setup-container').classList.toggle('hidden', !GameState.config.bwk);
             document.getElementById('wb-setup-container').classList.toggle('hidden', !GameState.config.wb);
             document.getElementById('wb-action-container').classList.toggle('hidden', !GameState.config.wb);
             document.getElementById('ek-setup-container').classList.toggle('hidden', !GameState.config.ek);
+            
+            // Generate Nightmare setup container dynamicly if not exist
+            if (!document.getElementById('nightmare-setup-container')) {
+                let mwSetup = document.getElementById('d1-wolf-setup');
+                let nmContainer = document.createElement('div');
+                nmContainer.id = 'nightmare-setup-container';
+                nmContainer.innerHTML = `<p style="margin-top: 15px;">夢魘</p><select id="nightmare-id"></select>`;
+                mwSetup.appendChild(nmContainer);
+                document.getElementById('nightmare-id').addEventListener('change', handleSetupChange);
+            }
+            document.getElementById('nightmare-setup-container').classList.toggle('hidden', !GameState.config.nightmare);
+            
             updateWolfSelectVisibility();
 
             document.getElementById('setup-screen').classList.add('hidden');
@@ -1542,7 +1559,7 @@ function bindSetupEvents() {
         }
 
         function getActiveSetupIds() {
-            let specialWolfCount = (GameState.config.bwk ? 1 : 0) + (GameState.config.wb ? 1 : 0) + (GameState.config.ek ? 1 : 0) + (GameState.config.wolfBros ? 2 : 0) + (GameState.config.mechWolf ? 1 : 0);
+            let specialWolfCount = (GameState.config.bwk ? 1 : 0) + (GameState.config.wb ? 1 : 0) + (GameState.config.ek ? 1 : 0) + (GameState.config.wolfBros ? 2 : 0) + (GameState.config.mechWolf ? 1 : 0) + (GameState.config.nightmare ? 1 : 0);
             let maxDraftable = getMaxWolves();
             let normalWolfCount = Math.max(0, maxDraftable - specialWolfCount);
             
@@ -1565,6 +1582,7 @@ function bindSetupEvents() {
             if (GameState.config.ek) ids.push('ek-id');
             if (GameState.config.mechWolf) ids.push('mw-id');
             if (GameState.config.wolfBros) { ids.push('wolfbro-id'); ids.push('wolflittlebro-id'); }
+            if (GameState.config.nightmare) ids.push('nightmare-id');
             return ids;
         }
 
@@ -1612,7 +1630,7 @@ function bindSetupEvents() {
             const select = document.getElementById('explode-target');
             if(!select) return;
             select.innerHTML = `<option value="0">無人自爆</option>`;
-            GameState.players.filter(p => p.alive && (['狼人', '黑狼王', '機械狼'].includes(p.role) || p.isCorrupted)).forEach(p => {
+            GameState.players.filter(p => p.alive && (['狼人', '黑狼王', '機械狼', '夢魘'].includes(p.role) || p.isCorrupted)).forEach(p => {
                 let roleDisp = p.isCorrupted ? `百變狼王 (${p.role})` : p.role;
                 select.innerHTML += `<option value="${p.id}" class="${p.class}">${p.id} 號 (${roleDisp})</option>`;
             });
@@ -1706,7 +1724,6 @@ function bindSetupEvents() {
             });
         }
 
-        // --- 預言家與燈影查驗排除邏輯 ---
         function getCheckExcludeIds(checkerId) {
             let excludes = [];
             if (checkerId && !isNaN(checkerId)) excludes.push(checkerId);
@@ -1830,6 +1847,7 @@ function bindSetupEvents() {
             switch (nextPhase) {
                 case 'mechwolf': prepareMechWolf(); break;
                 case 'shapeshifter': prepareShapeShifter(); break;
+                case 'nightmare': prepareNightmare(); break;
                 case 'guard': prepareGuard(); break;
                 case 'wolfbros': prepareWolfBros(); break;
                 case 'wolf': prepareWolf(); break;
@@ -1857,6 +1875,7 @@ function bindSetupEvents() {
                 
                 if (GameState.config.mechWolf) GameState.nightQueue.push('mechwolf');
                 if (GameState.config.shapeShifterMode && GameState.day > 1) GameState.nightQueue.push('shapeshifter');
+                if (GameState.config.nightmare) GameState.nightQueue.push('nightmare');
                 if (GameState.config.guard) GameState.nightQueue.push('guard');
                 if (GameState.config.wolfBros) GameState.nightQueue.push('wolfbros');
                 
@@ -2119,7 +2138,7 @@ function bindSetupEvents() {
             
             let c = "color-villager";
             if (['預言家','女巫','獵人','熊','守衛','黑市商人','攝夢人','魔術師','通靈師'].includes(role)) c = "color-god";
-            else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role)) c = "color-wolf";
+            else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼','夢魘'].includes(role)) c = "color-wolf";
             
             res.innerHTML = `<h2 class='${c}' style='margin:0;'>${role}</h2>`;
         }
@@ -2133,7 +2152,7 @@ function bindSetupEvents() {
             if(actualTarget === 0) { res.innerHTML = "<h2>未查驗</h2>"; return; }
             
             let role = getTrueRole(actualTarget);
-            let isWolf = ['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role);
+            let isWolf = ['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼','夢魘'].includes(role);
             if (role === '狼弟' && !GameState.flags.wolfBroDead) isWolf = false;
 
             if (GameState.flags.mwStatus.role === '燈影') {
@@ -2194,7 +2213,7 @@ function bindSetupEvents() {
             } else if (ssPlayer && !ssPlayer.alive) {
                 document.getElementById('ss-signal').innerHTML = "<span style='color:#aaa; font-size:20px;'>百變狼王已陣亡，無需給予手勢。</span>";
             } else {
-                let otherWolvesAlive = GameState.players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(p.role) && p.alive).length > 0;
+                let otherWolvesAlive = GameState.players.filter(p => ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(p.role) && p.alive).length > 0;
                 if (otherWolvesAlive) {
                     document.getElementById('ss-signal').innerHTML = "<span style='color:var(--color-wolf);'>👎 不能帶刀❌</span><br><span style='font-size:16px; color:#aaa; font-weight:normal;'>(還有其他狼人存活)</span>";
                 } else {
@@ -2207,7 +2226,48 @@ function bindSetupEvents() {
         function processShapeShifter() {
             takeSnapshot();
             document.getElementById('phase-shapeshifter').classList.add('hidden');
-            prepareGuard();
+            proceedToNextPhase();
+        }
+
+        // --- 夢魘 ---
+        function prepareNightmare() {
+            GameState.currentPhase = 'nightmare';
+            document.getElementById('phase-nightmare').classList.remove('hidden');
+
+            if (GameState.day === 1) document.getElementById('d1-nightmare-setup').classList.remove('hidden');
+            else document.getElementById('d1-nightmare-setup').classList.add('hidden');
+
+            let nightmare = GameState.players.find(p => p.role === '夢魘');
+            if (GameState.day > 1 && nightmare && !nightmare.alive) {
+                populateAliveSelect('nightmare-target', true, "已經死亡", false, null);
+                document.getElementById('nightmare-target').disabled = true;
+            } else {
+                document.getElementById('nightmare-target').disabled = false;
+                populateAliveSelect('nightmare-target', true, "不恐懼 (空技能)", false, null);
+            }
+            autoSave();
+        }
+
+        function processNightmare() {
+            let nmId = null;
+            if (GameState.day === 1) {
+                nmId = parseInt(document.getElementById('nightmare-id').value);
+                if (isNaN(nmId)) return alert("強制防呆：請在首夜設定中選擇「夢魘」的號碼！");
+            }
+
+            takeSnapshot();
+
+            if (GameState.day === 1 && nmId !== null) {
+                GameState.players.find(x => x.id === nmId).role = '夢魘';
+                GameState.players.find(x => x.id === nmId).class = 'color-wolf';
+                UIManager.updateAliveStatus();
+            }
+
+            if (!document.getElementById('nightmare-target').disabled) {
+                GameState.nightData.nightmareTarget = parseInt(document.getElementById('nightmare-target').value);
+            }
+            document.getElementById('phase-nightmare').classList.add('hidden');
+            proceedToNextPhase();
         }
 
         // --- 守衛 ---
@@ -2222,8 +2282,14 @@ function bindSetupEvents() {
             if (GameState.day === 1) document.getElementById('d1-guard-setup').classList.remove('hidden');
             else document.getElementById('d1-guard-setup').classList.add('hidden');
 
+            let gId = guard ? guard.id : (GameState.day===1 ? parseInt(document.getElementById('guard-id').value) : null);
+            let isFeared = checkFearedUI('phase-guard', gId);
+
             if (GameState.day > 1 && guard && !guard.alive) {
                 populateAliveSelect('guard-target', true, "已經死亡", false, null);
+                document.getElementById('guard-target').disabled = true;
+            } else if (isFeared) {
+                populateAliveSelect('guard-target', true, "被恐懼 無法行動", false, null);
                 document.getElementById('guard-target').disabled = true;
             } else {
                 let disabledList = GameState.historyData.lastGuardProtect !== 0 ? [GameState.historyData.lastGuardProtect] : [];
@@ -2254,8 +2320,16 @@ function bindSetupEvents() {
                 UIManager.updateAliveStatus();
             }
 
-            if (!document.getElementById('guard-target').disabled) {
-                GameState.nightData.guardProtect = parseInt(document.getElementById('guard-target').value);
+let isFeared = (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === gId);
+                if (isFeared) {
+                    GameState.nightData.guardProtect = 0;
+                } else if (!document.getElementById('guard-target').disabled) {
+                    GameState.nightData.guardProtect = parseInt(document.getElementById('guard-target').value);
+                }            
+
+
+             else if (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === gId) {
+                GameState.nightData.guardProtect = 0;
             }
             
             document.getElementById('phase-guard').classList.add('hidden');
@@ -2274,10 +2348,20 @@ function bindSetupEvents() {
             if (GameState.day === 1) document.getElementById('d1-wolfbros-setup').classList.remove('hidden');
             else document.getElementById('d1-wolfbros-setup').classList.add('hidden');
 
+            let lilId = lilbro ? lilbro.id : (GameState.day===1 ? parseInt(document.getElementById('wolflittlebro-id').value) : null);
+            let isFeared = checkFearedUI('phase-wolfbros', lilId);
+
             if (GameState.flags.wolfLittleBroHasRevenge && lilbro && lilbro.alive) {
                 document.getElementById('wolfbros-revenge-container').classList.remove('hidden');
                 document.getElementById('wolfbros-idle-container').classList.add('hidden');
-                populateAliveSelect('wolfbros-target', true, "不使用復仇刀", false, []);
+                
+                if (isFeared) {
+                    populateAliveSelect('wolfbros-target', true, "被恐懼 無法行動", false, []);
+                    document.getElementById('wolfbros-target').disabled = true;
+                } else {
+                    populateAliveSelect('wolfbros-target', true, "不使用復仇刀", false, []);
+                    document.getElementById('wolfbros-target').disabled = false;
+                }
             } else {
                 document.getElementById('wolfbros-revenge-container').classList.add('hidden');
                 document.getElementById('wolfbros-idle-container').classList.remove('hidden');
@@ -2305,9 +2389,15 @@ function bindSetupEvents() {
             }
 
             if (!document.getElementById('wolfbros-revenge-container').classList.contains('hidden')) {
-                GameState.nightData.wolfRevengeKill = parseInt(document.getElementById('wolfbros-target').value);
-                GameState.flags.wolfLittleBroHasRevenge = false; 
-                GameState.flags.wolfLittleBroRejoined = true; 
+                let targetSelect = document.getElementById('wolfbros-target');
+                if (!targetSelect.disabled) {
+                    GameState.nightData.wolfRevengeKill = parseInt(targetSelect.value);
+                    GameState.flags.wolfLittleBroHasRevenge = false; 
+                    GameState.flags.wolfLittleBroRejoined = true; 
+                } else if (GameState.nightData.nightmareTarget !== 0) {
+                     // Feared
+                     GameState.nightData.wolfRevengeKill = 0;
+                }
             }
             
             document.getElementById('phase-wolfbros').classList.add('hidden');
@@ -2355,8 +2445,40 @@ function bindSetupEvents() {
             if (GameState.day === 1) document.getElementById('d1-wolf-setup').classList.remove('hidden');
             else document.getElementById('d1-wolf-setup').classList.add('hidden');
             
+            let existingFear = document.getElementById('phase-wolf').querySelector('.fear-alert');
+            if (existingFear) existingFear.remove();
+
+let wolfPackFeared = false;
+let fId = GameState.nightData.nightmareTarget;
+
+if (fId !== 0) {
+    if (GameState.day === 1) {
+        // 核心修正 2：第一天時玩家身分還沒寫入陣列，必須透過 getTrueRole 即時抓取下拉選單比對
+        let role = getTrueRole(fId);
+        if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) || GameState.config.shapeShifterRole === role) {
+            wolfPackFeared = true;
+        }
+    } else {
+        let targetP = GameState.players.find(p => p.id === fId);
+        if (targetP && (RoleUtils.isWolfCamp(targetP) || targetP.isCorrupted)) {
+            wolfPackFeared = true;
+        }
+    }
+}
             let excludeWolfKill = GameState.players.filter(p => ['狼美人', '惡靈騎士'].includes(p.role)).map(p => p.id);
-            populateAliveSelect('wolf-target', true, "不擊殺 (空刀)", false, excludeWolfKill);
+
+            if (wolfPackFeared) {
+                let alertHtml = `<div class="fear-alert">
+                    <h4 style="color:var(--btn-danger); margin:0 0 5px 0;">⚠️ 狼隊被夢魘恐懼！</h4>
+                    <span style="color:#ddd; font-size:14px;">有狼隊成員被恐懼，今晚狼隊全體無法刀人！請告知狼隊，然後確認閉眼。</span>
+                </div>`;
+                document.querySelector('#phase-wolf h3').insertAdjacentHTML('afterend', alertHtml);
+                populateAliveSelect('wolf-target', true, "被恐懼 無法刀人", false, []);
+                document.getElementById('wolf-target').disabled = true;
+            } else {
+                populateAliveSelect('wolf-target', true, "不擊殺 (空刀)", false, excludeWolfKill);
+                document.getElementById('wolf-target').disabled = false;
+            }
 
             document.getElementById('wolf-target2')?.classList.add('hidden');
             let sel = document.getElementById('wolf-target2');
@@ -2365,9 +2487,17 @@ function bindSetupEvents() {
             if (GameState.config.wb) {
                 document.getElementById('wb-action-container').classList.remove('hidden');
                 let wb = GameState.players.find(p => p.role === '狼美人');
+                let wbId = wb ? wb.id : (GameState.day===1 ? parseInt(document.getElementById('wb-id').value) : null);
+                let wbFeared = wolfPackFeared && GameState.nightData.nightmareTarget === wbId;
+
                 if (GameState.day > 1 && wb && !wb.alive) {
                     document.getElementById('wb-target').classList.add('hidden');
                     document.getElementById('wb-dead-msg').classList.remove('hidden');
+                    document.getElementById('wb-target').disabled = true;
+                } else if (wbFeared) {
+                    document.getElementById('wb-target').classList.remove('hidden');
+                    document.getElementById('wb-dead-msg').classList.add('hidden');
+                    populateAliveSelect('wb-target', true, "被恐懼 無法魅惑", false, []);
                     document.getElementById('wb-target').disabled = true;
                 } else {
                     document.getElementById('wb-target').classList.remove('hidden');
@@ -2385,7 +2515,7 @@ function bindSetupEvents() {
             let bwk = NaN, wb = NaN, ek = NaN;
 
             if (GameState.day === 1) {
-                let specialWolfCount = (GameState.config.bwk ? 1 : 0) + (GameState.config.wb ? 1 : 0) + (GameState.config.ek ? 1 : 0) + (GameState.config.wolfBros ? 2 : 0) + (GameState.config.mechWolf ? 1 : 0);
+                let specialWolfCount = (GameState.config.bwk ? 1 : 0) + (GameState.config.wb ? 1 : 0) + (GameState.config.ek ? 1 : 0) + (GameState.config.wolfBros ? 2 : 0) + (GameState.config.mechWolf ? 1 : 0) + (GameState.config.nightmare ? 1 : 0);
                 let maxDraftable = getMaxWolves();
                 let normalWolfCount = Math.max(0, maxDraftable - specialWolfCount);
                 
@@ -2424,12 +2554,38 @@ function bindSetupEvents() {
                 UIManager.updateAliveStatus();
             }
 
-            GameState.nightData.wolfKill = parseInt(document.getElementById('wolf-target').value);
-            GameState.nightData.wolfKill2 = parseInt(document.getElementById('wolf-target2')?.value || 0);
+let isWolfPackFeared = false;
+                let fId = GameState.nightData.nightmareTarget;
+                if (fId !== 0) {
+                    if (GameState.day === 1) {
+                        let role = getTrueRole(fId);
+                        if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) || GameState.config.shapeShifterRole === role) isWolfPackFeared = true;
+                    } else {
+                        let targetP = GameState.players.find(p => p.id === fId);
+                        if (targetP && (RoleUtils.isWolfCamp(targetP) || targetP.isCorrupted)) isWolfPackFeared = true;
+                    }
+                }
 
-            if (GameState.config.wb && !document.getElementById('wb-target').disabled) {
-                GameState.nightData.wbTarget = wbTarget;
-                GameState.flags.charmedPlayer = wbTarget; 
+                if (isWolfPackFeared) {
+                    GameState.nightData.wolfKill = 0;
+                    GameState.nightData.wolfKill2 = 0;
+                } else if (!document.getElementById('wolf-target').disabled) {
+                    GameState.nightData.wolfKill = parseInt(document.getElementById('wolf-target').value);
+                    GameState.nightData.wolfKill2 = parseInt(document.getElementById('wolf-target2')?.value || 0);
+                }
+
+                if (GameState.config.wb) {
+                    let wbFeared = isWolfPackFeared && fId === wbId;
+                    if (wbFeared) {
+                        GameState.nightData.wbTarget = 0;
+                    } else if (!document.getElementById('wb-target').disabled) {
+                        GameState.nightData.wbTarget = wbTarget;
+                        GameState.flags.charmedPlayer = wbTarget; 
+                    }
+                }
+
+            else if (document.getElementById('wb-target').disabled && GameState.nightData.nightmareTarget !== 0) {
+                GameState.nightData.wbTarget = 0;
             }
 
             document.getElementById('phase-wolf').classList.add('hidden');
@@ -2448,8 +2604,9 @@ function bindSetupEvents() {
             let actualVictim1 = applyMagic(GameState.nightData.wolfKill);
             let actualVictim2 = applyMagic(GameState.nightData.wolfKill2);
             let actualRevengeVictim = applyMagic(GameState.nightData.wolfRevengeKill);
+            let mwWolfKill = GameState.nightData.mwWolfKill !== undefined ? applyMagic(GameState.nightData.mwWolfKill) : 0;
             
-            let victims = [actualVictim1, actualVictim2, actualRevengeVictim].filter(v => v !== 0);
+            let victims = [actualVictim1, actualVictim2, actualRevengeVictim, mwWolfKill].filter(v => v !== 0);
 
             let wId = null;
             if (GameState.day === 1) {
@@ -2468,7 +2625,6 @@ function bindSetupEvents() {
             const poisonSelect = document.getElementById('witch-target');
             populateAliveSelect('witch-target', false, "", true);
             
-            // 處理毒藥狀態與 UI 框
             if (!GameState.potions.poison) {
                 document.getElementById('radio-poison').disabled = true;
                 document.getElementById('box-poison').classList.add('disabled');
@@ -2477,13 +2633,19 @@ function bindSetupEvents() {
             } else {
                 document.getElementById('radio-poison').disabled = false;
                 document.getElementById('box-poison').classList.remove('disabled');
-                if(poisonSelect) poisonSelect.disabled = true; // 預設下拉選單禁用，點擊紅框後啟動
+                if(poisonSelect) poisonSelect.disabled = true; 
                 document.getElementById('poison-status-msg').classList.add('hidden');
             }
 
             let witchSafeFromWolves = !victims.includes(witch?.id);
+            let isFeared = checkFearedUI('phase-witch', wId);
 
-            if (GameState.day > 1 && witch && !witch.alive && witchSafeFromWolves) {
+            if (isFeared) {
+                document.getElementById('witch-dead-msg').innerHTML = "⚠️ 女巫被夢魘恐懼！無法使用技能，請給予 🙅 手勢後請他閉眼。";
+                document.getElementById('witch-dead-msg').classList.remove('hidden');
+                document.getElementById('witch-action-controls').classList.add('hidden');
+            } else if (GameState.day > 1 && witch && !witch.alive && witchSafeFromWolves) {
+                document.getElementById('witch-dead-msg').innerHTML = "女巫已陣亡 無法執行動作 請假裝等待後點擊閉眼";
                 document.getElementById('witch-dead-msg').classList.remove('hidden');
                 document.getElementById('witch-action-controls').classList.add('hidden');
             } else {
@@ -2495,7 +2657,7 @@ function bindSetupEvents() {
                 let healHidden = document.getElementById('witch-heal-target');
 
                 if (GameState.potions.heal) {
-                    let victimText = victims.length === 0 ? '無人被殺' : victims.join(' 號 與 ') + ' 號';
+                    let victimText = victims.length === 0 ? '無人被殺' : [...new Set(victims)].join(' 號 與 ') + ' 號';
                   document.getElementById('witch-info').innerHTML = `
                         <div class="witch-alert-active">
                             今晚被殺的是 <span style="color:white; font-size:24px; font-weight:bold;">${victimText}</span>
@@ -2517,11 +2679,10 @@ function bindSetupEvents() {
                             document.getElementById('radio-heal').disabled = false;
                             boxHeal.classList.remove('disabled');
                             
-                            // 濾掉不可自救的情況，抓出要顯示的號碼
                             let validVictims = victims.filter(v => isCorruptedWitch || GameState.playerCount <= 9 || v !== wId);
                             if (validVictims.length > 0) {
-                                healText.innerText = validVictims.join(' / ');
-                                healHidden.value = validVictims[0]; // 設定隱藏欄位的值供 processWitch 使用
+                                healText.innerText = [...new Set(validVictims)].join(' / ');
+                                healHidden.value = validVictims[0]; 
                             } else {
                                 document.getElementById('radio-heal').disabled = true;
                                 boxHeal.classList.add('disabled');
@@ -2549,6 +2710,9 @@ function bindSetupEvents() {
             if (GameState.day === 1) {
                 wId = parseInt(document.getElementById('witch-id').value);
                 if (isNaN(wId)) return alert("強制防呆：請在首夜設定中選擇「女巫」的號碼！");
+            } else {
+                let witch = GameState.players.find(p => p.role === '女巫');
+                if (witch) wId = witch.id;
             }
 
             takeSnapshot(); 
@@ -2561,18 +2725,24 @@ function bindSetupEvents() {
                 UIManager.updateAliveStatus();
             }
 
-           let actionEle = document.querySelector('input[name="witch-action"]:checked');
-            if (actionEle) {
-                if (actionEle.value === 'heal') {
-                    GameState.nightData.witchHealTarget = parseInt(document.getElementById('witch-heal-target').value);
-                    GameState.potions.heal = false;
-                } else if (actionEle.value === 'poison') {
-                    const t = parseInt(document.getElementById('witch-target').value);
-                    if (isNaN(t) || t === 0) {
-                        return alert("請選擇要毒殺的目標！");
+            let isFeared = wId && GameState.nightData.nightmareTarget === wId;
+            if (isFeared) {
+                GameState.nightData.witchHealTarget = 0;
+                GameState.nightData.witchPoison = 0;
+            } else {
+               let actionEle = document.querySelector('input[name="witch-action"]:checked');
+                if (actionEle && !document.getElementById('witch-action-controls').classList.contains('hidden')) {
+                    if (actionEle.value === 'heal') {
+                        GameState.nightData.witchHealTarget = parseInt(document.getElementById('witch-heal-target').value);
+                        GameState.potions.heal = false;
+                    } else if (actionEle.value === 'poison') {
+                        const t = parseInt(document.getElementById('witch-target').value);
+                        if (isNaN(t) || t === 0) {
+                            return alert("請選擇要毒殺的目標！");
+                        }
+                        GameState.nightData.witchPoison = t;
+                        GameState.potions.poison = false;
                     }
-                    GameState.nightData.witchPoison = t;
-                    GameState.potions.poison = false;
                 }
             }
             document.getElementById('phase-witch').classList.add('hidden');
@@ -2613,8 +2783,14 @@ function bindSetupEvents() {
                 }
             }
 
+            let dId = dreamer ? dreamer.id : (GameState.day===1 ? parseInt(document.getElementById('dreamer-id').value) : null);
+            let isFeared = checkFearedUI('phase-dreamer', dId);
+
             if (GameState.day > 1 && dreamer && !dreamer.alive) {
                 populateAliveSelect('dreamer-target', true, "已經死亡", false, null);
+                document.getElementById('dreamer-target').disabled = true;
+            } else if (isFeared) {
+                populateAliveSelect('dreamer-target', true, "被恐懼 無法行動", false, null);
                 document.getElementById('dreamer-target').disabled = true;
             } else {
                 updateDreamerTarget();
@@ -2652,8 +2828,15 @@ function bindSetupEvents() {
                 UIManager.updateAliveStatus();
             }
 
-            if (!selectBox.disabled) {
-                GameState.nightData.dreamerTarget = parseInt(selectBox.value);
+let isFeared = (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === dId);
+                if (isFeared) {
+                    GameState.nightData.dreamerTarget = 0;
+                } else if (!selectBox.disabled) {
+                    GameState.nightData.dreamerTarget = parseInt(selectBox.value);
+                }
+
+            else if (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === dId) {
+                GameState.nightData.dreamerTarget = 0;
             }
             
             document.getElementById('phase-dreamer').classList.add('hidden');
@@ -2672,9 +2855,17 @@ function bindSetupEvents() {
             if (GameState.day === 1) document.getElementById('d1-magician-setup').classList.remove('hidden');
             else document.getElementById('d1-magician-setup').classList.add('hidden');
 
+            let mId = mag ? mag.id : (GameState.day===1 ? parseInt(document.getElementById('magician-id').value) : null);
+            let isFeared = checkFearedUI('phase-magician', mId);
+
             if (GameState.day > 1 && mag && !mag.alive) {
                 populateAliveSelect('magician-target1', true, "已經死亡");
                 populateAliveSelect('magician-target2', true, "已經死亡");
+                document.getElementById('magician-target1').disabled = true;
+                document.getElementById('magician-target2').disabled = true;
+            } else if (isFeared) {
+                populateAliveSelect('magician-target1', true, "被恐懼 無法行動");
+                populateAliveSelect('magician-target2', true, "被恐懼 無法行動");
                 document.getElementById('magician-target1').disabled = true;
                 document.getElementById('magician-target2').disabled = true;
             } else {
@@ -2719,8 +2910,14 @@ function bindSetupEvents() {
                 UIManager.updateAliveStatus();
             }
 
-            if (!document.getElementById('magician-target1').disabled) {
-                GameState.nightData.magicianSwap = { t1, t2 };
+let isFeared = (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === mId);
+                if (isFeared) {
+                    GameState.nightData.magicianSwap = { t1: 0, t2: 0 };
+                } else if (!document.getElementById('magician-target1').disabled) {
+                    GameState.nightData.magicianSwap = { t1, t2 };
+                }
+            else if (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === mId) {
+                GameState.nightData.magicianSwap = { t1: 0, t2: 0 };
             }
 
             document.getElementById('phase-magician').classList.add('hidden');
@@ -2737,7 +2934,19 @@ function bindSetupEvents() {
             GameState.currentPhase = 'merchant';
             applyCorruptedColor('phase-merchant', '黑市商人');
             document.getElementById('phase-merchant').classList.remove('hidden');
-            updateMerchantTarget();
+
+            let mId = parseInt(document.getElementById('merchant-id').value);
+            let isFeared = checkFearedUI('phase-merchant', mId);
+
+            if (isFeared) {
+                populateAliveSelect('merchant-target', true, "被恐懼 無法發放", false, []);
+                document.getElementById('merchant-target').disabled = true;
+                document.getElementById('merchant-gift').disabled = true;
+            } else {
+                document.getElementById('merchant-target').disabled = false;
+                document.getElementById('merchant-gift').disabled = false;
+                updateMerchantTarget();
+            }
             autoSave();
         }
 
@@ -2748,13 +2957,15 @@ function bindSetupEvents() {
             let targetId = parseInt(document.getElementById('merchant-target').value);
             let giftType = document.getElementById('merchant-gift').value; 
 
-            if (targetId === mId) return alert("防呆機制啟動：黑市商人不能將禮物給自己！");
+            if (!document.getElementById('merchant-target').disabled) {
+                if (targetId === mId) return alert("防呆機制啟動：黑市商人不能將禮物給自己！");
 
-            if (targetId !== 0 && giftType === 'none') {
-                return alert("既然選擇了給予對象，就必須選擇給予哪一種禮物！");
-            }
-            if (targetId === 0 && giftType !== 'none') {
-                return alert("既然選擇了給予禮物，就必須選擇給予對象！（或者請將禮物改為「不給予」）");
+                if (targetId !== 0 && giftType === 'none') {
+                    return alert("既然選擇了給予對象，就必須選擇給予哪一種禮物！");
+                }
+                if (targetId === 0 && giftType !== 'none') {
+                    return alert("既然選擇了給予禮物，就必須選擇給予對象！（或者請將禮物改為「不給予」）");
+                }
             }
 
             takeSnapshot(); 
@@ -2764,8 +2975,19 @@ function bindSetupEvents() {
             GameState.players.find(x => x.id === mId).class = isCorrupted ? 'color-wolf' : 'color-god';
             GameState.players.find(x => x.id === mId).isCorrupted = isCorrupted;
             
-            GameState.nightData.merchantTarget = targetId;
-            GameState.nightData.merchantGift = giftType; 
+let isFeared = (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === mId);
+                if (isFeared) {
+                    GameState.nightData.merchantTarget = 0;
+                    GameState.nightData.merchantGift = 'none'; 
+                } else if (!document.getElementById('merchant-target').disabled) {
+                    GameState.nightData.merchantTarget = targetId;
+                    GameState.nightData.merchantGift = giftType; 
+                }
+
+             else if (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === mId) {
+                GameState.nightData.merchantTarget = 0;
+                GameState.nightData.merchantGift = 'none'; 
+            }
             UIManager.updateAliveStatus();
 
             document.getElementById('phase-merchant').classList.add('hidden');
@@ -2784,9 +3006,18 @@ function bindSetupEvents() {
             let bear = GameState.players.find(p => p.role === '熊');
             if (GameState.config.shapeShifterRole === '熊') {
                 document.getElementById('bear-charm-container').classList.remove('hidden');
+                
+                let bId = bear ? bear.id : (GameState.day===1 ? parseInt(document.getElementById('bear-id').value) : null);
+                let isFeared = GameState.nightData.nightmareTarget === bId;
+
                 if (GameState.day > 1 && bear && !bear.alive) {
                     document.getElementById('bear-charm-target').classList.add('hidden');
                     document.getElementById('bear-charm-dead-msg').classList.remove('hidden');
+                    document.getElementById('bear-charm-dead-msg').innerText = "已陣亡 無法魅惑";
+                } else if (isFeared) {
+                    document.getElementById('bear-charm-target').classList.add('hidden');
+                    document.getElementById('bear-charm-dead-msg').classList.remove('hidden');
+                    document.getElementById('bear-charm-dead-msg').innerHTML = "<span style='color:var(--btn-danger);'>⚠️ 被恐懼 無法魅惑</span>";
                 } else {
                     document.getElementById('bear-charm-target').classList.remove('hidden');
                     document.getElementById('bear-charm-dead-msg').classList.add('hidden');
@@ -2829,6 +3060,8 @@ function bindSetupEvents() {
                 let target = parseInt(document.getElementById('bear-charm-target').value);
                 GameState.nightData.bearCharmTarget = target;
                 GameState.flags.charmedPlayer = target; 
+            } else if (GameState.config.shapeShifterRole === '熊' && GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === bId) {
+                GameState.nightData.bearCharmTarget = 0;
             }
 
             document.getElementById('phase-bear').classList.add('hidden');
@@ -2850,9 +3083,16 @@ function bindSetupEvents() {
             else document.getElementById('d1-prophet-setup').classList.add('hidden');
 
             const actionArea = document.getElementById('prophet-action-area');
+            let pId = GameState.day === 1 ? parseInt(document.getElementById('prophet-id').value) : (prophet ? prophet.id : null);
+            let isFeared = checkFearedUI('phase-prophet', pId);
             
             if (GameState.day > 1 && prophet && !prophet.alive) {
                 actionArea.innerHTML = "<span style='color:var(--color-wolf);'>預言家已陣亡 假裝詢問查驗目標🔍</span>";
+                document.getElementById('btn-prophet-check').classList.add('hidden');
+                document.getElementById('btn-prophet-next').classList.remove('hidden');
+                document.getElementById('prophet-result').classList.add('hidden');
+            } else if (isFeared) {
+                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>預言家被恐懼 假裝詢問查驗目標🔍</span>";
                 document.getElementById('btn-prophet-check').classList.add('hidden');
                 document.getElementById('btn-prophet-next').classList.remove('hidden');
                 document.getElementById('prophet-result').classList.add('hidden');
@@ -2860,7 +3100,6 @@ function bindSetupEvents() {
                 actionArea.innerHTML = actionArea.getAttribute('data-original') || actionArea.innerHTML;
                 if(!actionArea.getAttribute('data-original')) actionArea.setAttribute('data-original', actionArea.innerHTML);
                 
-                let pId = GameState.day === 1 ? parseInt(document.getElementById('prophet-id').value) : (prophet ? prophet.id : null);
                 let excludes = getCheckExcludeIds(pId);
                 populateAliveSelect('prophet-target', true, "不查驗", false, excludes);
                 
@@ -2894,7 +3133,7 @@ function bindSetupEvents() {
                 let targetPlayer = GameState.players.find(p => p.id === actualTarget); 
                 const prophet = GameState.players.find(p => p.role === '預言家');
                 
-                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) || (targetPlayer && targetPlayer.isCorrupted);
+                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) || (targetPlayer && targetPlayer.isCorrupted);
                 
                 if (role === '狼弟' && !GameState.flags.wolfBroDead) {
                     isWolfTarget = false;
@@ -2905,7 +3144,7 @@ function bindSetupEvents() {
                     let roleClass = "color-villager"; 
                     if (['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師', '騎士'].includes(exactRole)) {
                         roleClass = "color-god";
-                    } else if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(exactRole)) {
+                    } else if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(exactRole)) {
                         roleClass = "color-wolf"; 
                     }
                     resultText.innerHTML = `${exactRole}${swapMsg}`;
@@ -2946,6 +3185,17 @@ function bindSetupEvents() {
         }
 
        function processProphet() {
+            let pId = null;
+            if (GameState.day === 1) {
+                pId = parseInt(document.getElementById('prophet-id').value);
+            } else {
+                let prophet = GameState.players.find(p => p.role === '預言家');
+                if (prophet) pId = prophet.id;
+            }
+            if (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === pId) {
+                GameState.nightData.prophetCheck = 0;
+            }
+
             takeSnapshot(); 
             document.getElementById('phase-prophet').classList.add('hidden');
             proceedToNextPhase(); 
@@ -2961,9 +3211,16 @@ function bindSetupEvents() {
             else document.getElementById('d1-shadow-setup').classList.add('hidden');
 
             const actionArea = document.getElementById('shadow-action-area');
+            let sId = GameState.day === 1 ? parseInt(document.getElementById('shadow-id').value) : (shadow ? shadow.id : null);
+            let isFeared = checkFearedUI('phase-shadow', sId);
             
             if (GameState.day > 1 && shadow && !shadow.alive) {
                 actionArea.innerHTML = "<span style='color:var(--color-wolf);'>燈影已陣亡 假裝詢問查驗目標🔍</span>";
+                document.getElementById('btn-shadow-check').classList.add('hidden');
+                document.getElementById('btn-shadow-next').classList.remove('hidden');
+                document.getElementById('shadow-result').classList.add('hidden');
+            } else if (isFeared) {
+                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>燈影被恐懼 假裝詢問查驗目標🔍</span>";
                 document.getElementById('btn-shadow-check').classList.add('hidden');
                 document.getElementById('btn-shadow-next').classList.remove('hidden');
                 document.getElementById('shadow-result').classList.add('hidden');
@@ -2971,7 +3228,6 @@ function bindSetupEvents() {
                 actionArea.innerHTML = actionArea.getAttribute('data-original') || actionArea.innerHTML;
                 if(!actionArea.getAttribute('data-original')) actionArea.setAttribute('data-original', actionArea.innerHTML);
                 
-                let sId = GameState.day === 1 ? parseInt(document.getElementById('shadow-id').value) : (shadow ? shadow.id : null);
                 let excludes = getCheckExcludeIds(sId);
                 populateAliveSelect('shadow-target', true, "不查驗", false, excludes);
                 
@@ -3004,7 +3260,7 @@ function bindSetupEvents() {
                 let role = getTrueRole(actualTarget);
                 let targetPlayer = GameState.players.find(p => p.id === actualTarget); 
                 
-                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) || (targetPlayer && targetPlayer.isCorrupted);
+                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) || (targetPlayer && targetPlayer.isCorrupted);
                 if (role === '狼弟' && !GameState.flags.wolfBroDead) {
                     isWolfTarget = false;
                 }
@@ -3043,6 +3299,17 @@ function bindSetupEvents() {
         }
 
         function processShadow() {
+            let sId = null;
+            if (GameState.day === 1) {
+                sId = parseInt(document.getElementById('shadow-id').value);
+            } else {
+                let shadow = GameState.players.find(p => p.role === '燈影');
+                if (shadow) sId = shadow.id;
+            }
+            if (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === sId) {
+                GameState.nightData.shadowCheck = 0;
+            }
+            
             takeSnapshot(); 
             document.getElementById('phase-shadow').classList.add('hidden');
             proceedToNextPhase(); 
@@ -3061,6 +3328,17 @@ function bindSetupEvents() {
             GameState.currentPhase = 'gift';
             document.getElementById('phase-gift').classList.remove('hidden');
             document.getElementById('gift-recipient-text').innerText = `${recipient.id} 號`;
+
+            let isFeared = checkFearedUI('phase-gift', recipient.id);
+
+            if (isFeared) {
+                document.getElementById('gift-prophet-ui').classList.add('hidden');
+                document.getElementById('gift-poison-ui').classList.add('hidden');
+                document.getElementById('gift-gun-ui').classList.add('hidden');
+                document.getElementById('btn-gift-next').classList.remove('hidden');
+                autoSave();
+                return;
+            }
 
             document.getElementById('gift-prophet-ui').classList.add('hidden');
             document.getElementById('gift-poison-ui').classList.add('hidden');
@@ -3106,7 +3384,7 @@ function bindSetupEvents() {
                 GameState.flags.merchantGift.used = false; 
             } else {
                 let role = getTrueRole(actualTarget);
-                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role);
+                let isWolfTarget = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role);
                 
                 if (role === '狼弟' && !GameState.flags.wolfBroDead) {
                     isWolfTarget = false;
@@ -3124,13 +3402,20 @@ function bindSetupEvents() {
 
         function processGift() {
             takeSnapshot();
-            if (GameState.flags.merchantGift.type === 'poison') {
-                let actionEle = document.querySelector('input[name="gift-action"]:checked');
-                if (actionEle && actionEle.value === 'poison') {
-                    const t = parseInt(document.getElementById('gift-poison-target').value);
-                    if (t !== 0) {
-                        GameState.nightData.giftPoison = t;
-                        GameState.flags.merchantGift.used = true;
+            let isFeared = GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === GameState.flags.merchantGift.target;
+            
+            if (isFeared) {
+                GameState.nightData.giftPoison = 0;
+                GameState.nightData.giftCheck = 0;
+            } else {
+                if (GameState.flags.merchantGift.type === 'poison') {
+                    let actionEle = document.querySelector('input[name="gift-action"]:checked');
+                    if (actionEle && actionEle.value === 'poison') {
+                        const t = parseInt(document.getElementById('gift-poison-target').value);
+                        if (t !== 0) {
+                            GameState.nightData.giftPoison = t;
+                            GameState.flags.merchantGift.used = true;
+                        }
                     }
                 }
             }
@@ -3241,9 +3526,16 @@ function bindSetupEvents() {
             else document.getElementById('d1-psychic-setup').classList.add('hidden');
 
             const actionArea = document.getElementById('psychic-action-area');
+            let psId = GameState.day === 1 ? parseInt(document.getElementById('psychic-id').value) : (psychic ? psychic.id : null);
+            let isFeared = checkFearedUI('phase-psychic', psId);
             
             if (GameState.day > 1 && psychic && !psychic.alive) {
                 actionArea.innerHTML = "<span style='color:var(--color-wolf);'>通靈師已陣亡 假裝詢問查驗目標🔍</span>";
+                document.getElementById('btn-psychic-check').classList.add('hidden');
+                document.getElementById('btn-psychic-next').classList.remove('hidden');
+                document.getElementById('psychic-result').classList.add('hidden');
+            } else if (isFeared) {
+                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>通靈師被恐懼 假裝詢問查驗目標🔍</span>";
                 document.getElementById('btn-psychic-check').classList.add('hidden');
                 document.getElementById('btn-psychic-next').classList.remove('hidden');
                 document.getElementById('psychic-result').classList.add('hidden');
@@ -3287,7 +3579,7 @@ function bindSetupEvents() {
                 
                 let c = "color-villager";
                 if (['預言家','女巫','獵人','熊','守衛','黑市商人','攝夢人','魔術師','通靈師','騎士'].includes(role)) c = "color-god";
-                else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role)) c = "color-wolf";
+                else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼','夢魘'].includes(role)) c = "color-wolf";
                 
                 resultText.innerHTML = `${role}${swapMsg}`;
                 resultText.className = c;
@@ -3320,6 +3612,17 @@ function bindSetupEvents() {
         }
 
         function processPsychic() {
+            let pId = null;
+            if (GameState.day === 1) {
+                pId = parseInt(document.getElementById('psychic-id').value);
+            } else {
+                let psychic = GameState.players.find(p => p.role === '通靈師');
+                if (psychic) pId = psychic.id;
+            }
+            if (GameState.nightData.nightmareTarget !== 0 && GameState.nightData.nightmareTarget === pId) {
+                GameState.nightData.psychicCheckTarget = 0;
+            }
+
             takeSnapshot(); 
             document.getElementById('phase-psychic').classList.add('hidden');
             proceedToNextPhase(); 
@@ -3335,7 +3638,7 @@ function bindSetupEvents() {
             let r = GameState.flags.mwStatus.role;
             let c = "color-villager";
             if (['預言家','女巫','獵人','熊','守衛','黑市商人','攝夢人','魔術師','通靈師','騎士'].includes(r)) c = "color-god";
-            else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(r)) c = "color-wolf";
+            else if (['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼','夢魘'].includes(r)) c = "color-wolf";
             
             let el = document.getElementById('mw-result-role');
             el.className = c;
@@ -3362,9 +3665,6 @@ function bindSetupEvents() {
             return "";
         }
 
-// =======================
-        // 天亮死亡結算與排程 (使用 DamagePool)
-        // =======================
         function calculateNightActions() {
             DamagePool.init();
 
@@ -3385,8 +3685,56 @@ function bindSetupEvents() {
                 merchant: applyMagic(GameState.nightData.merchantTarget),
                 mwPoison: applyMagic(GameState.nightData.mwPoisonTarget),
                 mwGuard: applyMagic(GameState.nightData.mwGuardTarget),
-                mwWolfKill: GameState.nightData.mwWolfKill !== undefined ? applyMagic(GameState.nightData.mwWolfKill) : 0
+                mwWolfKill: GameState.nightData.mwWolfKill !== undefined ? applyMagic(GameState.nightData.mwWolfKill) : 0,
+                nightmare: applyMagic(GameState.nightData.nightmareTarget)
             };
+
+            // ⚠️ 夢魘連帶封印邏輯 (Retroactive Nullification based on actual magic target)
+            if (actuals.nightmare !== 0) {
+                let feared = actuals.nightmare;
+                let isWolfFeared = GameState.players.some(p => p.id === feared && (RoleUtils.isWolfCamp(p) || p.isCorrupted));
+                if (isWolfFeared) {
+                    actuals.kill1 = 0;
+                    actuals.kill2 = 0;
+                    actuals.revenge = 0;
+                    // Nightmare itself does not block MechWolf's special kill unless we consider mwWolfKill as a standard wolf kill.
+                    // To be safe, if a wolf is feared, let's block all wolf pack physical kills.
+                }
+
+                let guardP = GameState.players.find(p => p.role === '守衛');
+                if (guardP && guardP.id === feared) actuals.guard = 0;
+
+                let witchP = GameState.players.find(p => p.role === '女巫');
+                if (witchP && witchP.id === feared) {
+                    GameState.nightData.witchHealTarget = 0;
+                    actuals.poison = 0;
+                }
+
+                let dreamerP = GameState.players.find(p => p.role === '攝夢人');
+                if (dreamerP && dreamerP.id === feared) actuals.dream = 0;
+
+                let prophetP = GameState.players.find(p => p.role === '預言家');
+                if (prophetP && prophetP.id === feared) actuals.check = 0;
+
+                let shadowP = GameState.players.find(p => p.role === '燈影');
+                if (shadowP && shadowP.id === feared) actuals.shadowCheck = 0;
+
+                let psychicP = GameState.players.find(p => p.role === '通靈師');
+                if (psychicP && psychicP.id === feared) actuals.psychicCheck = 0;
+
+                let merchantP = GameState.players.find(p => p.role === '黑市商人');
+                if (merchantP && merchantP.id === feared) {
+                    actuals.merchant = 0;
+                    GameState.nightData.merchantGift = 'none';
+                }
+
+                let mwP = GameState.players.find(p => p.role === '機械狼');
+                if (mwP && mwP.id === feared) {
+                    actuals.mwPoison = 0;
+                    actuals.mwGuard = 0;
+                    actuals.mwWolfKill = 0;
+                }
+            }
 
             // 🛡️ 1. 註冊防禦與免疫到池中
             DamagePool.addDefense(actuals.guard, 'guard');
@@ -3397,29 +3745,26 @@ function bindSetupEvents() {
             }
 
             // ⚔️ 2. 註冊攻擊到池中
-            // 絕對傷害 (夢死)
             if (GameState.config.dreamer && actuals.dream !== 0 && actuals.dream === GameState.historyData.lastDreamTarget) {
                 DamagePool.addAttack(actuals.dream, 'dream-death', 'absolute');
             }
-            // 物理傷害 (狼刀)
             DamagePool.addAttack(actuals.kill1, 'wolf', 'physical');
             DamagePool.addAttack(actuals.kill2, 'wolf', 'physical');
             DamagePool.addAttack(actuals.mwWolfKill, 'wolf', 'physical');
             DamagePool.addAttack(actuals.revenge, 'wolf-revenge', 'physical');
-            // 魔法傷害 (毒藥)
+            
             if (GameState.config.witch) DamagePool.addAttack(actuals.poison, 'poison', 'magic');
             if (GameState.config.merchant) DamagePool.addAttack(actuals.giftPoison, 'gift-poison', 'magic');
             DamagePool.addAttack(actuals.mwPoison, 'mw-poison', 'magic');
 
             // 🔗 3. 註冊連帶死亡 (Links)
-            // 魅惑殉情
             if (GameState.flags.charmedPlayer !== 0) {
                 let wb = GameState.players.find(p => p.role === '狼美人');
                 let bear = GameState.players.find(p => p.role === '熊' && p.isCorrupted);
                 if (wb) DamagePool.addLink(wb.id, GameState.flags.charmedPlayer, 'wb-link');
                 if (bear) DamagePool.addLink(bear.id, GameState.flags.charmedPlayer, 'wb-link');
             }
-            // 夢中連帶死
+            
             let dreamer = GameState.players.find(p => p.role === '攝夢人');
             if (dreamer && actuals.dream !== 0) {
                 DamagePool.addLink(dreamer.id, actuals.dream, 'dream-link');
@@ -3448,10 +3793,10 @@ function bindSetupEvents() {
             }
 
             // 💼 5. 觸發黑市商人反噬機制 (直接拋入絕對傷害)
-            if (GameState.day === 1 && GameState.config.merchant && GameState.nightData.merchantTarget !== 0) {
-                let tPlayer = GameState.players.find(p => p.id === GameState.nightData.merchantTarget);
-                let isWolf = tPlayer && (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(tPlayer.role) || tPlayer.isCorrupted);
-                GameState.flags.merchantGift = { target: GameState.nightData.merchantTarget, type: GameState.nightData.merchantGift, used: false, isWolf: isWolf };
+            if (GameState.day === 1 && GameState.config.merchant && actuals.merchant !== 0) {
+                let tPlayer = GameState.players.find(p => p.id === actuals.merchant);
+                let isWolf = tPlayer && (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(tPlayer.role) || tPlayer.isCorrupted);
+                GameState.flags.merchantGift = { target: actuals.merchant, type: GameState.nightData.merchantGift, used: false, isWolf: isWolf };
                 
                 if (isWolf && GameState.nightData.merchantGift !== 'none') {
                     let merchantP = GameState.players.find(p => p.role === '黑市商人');
@@ -3462,9 +3807,8 @@ function bindSetupEvents() {
                 }
             }
 
-            // 🔄 一鍵結算全部！
             let result = DamagePool.resolve();
-            result.actuals = actuals; // 保留供賽報渲染使用
+            result.actuals = actuals; 
             return result;
         }
 
@@ -3472,6 +3816,10 @@ function bindSetupEvents() {
             let logHtml = `<div class="log-entry">
                 <div style="color: #999; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 5px; font-weight:bold;">🌙 【第 ${GameState.day} 天夜晚】</div>
                 <ul style="margin: 5px 0; padding-left: 20px; list-style-type: none;">`;
+
+            if (GameState.config.nightmare && GameState.nightData.nightmareTarget !== 0) {
+                logHtml += `<li>🌑 ${getRoleStr('夢魘')} 恐懼了 ${getPlayerStr(GameState.nightData.nightmareTarget, false)}${getSwapLogStr(GameState.nightData.nightmareTarget, actuals.nightmare)}。</li>`;
+            }
 
             if (GameState.config.guard && GameState.nightData.guardProtect !== 0) logHtml += `<li>🛡️ ${getRoleStr('守衛')} 守護了 ${getPlayerStr(GameState.nightData.guardProtect, false)}${getSwapLogStr(GameState.nightData.guardProtect, actuals.guard)}。</li>`;
             if (GameState.config.magician && GameState.nightData.magicianSwap.t1 !== 0) logHtml += `<li>🎩 ${getRoleStr('魔術師')} 交換了 ${getPlayerStr(GameState.nightData.magicianSwap.t1, false)} 與${getPlayerStr(GameState.nightData.magicianSwap.t2, false)}。</li>`;
@@ -3490,7 +3838,7 @@ function bindSetupEvents() {
                     if ((GameState.flags.mwStatus.role === '預言家' || GameState.flags.mwStatus.role === '通靈師' || GameState.flags.mwStatus.role === '燈影') && GameState.nightData.mwCheckTarget !== 0) {
                         let actT = applyMagic(GameState.nightData.mwCheckTarget);
                         let role = getTrueRole(actT);
-                        let isWolf = ['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
+                        let isWolf = ['狼人','黑狼王','狼美人','惡靈騎士','狼兄','狼弟','機械狼','夢魘'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
                         
                         let rTxt = "";
                         if (GameState.flags.mwStatus.role === '預言家') {
@@ -3511,7 +3859,12 @@ function bindSetupEvents() {
             }
 
             let kills = [GameState.nightData.wolfKill, GameState.nightData.wolfKill2].filter(k => k !== 0);
-            if (kills.length > 0) {
+            
+            let isWolfFeared = GameState.players.some(p => p.id === actuals.nightmare && (RoleUtils.isWolfCamp(p) || p.isCorrupted));
+            
+            if (isWolfFeared && kills.length > 0) {
+                 logHtml += `<li>🐺 狼陣營 原本欲擊殺 ${kills.join(' / ')} 號，但因<span style="color:var(--btn-danger); font-weight:bold;">狼隊被恐懼</span>，無法刀人。</li>`;
+            } else if (kills.length > 0) {
                 logHtml += `<li>🐺 狼陣營 `;
                 let killStrs = kills.map(k => {
                     let actK = applyMagic(k);
@@ -3520,12 +3873,16 @@ function bindSetupEvents() {
                 });
                 logHtml += killStrs.join('，且') + `。</li>`;
             } else {
-                logHtml += `<li>🐺 狼陣營 選擇空刀。</li>`;
+                logHtml += `<li>🐺 狼陣營 選擇空刀 (或被恐懼)。</li>`;
             }
 
             if (GameState.config.wolfBros && GameState.nightData.wolfRevengeKill !== 0) {
-                let hitImmune = (GameState.config.dreamer && actuals.revenge === actuals.dream);
-                logHtml += `<li>🐺 ${getRoleStr('狼弟')} 發動復仇刀，擊殺 ${getPlayerStr(GameState.nightData.wolfRevengeKill, false)}${getSwapLogStr(GameState.nightData.wolfRevengeKill, actuals.revenge)}${hitImmune?' (免疫)':''}。</li>`;
+                if (isWolfFeared) {
+                     logHtml += `<li>🐺 ${getRoleStr('狼弟')} 發動復仇刀，但因<span style="color:var(--btn-danger); font-weight:bold;">狼隊被恐懼</span>，無法刀人。</li>`;
+                } else {
+                    let hitImmune = (GameState.config.dreamer && actuals.revenge === actuals.dream);
+                    logHtml += `<li>🐺 ${getRoleStr('狼弟')} 發動復仇刀，擊殺 ${getPlayerStr(GameState.nightData.wolfRevengeKill, false)}${getSwapLogStr(GameState.nightData.wolfRevengeKill, actuals.revenge)}${hitImmune?' (免疫)':''}。</li>`;
+                }
             }
 
             if (GameState.config.wb && GameState.nightData.wbTarget !== 0) logHtml += `<li>💋 ${getRoleStr('狼美人')} 魅惑了 ${getPlayerStr(GameState.nightData.wbTarget, false)}${getSwapLogStr(GameState.nightData.wbTarget, actuals.charm)}。</li>`;
@@ -3550,7 +3907,7 @@ function bindSetupEvents() {
 
             if (GameState.day > 1 && GameState.nightData.giftCheck !== 0) {
                 let role = getTrueRole(actuals.giftCheck);
-                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
+                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
                 logHtml += `<li>🎁 禮物持有者 查驗了 ${getPlayerStr(GameState.nightData.giftCheck, false)}${getSwapLogStr(GameState.nightData.giftCheck, actuals.giftCheck)}，結果為 <span style="color:${isWolf ? 'var(--color-wolf)' : 'var(--color-gold)'}; font-weight:bold;">【${isWolf ? '查殺' : '金水'}】</span>。</li>`;
             }
 
@@ -3563,7 +3920,7 @@ function bindSetupEvents() {
             let buildProphetLog = () => {
                 if (GameState.config.prophet && GameState.nightData.prophetCheck !== 0) {
                     let role = getTrueRole(actuals.check);
-                    let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
+                    let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
                     let resCol = isWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
                     let resTxt = isWolf ? '查殺' : '金水';
                     
@@ -3579,7 +3936,7 @@ function bindSetupEvents() {
             let buildShadowLog = () => {
                 if (GameState.config.shadow && GameState.nightData.shadowCheck !== 0) {
                     let role = getTrueRole(actuals.shadowCheck);
-                    let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
+                    let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
                     let shadowSawWolf = !isWolf;
                     let resCol = shadowSawWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
                     let resTxt = shadowSawWolf ? '查殺' : '金水';
@@ -3756,7 +4113,6 @@ function bindSetupEvents() {
                 GameState.gameHistory[GameState.gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">🤺 <span style="color:var(--color-god); font-weight:bold;">騎士發動決鬥！</span>對象 ${getPlayerStr(targetId, false)} 是<span style="color:var(--color-wolf); font-weight:bold;">狼人陣營</span>，直接死亡且無法發動技能！跳過投票進入天黑。</div>`;
                 GameState.flags.hasVotedToday = true; 
 
-                // 決鬥成功標題金色，「狼人」紅字
                 resultHtml = `
                     <h3 style="color:var(--color-gold); margin-top:0;">🎇決鬥成功</h3>
                     <p style="font-size:20px; margin: 10px 0;"><strong>${targetId} 號是 <span style="color:var(--color-wolf);">狼人</span></strong></p>
@@ -3768,7 +4124,6 @@ function bindSetupEvents() {
                 GameState.flags.knightConfirmedGoodId = targetId;
                 GameState.gameHistory[GameState.gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">🤺 <span style="color:var(--color-god); font-weight:bold;">騎士發動決鬥！</span>對象 ${getPlayerStr(targetId, false)} 是<span style="color:var(--color-villager); font-weight:bold;">好人陣營</span>，騎士以死謝罪！</div>`;
 
-                // 決鬥失敗標題紅色，「好人」金字
                 resultHtml = `
                     <h3 style="color:var(--btn-danger); margin-top:0;">💢決鬥失敗</h3>
                     <p style="font-size:20px; margin: 10px 0;"><strong>${targetId} 號是 <span style="color:var(--color-gold);">好人</span></strong></p>
@@ -3792,13 +4147,11 @@ function bindSetupEvents() {
 
             UIManager.updateAliveStatus();
 
-            // 隱藏操作區，顯示結果區
             document.getElementById('knight-action-area').classList.add('hidden');
             let resultArea = document.getElementById('knight-result-area');
             resultArea.innerHTML = resultHtml;
             resultArea.classList.remove('hidden');
             
-            // 隱藏上方的天亮與死傷資訊、以及投票區，讓畫面完全乾淨專注於決鬥結果
             let h2 = document.querySelector('#phase-morning h2');
             if (h2) h2.classList.add('hidden');
             document.getElementById('morning-result').classList.add('hidden');
@@ -3809,11 +4162,9 @@ function bindSetupEvents() {
             autoSave();
         }
         
-        // 按下確認後才進入下一階段，並還原上方資訊
         function finishKnightDuel() {
             document.getElementById('knight-section').classList.add('hidden');
             
-            // 恢復顯示上方的天亮資訊
             let h2 = document.querySelector('#phase-morning h2');
             if (h2) h2.classList.remove('hidden');
             document.getElementById('morning-result').classList.remove('hidden');
