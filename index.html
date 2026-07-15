@@ -322,19 +322,15 @@
             pointer-events: none;
             filter: grayscale(100%);
         }
-        /* 專門給「空刀/不選擇」的長條按鈕樣式 */
-        .player-grid-btn.zero-btn {
+            
+            .player-grid-btn.zero-btn {
             flex: 1 1 100%; 
             flex-direction: row;
             padding: 12px;
-            background: #442222;
-            color: #ddd;
+            background: #333; /* 改為與一般按鈕相同的深灰底色 */
+            color: #ccc;
         }
-        .player-grid-btn.zero-btn.selected {
-            border-color: var(--btn-danger);
-            background: rgba(255, 77, 77, 0.2);
-            box-shadow: 0 0 8px rgba(255, 77, 77, 0.5);
-        }
+
         .player-grid-btn .num { font-size: 22px; font-weight: bold; line-height: 1.1; }
         .player-grid-btn .role-text { font-size: 13px; margin-top: 4px; }
         
@@ -407,9 +403,9 @@
                 <div class="role-card wolf" id="card-bwk" onclick="toggleRole('bwk')">👑 黑狼王</div>
                 <div class="role-card wolf" id="card-wb" onclick="toggleRole('wb')">👠 狼美人</div>
                 <div class="role-card wolf" id="card-ek" onclick="toggleRole('ek')">💀 惡靈騎士</div>
-                <div class="role-card wolf" id="card-mechwolf" onclick="toggleRole('mechwolf')">⚒️ 機械狼</div>
+                <div class="role-card wolf" id="card-mechwolf" onclick="toggleRole('mechwolf')">🦾 機械狼</div>
                 <div class="role-card wolf" id="card-wolfbros" onclick="toggleRole('wolfbros')">👬 狼兄狼弟</div>
-                <div class="role-card wolf" id="card-nightmare" onclick="toggleRole('nightmare')">🌑 夢魘</div>
+                <div class="role-card wolf" id="card-nightmare" onclick="toggleRole('nightmare')">👻 夢魘</div>
             </div>            <br>
             <button onclick="startGame()" style="font-size: 20px; background-color: var(--btn-primary); padding: 14px 30px;">遊戲開始</button>
         </div>
@@ -1630,17 +1626,19 @@ if (GameState.config.wolfBros) {
          setTimeout(() => renderGridForSelect(selectId), 0);
         }
 
-        function populateExplodeSelect() {
-            const select = document.getElementById('explode-target');
-            if(!select) return;
-            select.innerHTML = `<option value="0">無人自爆</option>`;
-            GameState.players.filter(p => p.alive && (['狼人', '黑狼王', '機械狼', '夢魘'].includes(p.role) || p.isCorrupted)).forEach(p => {
-                let roleDisp = p.isCorrupted ? `百變狼王 (${p.role})` : p.role;
-                select.innerHTML += `<option value="${p.id}" class="${p.class}">${p.id} 號 (${roleDisp})</option>`;
-            });
+function populateExplodeSelect() {
+    const select = document.getElementById('explode-target');
+    if(!select) return;
+    select.innerHTML = `<option value="0">無人自爆</option>`;
+    
+    // 條件：必須存活、必須是允許自爆的狼種（排除夢魘），且不能是被腐化的神職（排除百變狼王）
+    GameState.players.filter(p => p.alive && ['狼人', '黑狼王', '機械狼'].includes(p.role) && !p.isCorrupted).forEach(p => {
+        let roleDisp = p.role;
+        select.innerHTML += `<option value="${p.id}" class="${p.class}">${p.id} 號 (${roleDisp})</option>`;
+    });
 
-        setTimeout(() => renderGridForSelect('explode-target'), 0);
-        }
+    setTimeout(() => renderGridForSelect('explode-target'), 0);
+}
 
         function getRoleStr(roleName) {
             let isCorrupted = GameState.config.shapeShifterRole === roleName;
@@ -2504,8 +2502,16 @@ if (fId !== 0) {
         }
     }
 }
-            let excludeWolfKill = GameState.players.filter(p => ['狼美人', '惡靈騎士'].includes(p.role)).map(p => p.id);
+           let excludeWolfKill = GameState.players.filter(p => ['狼美人', '惡靈騎士', '夢魘'].includes(p.role)).map(p => p.id);
 
+if (GameState.day === 1) {
+    let wbSetup = parseInt(document.getElementById('wb-id')?.value);
+    let ekSetup = parseInt(document.getElementById('ek-id')?.value);
+    let nmSetup = parseInt(document.getElementById('nightmare-id')?.value);
+    if (!isNaN(wbSetup) && !excludeWolfKill.includes(wbSetup)) excludeWolfKill.push(wbSetup);
+    if (!isNaN(ekSetup) && !excludeWolfKill.includes(ekSetup)) excludeWolfKill.push(ekSetup);
+    if (!isNaN(nmSetup) && !excludeWolfKill.includes(nmSetup)) excludeWolfKill.push(nmSetup);
+}
             if (wolfPackFeared) {
                 let alertHtml = `<div class="fear-alert">
                     <h4 style="color:var(--btn-danger); margin:0 0 5px 0;">⚠️ 狼隊被夢魘恐懼！</h4>
