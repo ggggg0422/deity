@@ -237,6 +237,50 @@
             background-color: #444;
             border-color: var(--btn-primary);
         }
+
+/* =========================================
+   Toast 吐司提示系統樣式
+========================================= */
+#toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none; /* 不阻擋上帝點擊下方元素 */
+    width: 90%;
+    max-width: 400px;
+}
+
+.custom-toast {
+    background-color: #2a2a2a;
+    color: #fff;
+    padding: 14px 20px;
+    border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* 帶有微彈跳感的動畫 */
+    border-left: 6px solid var(--btn-danger); /* 預設為錯誤紅邊 */
+}
+
+.custom-toast.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* 支援不同狀態的顏色 */
+.custom-toast.error { border-left-color: var(--btn-danger); }
+.custom-toast.success { border-left-color: var(--btn-success); }
+.custom-toast.warning { border-left-color: var(--btn-warning); }
+
+
     </style>
 </head>
 <body>
@@ -735,8 +779,58 @@
         <button onclick="exportLog()" style="background-color: var(--btn-primary); margin-bottom: 10px;">📋 複製純文字賽報</button>
         <button onclick="clearSaveAndReload()" style="background-color: var(--btn-danger);">重新開始新局 (清除紀錄)</button>
     </div>
-
     <script>
+
+// =========================================
+// Toast 吐司提示系統模組
+// =========================================
+const Toast = {
+    show: function(message, type = 'error', duration = 3000) {
+        // 1. 確保容器存在
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
+
+        // 2. 建立 Toast 元素
+        const toast = document.createElement('div');
+        toast.className = `custom-toast ${type}`;
+        
+        // 根據類型自動加上表情符號 (如果訊息裡沒有的話)
+        let icon = type === 'error' ? '⚠️ ' : (type === 'success' ? '✅ ' : '💡 ');
+        toast.innerHTML = icon + message;
+
+        // 3. 加入畫面
+        container.appendChild(toast);
+
+        // 4. 觸發顯示動畫 (延遲一幀以確保 transition 生效)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+        });
+
+        // 5. 設定定時移除
+        setTimeout(() => {
+            toast.classList.remove('show');
+            // 等待動畫結束 (0.3s) 後將 DOM 節點完全移除
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+};
+
+// =========================================
+// 覆寫原生 alert()，無痛替換所有舊有提示
+// =========================================
+window.alert = function(message) {
+    // 預設將所有原本的 alert 視為 error 提示
+    // 若原訊息已有表情符號（例如"防呆機制啟動："），可以用 replace 稍作修飾，但直接傳入也是沒問題的
+    Toast.show(message, 'error');
+};
+
+
         const GAME_CONSTANTS = {
             CAMP: {
                 WOLF: ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'],
