@@ -838,6 +838,106 @@
     <script>
 
 // =========================================
+        // 夜晚傷害結算池 (Damage Pool)
+        // =========================================
+        const DamagePool = {
+            init() {
+                this.attacks = [];       // 攻擊：{ targetId, cause, type: 'physical'|'magic'|'absolute' }
+                this.defenses = [];      // 防禦：{ targetId, type: 'guard'|'heal'|'mw-guard'|'immunity' }
+                this.links = [];         // 連結死亡：{ sourceId, targetId, cause }
+                
+                this.deadCauses = {};    // 最終死亡名單 { id: cause }
+                this.extraLog = "";      // 特殊事件賽報
+            },
+
+            // 將傷害丟入池中 (分為 物理刀、魔法毒、絕對死亡)
+            addAttack(targetId, cause, type = 'physical') {
+                if (targetId !== 0) this.attacks.push({ targetId, cause, type });
+            },
+
+            // 將防禦丟入池中
+            addDefense(targetId, type) {
+                if (targetId !== 0) this.defenses.push({ targetId, type });
+            },
+
+            // 建立連帶死亡關係 (源頭死 ➔ 目標跟著死)
+            addLink(sourceId, targetId, cause) {
+                if (sourceId !== 0 && targetId !== 0) this.links.push({ sourceId, targetId, cause });
+            },
+
+            // 執行結算！
+            resolve() {
+                let guardTargets = this.defenses.filter(d => d.type === 'guard').map(d => d.targetId);
+                let healTargets  = this.defenses.filter(d => d.type === 'heal').map(d => d.targetId);
+                
+                // 1. 同守同救奶穿判定 (轉為無視防禦的絕對傷害)
+                let milkPierced = guardTargets.filter(id => healTargets.includes(id));
+                milkPierced.forEach(id => this.addAttack(id, 'milk-pierce', 'absolute'));
+
+                // 2. 結算所有直接攻擊
+                this.attacks.forEach(attack => {
+                    let target = attack.targetId;
+                    
+                    // 絕對傷害 (奶穿、反傷、反噬、夢死)：無視一切防禦與免疫
+                    if (attack.type === 'absolute') {
+                        this.markDead(target, attack.cause);
+                        return;
+                    }
+
+                    // 攝夢人目標免疫常規刀與毒
+                    let isImmune = this.defenses.some(d => d.type === 'immunity' && d.targetId === target);
+                    if (isImmune) return;
+
+                    let ekPlayer = GameState.players.find(p => p.role === '惡靈騎士');
+                    let ekId = (ekPlayer && ekPlayer.alive) ? ekPlayer.id : 0;
+
+                    // 物理傷害 (狼刀)
+                    if (attack.type === 'physical') {
+                        if (!guardTargets.includes(target) && !healTargets.includes(target)) {
+                            this.markDead(target, attack.cause);
+                        }
+                    }
+
+                    // 魔法傷害 (女巫/商人/機械狼 毒)
+                    if (attack.type === 'magic') {
+                        if (target === ekId) return; // 惡靈騎士自身免疫毒
+
+                        let mwGuarded = this.defenses.some(d => d.type === 'mw-guard' && d.targetId === target);
+                        if (!mwGuarded) {
+                            this.markDead(target, attack.cause);
+                        }
+                    }
+                });
+
+                // 3. 結算連帶死亡 (殉情、夢裡連帶死)
+                // 使用迴圈確保「連環殉情」也能正確被觸發
+                let newDeath;
+                do {
+                    newDeath = false;
+                    this.links.forEach(link => {
+                        if (this.deadCauses[link.sourceId] && !this.deadCauses[link.targetId]) {
+                            this.markDead(link.targetId, link.cause);
+                            newDeath = true;
+                        }
+                    });
+                } while (newDeath);
+
+                return {
+                    deadTonight: Object.keys(this.deadCauses).map(Number),
+                    causes: this.deadCauses,
+                    extraEventsHtml: this.extraLog
+                };
+            },
+
+            // 標記死亡 (毒殺優先級最高，因為會封印技能)
+            markDead(targetId, cause) {
+                if (!this.deadCauses[targetId] || ['poison', 'gift-poison', 'mw-poison'].includes(cause)) {
+                    this.deadCauses[targetId] = cause;
+                }
+            }
+        };
+
+// =========================================
 // Toast 吐司提示系統模組
 // =========================================
 const Toast = {
@@ -3262,10 +3362,11 @@ function bindSetupEvents() {
             return "";
         }
 
+// =======================
+        // 天亮死亡結算與排程 (使用 DamagePool)
+        // =======================
         function calculateNightActions() {
-            let deadTonight = [];
-            let causes = {};
-            let extraEventsHtml = "";
+            DamagePool.init();
 
             let actuals = {
                 dream: applyMagic(GameState.nightData.dreamerTarget),
@@ -3287,93 +3388,84 @@ function bindSetupEvents() {
                 mwWolfKill: GameState.nightData.mwWolfKill !== undefined ? applyMagic(GameState.nightData.mwWolfKill) : 0
             };
 
+            // 🛡️ 1. 註冊防禦與免疫到池中
+            DamagePool.addDefense(actuals.guard, 'guard');
+            DamagePool.addDefense(GameState.nightData.witchHealTarget, 'heal');
+            DamagePool.addDefense(actuals.mwGuard, 'mw-guard');
+            if (GameState.config.dreamer) {
+                DamagePool.addDefense(actuals.dream, 'immunity'); 
+            }
+
+            // ⚔️ 2. 註冊攻擊到池中
+            // 絕對傷害 (夢死)
             if (GameState.config.dreamer && actuals.dream !== 0 && actuals.dream === GameState.historyData.lastDreamTarget) {
-                registerDeath(actuals.dream, 'dream-death', deadTonight, causes);
+                DamagePool.addAttack(actuals.dream, 'dream-death', 'absolute');
+            }
+            // 物理傷害 (狼刀)
+            DamagePool.addAttack(actuals.kill1, 'wolf', 'physical');
+            DamagePool.addAttack(actuals.kill2, 'wolf', 'physical');
+            DamagePool.addAttack(actuals.mwWolfKill, 'wolf', 'physical');
+            DamagePool.addAttack(actuals.revenge, 'wolf-revenge', 'physical');
+            // 魔法傷害 (毒藥)
+            if (GameState.config.witch) DamagePool.addAttack(actuals.poison, 'poison', 'magic');
+            if (GameState.config.merchant) DamagePool.addAttack(actuals.giftPoison, 'gift-poison', 'magic');
+            DamagePool.addAttack(actuals.mwPoison, 'mw-poison', 'magic');
+
+            // 🔗 3. 註冊連帶死亡 (Links)
+            // 魅惑殉情
+            if (GameState.flags.charmedPlayer !== 0) {
+                let wb = GameState.players.find(p => p.role === '狼美人');
+                let bear = GameState.players.find(p => p.role === '熊' && p.isCorrupted);
+                if (wb) DamagePool.addLink(wb.id, GameState.flags.charmedPlayer, 'wb-link');
+                if (bear) DamagePool.addLink(bear.id, GameState.flags.charmedPlayer, 'wb-link');
+            }
+            // 夢中連帶死
+            let dreamer = GameState.players.find(p => p.role === '攝夢人');
+            if (dreamer && actuals.dream !== 0) {
+                DamagePool.addLink(dreamer.id, actuals.dream, 'dream-link');
             }
 
-            [actuals.kill1, actuals.kill2, actuals.mwWolfKill].forEach(actualKill => {
-                if (actualKill !== 0) {
-                    if (!GameState.config.dreamer || actualKill !== actuals.dream) { 
-                        let isGuarded = (actuals.guard === actualKill);
-                        let isHealed = (GameState.nightData.witchHealTarget === actualKill);
-                        if (isGuarded && isHealed) {
-                            registerDeath(actualKill, 'milk-pierce', deadTonight, causes); 
-                        } else if (!isGuarded && !isHealed) {
-                            registerDeath(actualKill, 'wolf', deadTonight, causes); 
-                        }
-                    }
-                }
-            });
-
-            if (actuals.revenge !== 0) {
-                if (!GameState.config.dreamer || actuals.revenge !== actuals.dream) {
-                    let isGuarded = (actuals.guard === actuals.revenge);
-                    if (!isGuarded) registerDeath(actuals.revenge, 'wolf-revenge', deadTonight, causes);
-                }
-            }
-
-            if (GameState.config.witch && actuals.poison !== 0) {
-                let mwBlocked = (GameState.config.mechWolf && GameState.flags.mwStatus.role === '守衛' && actuals.mwGuard === actuals.poison);
-                if (!mwBlocked && (!GameState.config.dreamer || actuals.poison !== actuals.dream)) {
-                    registerDeath(actuals.poison, 'poison', deadTonight, causes);
-                }
-            }
-
-            if (GameState.config.merchant && actuals.giftPoison !== 0) {
-                let mwBlocked = (GameState.config.mechWolf && GameState.flags.mwStatus.role === '守衛' && actuals.mwGuard === actuals.giftPoison);
-                if (!mwBlocked && (!GameState.config.dreamer || actuals.giftPoison !== actuals.dream)) {
-                    registerDeath(actuals.giftPoison, 'gift-poison', deadTonight, causes);
-                }
-            }
-
-            if (actuals.mwPoison !== 0 && (!GameState.config.dreamer || actuals.mwPoison !== actuals.dream)) {
-                registerDeath(actuals.mwPoison, 'mw-poison', deadTonight, causes);
-            }
-
+            // 🏍️ 4. 觸發惡靈騎士反傷機制 (直接拋入絕對傷害)
             let ek = GameState.players.find(p => p.role === '惡靈騎士');
-            if (ek && ek.alive) {
-                if ((actuals.poison === ek.id || actuals.giftPoison === ek.id || actuals.mwPoison === ek.id) && !GameState.flags.ekReflectUsed) {
-                    GameState.flags.ekReflectUsed = true;
-                    let poisonerId = (actuals.poison === ek.id) ? GameState.players.find(p => p.role === '女巫')?.id : ((actuals.mwPoison === ek.id) ? GameState.players.find(p => p.role === '機械狼')?.id : GameState.flags.merchantGift.target);
-                    if (poisonerId && GameState.players.find(p=>p.id===poisonerId).alive) {
-                        registerDeath(poisonerId, 'reflect', deadTonight, causes);
-                        extraEventsHtml += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">🏍️ 惡靈騎士被毒，觸發反傷彈死了 ${getPlayerStr(poisonerId, false)}！</div>`;
-                    }
-                } 
-                else if ((actuals.check === ek.id || actuals.shadowCheck === ek.id || actuals.giftCheck === ek.id || actuals.psychicCheck === ek.id || GameState.nightData.mwCheckTarget === ek.id) && !GameState.flags.ekReflectUsed) {
-                    GameState.flags.ekReflectUsed = true;
-                    let checkerId;
-                    if (actuals.check === ek.id) checkerId = GameState.players.find(p => p.role === '預言家')?.id;
-                    else if (actuals.shadowCheck === ek.id) checkerId = GameState.players.find(p => p.role === '燈影')?.id;
-                    else if (actuals.psychicCheck === ek.id) checkerId = GameState.players.find(p => p.role === '通靈師')?.id;
-                    else if (GameState.nightData.mwCheckTarget === ek.id) checkerId = GameState.players.find(p => p.role === '機械狼')?.id;
-                    else checkerId = GameState.flags.merchantGift.target;
+            if (ek && ek.alive && !GameState.flags.ekReflectUsed) {
+                let attackerId = 0;
+                let triggerCause = "";
+                
+                if (actuals.poison === ek.id) { attackerId = GameState.players.find(p => p.role === '女巫')?.id; triggerCause = "被毒"; }
+                else if (actuals.mwPoison === ek.id) { attackerId = GameState.players.find(p => p.role === '機械狼')?.id; triggerCause = "被毒"; }
+                else if (actuals.giftPoison === ek.id && GameState.flags.merchantGift.target !== 0) { attackerId = GameState.flags.merchantGift.target; triggerCause = "被毒"; }
+                else if (actuals.check === ek.id) { attackerId = GameState.players.find(p => p.role === '預言家')?.id; triggerCause = "被查驗"; }
+                else if (actuals.shadowCheck === ek.id) { attackerId = GameState.players.find(p => p.role === '燈影')?.id; triggerCause = "被查驗"; }
+                else if (actuals.psychicCheck === ek.id) { attackerId = GameState.players.find(p => p.role === '通靈師')?.id; triggerCause = "被查驗"; }
+                else if (GameState.nightData.mwCheckTarget === ek.id) { attackerId = GameState.players.find(p => p.role === '機械狼')?.id; triggerCause = "被查驗"; }
+                else if (actuals.giftCheck === ek.id && GameState.flags.merchantGift.target !== 0) { attackerId = GameState.flags.merchantGift.target; triggerCause = "被查驗"; }
 
-                    if (checkerId && GameState.players.find(p=>p.id===checkerId).alive) {
-                        registerDeath(checkerId, 'reflect', deadTonight, causes);
-                        extraEventsHtml += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">🏍️ 惡靈騎士被查驗，觸發反傷彈死了 ${getPlayerStr(checkerId, false)}！</div>`;
-                    }
+                if (attackerId && GameState.players.find(p => p.id === attackerId)?.alive) {
+                    GameState.flags.ekReflectUsed = true;
+                    DamagePool.addAttack(attackerId, 'reflect', 'absolute');
+                    DamagePool.extraLog += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">🏍️ 惡靈騎士${triggerCause}，觸發反傷彈死了 ${getPlayerStr(attackerId, false)}！</div>`;
                 }
             }
 
+            // 💼 5. 觸發黑市商人反噬機制 (直接拋入絕對傷害)
             if (GameState.day === 1 && GameState.config.merchant && GameState.nightData.merchantTarget !== 0) {
                 let tPlayer = GameState.players.find(p => p.id === GameState.nightData.merchantTarget);
-                let isWolf = false;
-                if (tPlayer) {
-                    isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(tPlayer.role) || tPlayer.isCorrupted;
-                }
+                let isWolf = tPlayer && (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼'].includes(tPlayer.role) || tPlayer.isCorrupted);
                 GameState.flags.merchantGift = { target: GameState.nightData.merchantTarget, type: GameState.nightData.merchantGift, used: false, isWolf: isWolf };
                 
                 if (isWolf && GameState.nightData.merchantGift !== 'none') {
                     let merchantP = GameState.players.find(p => p.role === '黑市商人');
                     if (merchantP && merchantP.alive) {
-                        registerDeath(merchantP.id, 'merchant-fail', deadTonight, causes);
-                        extraEventsHtml += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">💼 黑市商人因將禮物發送給狼人陣營，遭到反噬死亡！</div>`;
+                        DamagePool.addAttack(merchantP.id, 'merchant-fail', 'absolute');
+                        DamagePool.extraLog += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">💼 黑市商人因將禮物發送給狼人陣營，遭到反噬死亡！</div>`;
                     }
                 }
             }
 
-            return { actuals, deadTonight, causes, extraEventsHtml };
+            // 🔄 一鍵結算全部！
+            let result = DamagePool.resolve();
+            result.actuals = actuals; // 保留供賽報渲染使用
+            return result;
         }
 
         function generateNightLog(actuals, deadTonight, causes, extraEventsHtml) {
