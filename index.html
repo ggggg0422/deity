@@ -281,6 +281,62 @@
 .custom-toast.warning { border-left-color: var(--btn-warning); }
 
 
+/* =========================================
+           玩家網格選單樣式 (取代 Select)
+        ========================================= */
+        .player-grid-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin: 10px auto;
+            max-width: 100%;
+        }
+        .player-grid-btn {
+            flex: 0 0 calc(33.33% - 8px); /* 一行三個 */
+            box-sizing: border-box;
+            padding: 12px 6px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            background: #333;
+            transition: all 0.15s ease;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .player-grid-btn:active {
+            transform: scale(0.95);
+        }
+        .player-grid-btn.selected {
+            border-color: var(--btn-primary);
+            background: rgba(33, 150, 243, 0.2);
+            box-shadow: 0 0 8px rgba(33, 150, 243, 0.5);
+            color: white; /* 選中時字體亮白 */
+        }
+        .player-grid-btn.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+            filter: grayscale(100%);
+        }
+        /* 專門給「空刀/不選擇」的長條按鈕樣式 */
+        .player-grid-btn.zero-btn {
+            flex: 1 1 100%; 
+            flex-direction: row;
+            padding: 12px;
+            background: #442222;
+            color: #ddd;
+        }
+        .player-grid-btn.zero-btn.selected {
+            border-color: var(--btn-danger);
+            background: rgba(255, 77, 77, 0.2);
+            box-shadow: 0 0 8px rgba(255, 77, 77, 0.5);
+        }
+        .player-grid-btn .num { font-size: 22px; font-weight: bold; line-height: 1.1; }
+        .player-grid-btn .role-text { font-size: 13px; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -830,6 +886,71 @@ window.alert = function(message) {
     Toast.show(message, 'error');
 };
 
+// =========================================
+        // 自動將 Select 轉換為網格按鈕的工具
+        // =========================================
+        function renderGridForSelect(selectId) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+
+            select.style.display = 'none'; // 隱藏原本的下拉選單
+
+            let gridContainer = document.getElementById(selectId + '-grid');
+            if (!gridContainer) {
+                gridContainer = document.createElement('div');
+                gridContainer.id = selectId + '-grid';
+                gridContainer.className = 'player-grid-container';
+                // 插入在原本的 select 後面
+                select.parentNode.insertBefore(gridContainer, select.nextSibling);
+            }
+
+            gridContainer.innerHTML = ''; // 清空重建
+
+            Array.from(select.options).forEach(option => {
+                if (option.disabled && option.value === "") return; // 跳過預設的「請選擇目標...」
+
+                const btn = document.createElement('div');
+                // 繼承 option 上的顏色 class (如 color-wolf, color-god)
+                const colorClass = Array.from(option.classList).find(c => c.startsWith('color-')) || 'color-unknown';
+                btn.className = `player-grid-btn ${colorClass}`;
+                
+                // 如果選項被禁用，或整個 select 被禁用
+                if (option.disabled || select.disabled) {
+                    btn.classList.add('disabled');
+                }
+
+                // 排版文字：把 "1 號 (預言家)" 拆成大數字與小字體
+                if (option.value === "0") {
+                    btn.innerHTML = option.text;
+                    btn.classList.add('zero-btn');
+                } else {
+                    let match = option.text.match(/(\d+)\s*號(?:\s*\((.*?)\))?/);
+                    if (match) {
+                        btn.innerHTML = `<span class="num">${match[1]}</span>`;
+                        if (match[2]) btn.innerHTML += `<span class="role-text">${match[2]}</span>`;
+                    } else {
+                        btn.innerHTML = option.text;
+                    }
+                }
+
+                // 標記當前選中狀態
+                if (select.value === option.value) btn.classList.add('selected');
+
+                // 綁定點擊事件
+                btn.addEventListener('click', () => {
+                    if (option.disabled || select.disabled) return;
+                    
+                    select.value = option.value; // 更新隱藏選單的值
+                    
+                    // 更新 UI 發光狀態
+                    Array.from(gridContainer.children).forEach(c => c.classList.remove('selected'));
+                    btn.classList.add('selected');
+                });
+
+                gridContainer.appendChild(btn);
+            });
+        }
+
 
         const GAME_CONSTANTS = {
             CAMP: {
@@ -1007,7 +1128,7 @@ window.alert = function(message) {
             }
         }
 
-        function bindSetupEvents() {
+function bindSetupEvents() {
             const allSetupIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'witch-id', 'hunter-id','knight-id', 'bear-id', 'prophet-id', 'shadow-id', 'psychic-id', 'dreamer-id', 'wb-id', 'magician-id', 'ek-id', 'guard-id', 'merchant-id', 'wolfbro-id', 'wolflittlebro-id', 'mw-id'];
             allSetupIds.forEach(id => {
                 let el = document.getElementById(id);
@@ -1020,21 +1141,30 @@ window.alert = function(message) {
             document.querySelectorAll('input[name="witch-action"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     const poisonSelect = document.getElementById('witch-target');
-                    if (poisonSelect) poisonSelect.disabled = (this.value !== 'poison' || !GameState.potions.poison);
+                    if (poisonSelect) {
+                        poisonSelect.disabled = (this.value !== 'poison' || !GameState.potions.poison);
+                        renderGridForSelect('witch-target'); // 🚀 同步更新網格
+                    }
                 });
             });
 
             document.querySelectorAll('input[name="gift-action"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     const poisonSelect = document.getElementById('gift-poison-target');
-                    if (poisonSelect) poisonSelect.disabled = (this.value !== 'poison');
+                    if (poisonSelect) {
+                        poisonSelect.disabled = (this.value !== 'poison');
+                        renderGridForSelect('gift-poison-target'); // 🚀 同步更新網格
+                    }
                 });
             });
 
             document.querySelectorAll('input[name="mw-poison"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     const poisonSelect = document.getElementById('mw-poison-target');
-                    if (poisonSelect) poisonSelect.disabled = (this.value !== 'poison');
+                    if (poisonSelect) {
+                        poisonSelect.disabled = (this.value !== 'poison');
+                        renderGridForSelect('mw-poison-target'); // 🚀 同步更新網格
+                    }
                 });
             });
         }
@@ -1374,6 +1504,8 @@ window.alert = function(message) {
                 let disCol = disabledIds.includes(p.id) ? '' : p.class;
                 select.innerHTML += `<option value="${p.id}" class="${disCol}" ${dis}>${p.id} 號${roleInfo}</option>`;
             });
+
+         setTimeout(() => renderGridForSelect(selectId), 0);
         }
 
         function populateExplodeSelect() {
@@ -1384,6 +1516,8 @@ window.alert = function(message) {
                 let roleDisp = p.isCorrupted ? `百變狼王 (${p.role})` : p.role;
                 select.innerHTML += `<option value="${p.id}" class="${p.class}">${p.id} 號 (${roleDisp})</option>`;
             });
+
+        setTimeout(() => renderGridForSelect('explode-target'), 0);
         }
 
         function getRoleStr(roleName) {
