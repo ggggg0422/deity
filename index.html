@@ -808,11 +808,14 @@
             <div class="result-box" id="morning-result"></div>
             <div id="bear-result"></div>
             
-            <div id="phase-shoot" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--color-wolf); padding-top: 15px; background: #332222; padding: 15px; border-radius: 8px; text-align: center;">
+<div id="phase-shoot" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--color-wolf); padding-top: 15px; background: #332222; padding: 15px; border-radius: 8px; text-align: center;">
                 <h3 id="shoot-title" style="margin-top: 0;">出局，請開槍</h3>
-                <p>要射死誰</p>
-                <select id="shoot-target"></select>
-                <button onclick="submitShoot()" style="background-color: var(--btn-danger);">確認帶走並繼續</button>
+                <div id="shoot-action-area">
+                    <p>要射死誰</p>
+                    <select id="shoot-target"></select>
+                    <button onclick="submitShoot()" style="background-color: var(--btn-danger);">確認開槍</button>
+                </div>
+                <div id="shoot-result-area" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #666;"></div>
             </div>
 
             <div id="explode-section" class="hidden" style="margin-top: 20px; border-top: 1px dashed var(--color-wolf); padding-top: 15px; text-align: center;">
@@ -1407,13 +1410,17 @@ if (GameState.currentPhase === 'nightmare' && this.id === 'nightmare-id') prepar
             let isNight = ['shapeshifter','nightmare','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','shadow','psychic','gift','hunter','mw-result', 'knight'].includes(GameState.currentPhase);
             UIManager.setText('day-counter', `第 ${GameState.day} 天${isNight ? '夜晚' : '白天'}`);
             
-            if (['shoot', 'vote'].includes(GameState.currentPhase)) {
+                if (['shoot', 'vote'].includes(GameState.currentPhase)) {
                 UIManager.show('phase-morning');
                 UIManager.setHTML('morning-result', GameState.flags.morningResultHtml || "");
                 UIManager.setHTML('bear-result', GameState.flags.bearResultHtml || "");
                 
                 let h2 = document.querySelector('#phase-morning h2');
-                if (h2) h2.classList.remove('hidden');
+                if (h2) {
+                    if (GameState.currentPhase === 'shoot') h2.classList.add('hidden'); // 開槍時隱藏標題
+                    else h2.classList.remove('hidden'); // 投票時恢復顯示
+                }
+                
                 document.getElementById('morning-result').classList.remove('hidden');
                 document.getElementById('bear-result').classList.remove('hidden');
             } else {                
@@ -1443,8 +1450,12 @@ if (GameState.currentPhase === 'nightmare' && this.id === 'nightmare-id') prepar
                 let titleArea = document.getElementById('shoot-title');
                 titleArea.innerHTML = `💥 <span class="${shooter.class}">${shooter.role} (${shooter.id}號)</span> 出局  開槍目標`;
                 populateAliveSelect('shoot-target', true, "放棄開槍 (不帶走人)");
+                // 恢復顯示開槍選項，隱藏結果區
+                document.getElementById('shoot-action-area').classList.remove('hidden');
+                document.getElementById('shoot-result-area').classList.add('hidden');
                 document.getElementById('phase-shoot').classList.remove('hidden');
-            } else if (GameState.currentPhase === 'vote') {
+            }
+            else if (GameState.currentPhase === 'vote') {
                 populateAliveSelect('vote-target', true, "無人出局 (棄票/平票)");
                 document.getElementById('vote-section').classList.remove('hidden');
                 populateExplodeSelect();
@@ -1831,14 +1842,23 @@ function populateExplodeSelect() {
                 return;
             }
 
-            if (GameState.shootQueue.length > 0) {
+                if (GameState.shootQueue.length > 0) {
                 GameState.currentPhase = 'shoot';
                 let shooter = GameState.shootQueue[0];
                 let titleArea = document.getElementById('shoot-title');
                 titleArea.innerHTML = `💥 <span class="${shooter.class}">${shooter.role} (${shooter.id}號)</span> 出局，請選擇開槍目標`;
                 populateAliveSelect('shoot-target', true, "放棄開槍 (不帶走人)");
                 
+                // 恢復顯示開槍選項，隱藏結果區
+                document.getElementById('shoot-action-area').classList.remove('hidden');
+                document.getElementById('shoot-result-area').classList.add('hidden');
+
                 document.getElementById('phase-morning').classList.remove('hidden');
+                
+                // --- 新增：進入開槍畫面時，隱藏「天亮了」標題 ---
+                let h2 = document.querySelector('#phase-morning h2');
+                if (h2) h2.classList.add('hidden');
+                
                 document.getElementById('vote-section').classList.add('hidden');
                 document.getElementById('explode-section').classList.add('hidden');
                 document.getElementById('phase-shoot').classList.remove('hidden');
@@ -1857,6 +1877,11 @@ function populateExplodeSelect() {
                     GameState.currentPhase = 'vote';
                     evaluateBear(); 
                     document.getElementById('phase-morning').classList.remove('hidden');
+                    
+                    // --- 新增：進入投票畫面時，確保恢復顯示「天亮了」標題 ---
+                    let h2 = document.querySelector('#phase-morning h2');
+                    if (h2) h2.classList.remove('hidden');
+                    
                     document.getElementById('vote-section').classList.remove('hidden');
                     populateAliveSelect('vote-target', true, "無人出局 (棄票/平票)");
                     populateExplodeSelect();
@@ -1873,7 +1898,7 @@ function populateExplodeSelect() {
                     }
                 }
             }
-            autoSave();
+             autoSave();
         }
 
         function proceedToNextPhase() {
@@ -4276,11 +4301,18 @@ newlyDead.forEach(id => {
             let shooter = GameState.shootQueue[0];
             let targetId = parseInt(document.getElementById('shoot-target').value);
             
+            let resultHtml = "";
+
             if (targetId !== 0) {
                 let targetP = GameState.players.find(x => x.id === targetId);
                 
                 if (targetP && targetP.role === '惡靈騎士') {
                     GameState.gameHistory[GameState.gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">💥 ${getPlayerStr(shooter.id, false)} 開槍命中 ${getPlayerStr(targetId, false)}，<span style="color:var(--color-wolf); font-weight:bold;">但惡靈騎士免疫槍殺，未能帶走！</span></div>`;
+                    
+                    resultHtml = `
+                        <h3 style="color:var(--btn-warning); margin-top:0;">💀 惡靈騎士免疫</h3>
+                        <p style="font-size:20px; margin: 10px 0;"><strong>${targetId} 號玩家 <span style="color:var(--btn-success);">沒有死亡</span></strong></p>
+                    `;
                 } else {
                     let newlyDead = [];
                     let causes = {};
@@ -4303,14 +4335,56 @@ newlyDead.forEach(id => {
 
                     checkWolfBroDeath(newlyDead);
                     newlyDead.forEach(id => queueShooter(id, causes[id]));
+
+                    resultHtml = `
+                        <h3 style="color:var(--btn-danger); margin-top:0;">💥 開槍命中</h3>
+                        <p style="font-size:20px; margin: 10px 0;"><strong>${targetId} 號玩家 <span style="color:var(--color-wolf);">死亡</span></strong></p>
+                    `;
                 }
             } else {
                 GameState.gameHistory[GameState.gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">💥 ${getPlayerStr(shooter.id, false)} 選擇不開槍 (或無法開槍)。</div>`;
+                
+                resultHtml = `
+                    <h3 style="color:#aaa; margin-top:0;">💨 放棄開槍</h3>
+                    <p style="font-size:20px; margin: 10px 0;"><strong>沒有玩家死亡</strong></p>
+                `;
             }
             
             UIManager.updateAliveStatus();
-            GameState.shootQueue.shift(); 
-            processNextAction(); 
+            GameState.shootQueue.shift(); // 移除當前的開槍者
+
+            // 根據遊戲狀態決定按鈕文字
+            let nextBtnText = "";
+            let btnColor = "var(--btn-primary)";
+            if (GameState.shootQueue.length > 0) {
+                // 有可能剛剛被帶走的人也是獵人，列入了下一個開槍佇列
+                nextBtnText = "確認並讓下一位玩家開槍";
+                btnColor = "var(--btn-warning)";
+            } else if (GameState.flags.hasVotedToday) {
+                // 如果已經投過票(通常是投票出局或是決鬥後)
+                nextBtnText = "確認並進入天黑";
+                btnColor = "var(--color-wolf)";
+            } else {
+                // 通常是晚上結算後的早晨死傷開槍
+                nextBtnText = "確認並繼續投票";
+                btnColor = "var(--btn-primary)";
+            }
+
+            resultHtml += `<button onclick="finishShoot()" style="background-color: ${btnColor}; color: white; margin-top: 10px;">${nextBtnText}</button>`;
+
+            document.getElementById('shoot-action-area').classList.add('hidden');
+            let resultArea = document.getElementById('shoot-result-area');
+            resultArea.innerHTML = resultHtml;
+            resultArea.classList.remove('hidden');
+
+            autoSave(); 
+        }
+
+        // 確認完開槍結果後再前往下一步
+        function finishShoot() {
+            document.getElementById('shoot-result-area').classList.add('hidden');
+            document.getElementById('phase-shoot').classList.add('hidden');
+            processNextAction();
         }
 
         function processVote() {
