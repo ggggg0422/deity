@@ -1173,6 +1173,10 @@
                 });
                 html += '</div>';
                 UIManager.setHTML('alive-status', html);
+            },
+            updateDayCounter: () => {
+                let isNight = ['shapeshifter','nightmare','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','shadow','psychic','gift','hunter','mw-result', 'knight'].includes(GameState.currentPhase);
+                UIManager.setText('day-counter', `第 ${GameState.day} 天${isNight ? '夜晚' : '白天'}`);
             }
         };
 
@@ -1410,20 +1414,25 @@ if (GameState.currentPhase === 'nightmare' && this.id === 'nightmare-id') prepar
             let isNight = ['shapeshifter','nightmare','guard','wolfbros','mechwolf','wolf','witch','dreamer','magician','merchant','bear','prophet','shadow','psychic','gift','hunter','mw-result', 'knight'].includes(GameState.currentPhase);
             UIManager.setText('day-counter', `第 ${GameState.day} 天${isNight ? '夜晚' : '白天'}`);
             
-                if (['shoot', 'vote'].includes(GameState.currentPhase)) {
+                if (['shoot', 'vote', 'martyr'].includes(GameState.currentPhase)) {
                 UIManager.show('phase-morning');
                 UIManager.setHTML('morning-result', GameState.flags.morningResultHtml || "");
                 UIManager.setHTML('bear-result', GameState.flags.bearResultHtml || "");
                 
                 let h2 = document.querySelector('#phase-morning h2');
-                if (h2) {
-                    if (GameState.currentPhase === 'shoot') h2.classList.add('hidden'); // 開槍時隱藏標題
-                    else h2.classList.remove('hidden'); // 投票時恢復顯示
+                if (['shoot', 'martyr'].includes(GameState.currentPhase)) { // 開槍或殉情時隱藏多餘資訊
+                    if (h2) h2.classList.add('hidden'); 
+                    document.getElementById('morning-result').classList.add('hidden'); 
+                    document.getElementById('bear-result').classList.add('hidden'); 
+                    let knightSec = document.getElementById('knight-section');
+                    if(knightSec) knightSec.classList.add('hidden'); 
+                } else {
+                    if (h2) h2.classList.remove('hidden'); 
+                    document.getElementById('morning-result').classList.remove('hidden');
+                    document.getElementById('bear-result').classList.remove('hidden');
                 }
-                
-                document.getElementById('morning-result').classList.remove('hidden');
-                document.getElementById('bear-result').classList.remove('hidden');
-            } else {                
+            }
+                 else {                
                 UIManager.hide('phase-morning');
             }
 
@@ -1476,6 +1485,7 @@ if (GameState.currentPhase === 'nightmare' && this.id === 'nightmare-id') prepar
         function autoSave() {
             localStorage.setItem('werewolf_save', JSON.stringify(GameState));
             updateEarlyWinBanner();
+        UIManager.updateDayCounter();
         }
 
         function clearSaveAndReload() {
@@ -1704,7 +1714,7 @@ function populateExplodeSelect() {
             return `<span class="${c}" style="font-weight:bold;">${id}號 (${rName})</span>`;
         }
 
-        function registerDeath(id, cause, deadList, deadCauses) {
+            function registerDeath(id, cause, deadList, deadCauses) {
             if (!id || id === 0) return;
             let p = GameState.players.find(x => x.id === id);
             if (!p) return;
@@ -1720,6 +1730,12 @@ function populateExplodeSelect() {
 
             deadList.push(id);
             deadCauses[id] = cause;
+
+            // --- 新增：將殉情死亡加入專屬提示佇列 ---
+            if (cause === 'wb-link') {
+                GameState.martyrQueue = GameState.martyrQueue || [];
+                if (!GameState.martyrQueue.includes(id)) GameState.martyrQueue.push(id);
+            }
 
             let canTriggerSkills = !['dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'milk-pierce', 'merchant-fail'].includes(cause);
             if (canTriggerSkills) {
@@ -1739,8 +1755,7 @@ function populateExplodeSelect() {
             if (!p) return;
             if (['poison', 'gift-poison', 'mw-poison','knight-duel', 'dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'merchant-fail'].includes(cause)) return; 
 
-            if (['poison', 'gift-poison', 'mw-poison','knight-duel', 'dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'merchant-fail'].includes(cause)) return; 
-            
+                       
             // 【修正 1】如果夜裡被刀，且當晚被夢魘恐懼，則無法開槍 (白天投票出局則不受此限)
             let isNightCause = ['wolf', 'wolf-revenge', 'milk-pierce'].includes(cause);
             if (isNightCause && id === GameState.nightData.nightmareTarget) return;
@@ -1836,51 +1851,115 @@ function populateExplodeSelect() {
             }
         }
 
-       function processNextAction() {
+            function processNextAction() {
             if (checkWinCondition()) {
                 localStorage.removeItem('werewolf_save'); 
                 return;
             }
 
-                if (GameState.shootQueue.length > 0) {
+            GameState.martyrQueue = GameState.martyrQueue || [];
+
+            // --- 優先處理：殉情結算畫面 ---
+            if (GameState.martyrQueue.length > 0) {
+                GameState.currentPhase = 'martyr';
+                let martyrId = GameState.martyrQueue[0];
+                
+                let resultHtml = `
+                    <p style="font-size:24px; margin: 15px 0;"><strong>${martyrId} 號玩家 <span style="color:var(--btn-danger);">殉情死亡 無法發動任何技能</span></strong></p>
+                `;
+
+
+                let nextBtnText = "";
+                let btnColor = "var(--btn-primary)";
+                if (GameState.martyrQueue.length > 1) {
+                    nextBtnText = "確認下一個出局";
+                    btnColor = "var(--btn-warning)";
+                } else if (GameState.shootQueue.length > 0) {
+                    nextBtnText = "確認並讓玩家開槍";
+                    btnColor = "var(--btn-warning)";
+                } else if (GameState.flags.hasVotedToday) {
+                    nextBtnText = "確認並進入天黑";
+                    btnColor = "var(--color-wolf)";
+                } else {
+                    nextBtnText = "確認並繼續投票";
+                    btnColor = "var(--btn-primary)";
+                }
+
+                resultHtml += `<button onclick="finishMartyr()" style="background-color: ${btnColor}; color: white; margin-top: 10px;">${nextBtnText}</button>`;
+
+                let phaseMartyr = document.getElementById('phase-martyr');
+                if (!phaseMartyr) {
+                    phaseMartyr = document.createElement('div');
+                    phaseMartyr.id = 'phase-martyr';
+                    phaseMartyr.style.cssText = 'margin-top: 20px; border-top: 1px dashed var(--color-wolf); padding-top: 15px; background: #332222; padding: 15px; border-radius: 8px; text-align: center;';
+                    document.getElementById('phase-morning').appendChild(phaseMartyr);
+                }
+                phaseMartyr.innerHTML = resultHtml;
+                phaseMartyr.classList.remove('hidden');
+
+                document.getElementById('phase-morning').classList.remove('hidden');
+                
+                let h2 = document.querySelector('#phase-morning h2');
+                if (h2) h2.classList.add('hidden');
+                document.getElementById('morning-result').classList.add('hidden');
+                document.getElementById('bear-result').classList.add('hidden');
+                let knightSec = document.getElementById('knight-section');
+                if(knightSec) knightSec.classList.add('hidden');
+                
+                document.getElementById('vote-section').classList.add('hidden');
+                document.getElementById('explode-section').classList.add('hidden');
+                let phaseShoot = document.getElementById('phase-shoot');
+                if (phaseShoot) phaseShoot.classList.add('hidden');
+
+            } 
+            // --- 次要處理：開槍結算畫面 ---
+            else if (GameState.shootQueue.length > 0) {
+                let phaseMartyr = document.getElementById('phase-martyr');
+                if (phaseMartyr) phaseMartyr.classList.add('hidden');
+
                 GameState.currentPhase = 'shoot';
                 let shooter = GameState.shootQueue[0];
                 let titleArea = document.getElementById('shoot-title');
                 titleArea.innerHTML = `💥 <span class="${shooter.class}">${shooter.role} (${shooter.id}號)</span> 出局，請選擇開槍目標`;
                 populateAliveSelect('shoot-target', true, "放棄開槍 (不帶走人)");
                 
-                // 恢復顯示開槍選項，隱藏結果區
                 document.getElementById('shoot-action-area').classList.remove('hidden');
                 document.getElementById('shoot-result-area').classList.add('hidden');
-
                 document.getElementById('phase-morning').classList.remove('hidden');
                 
-                // --- 新增：進入開槍畫面時，隱藏「天亮了」標題 ---
                 let h2 = document.querySelector('#phase-morning h2');
                 if (h2) h2.classList.add('hidden');
+                document.getElementById('morning-result').classList.add('hidden');
+                document.getElementById('bear-result').classList.add('hidden');
+                let knightSec = document.getElementById('knight-section');
+                if(knightSec) knightSec.classList.add('hidden');
                 
                 document.getElementById('vote-section').classList.add('hidden');
                 document.getElementById('explode-section').classList.add('hidden');
                 document.getElementById('phase-shoot').classList.remove('hidden');
-            } else {
-                document.getElementById('phase-shoot').classList.add('hidden');
+            } 
+            // --- 最後處理：投票或進入夜晚 ---
+            else {
+                let phaseMartyr = document.getElementById('phase-martyr');
+                if (phaseMartyr) phaseMartyr.classList.add('hidden');
+                let phaseShoot = document.getElementById('phase-shoot');
+                if (phaseShoot) phaseShoot.classList.add('hidden');
                 
                 if (GameState.flags.hasVotedToday) {
                     document.getElementById('phase-morning').classList.add('hidden');
                     GameState.day++;
-                    
                     GameState.resetNightData();
                     GameState.flags.hasVotedToday = false;
-                    
                     startNight(false);
                 } else {
                     GameState.currentPhase = 'vote';
                     evaluateBear(); 
                     document.getElementById('phase-morning').classList.remove('hidden');
                     
-                    // --- 新增：進入投票畫面時，確保恢復顯示「天亮了」標題 ---
                     let h2 = document.querySelector('#phase-morning h2');
                     if (h2) h2.classList.remove('hidden');
+                    document.getElementById('morning-result').classList.remove('hidden');
+                    document.getElementById('bear-result').classList.remove('hidden');
                     
                     document.getElementById('vote-section').classList.remove('hidden');
                     populateAliveSelect('vote-target', true, "無人出局 (棄票/平票)");
@@ -1898,9 +1977,17 @@ function populateExplodeSelect() {
                     }
                 }
             }
-             autoSave();
+            autoSave();
         }
 
+        // 確認完殉情結果後再前往下一步 (已經獨立出來)
+        function finishMartyr() {
+            GameState.martyrQueue.shift(); 
+            document.getElementById('phase-martyr').classList.add('hidden');
+            processNextAction();
+        }
+
+        // 進行下一個夜晚階段 (已經獨立出來)
         function proceedToNextPhase() {
             let nextPhase = GameState.nightQueue.shift(); 
 
@@ -1910,6 +1997,7 @@ function populateExplodeSelect() {
             }
 
             switch (nextPhase) {
+
                 case 'mechwolf': prepareMechWolf(); break;
                 case 'shapeshifter': prepareShapeShifter(); break;
                 case 'nightmare': prepareNightmare(); break;
@@ -4096,15 +4184,22 @@ if (GameState.day === 1 && sId !== null) {
 
         function processMorning() {
             finalizeD1Roles();
+            UIManager.updateDayCounter();
             document.getElementById('phase-morning').classList.remove('hidden');
 
             let { actuals, deadTonight, causes, extraEventsHtml } = calculateNightActions();
 
-            deadTonight.forEach(id => {
+                deadTonight.forEach(id => {
                 let p = GameState.players.find(x => x.id === id);
                 if (p) p.alive = false;
+                
+                // --- 新增：將夜晚死亡引發的殉情加入專屬提示佇列 ---
+                if (causes[id] === 'wb-link') {
+                    GameState.martyrQueue = GameState.martyrQueue || [];
+                    if (!GameState.martyrQueue.includes(id)) GameState.martyrQueue.push(id);
+                }
             });
-if (GameState.config.dreamer) GameState.historyData.lastDreamTarget = actuals.dream; 
+            if (GameState.config.dreamer) GameState.historyData.lastDreamTarget = actuals.dream; 
             if (GameState.config.guard) GameState.historyData.lastGuardProtect = actuals.guard; 
             // 【修正 3】記錄昨晚夢魘恐懼的目標，以供明晚禁用
             if (GameState.config.nightmare) GameState.historyData.lastNightmareTarget = actuals.nightmare; 
@@ -4310,8 +4405,7 @@ newlyDead.forEach(id => {
                     GameState.gameHistory[GameState.gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">💥 ${getPlayerStr(shooter.id, false)} 開槍命中 ${getPlayerStr(targetId, false)}，<span style="color:var(--color-wolf); font-weight:bold;">但惡靈騎士免疫槍殺，未能帶走！</span></div>`;
                     
                     resultHtml = `
-                        <h3 style="color:var(--btn-warning); margin-top:0;">💀 惡靈騎士免疫</h3>
-                        <p style="font-size:20px; margin: 10px 0;"><strong>${targetId} 號玩家 <span style="color:var(--btn-success);">沒有死亡</span></strong></p>
+                        <p style="font-size:24px; margin: 15px 0;"><strong>${targetId} 號玩家 <span style="color:var(--btn-success);">沒有死亡</span></strong></p>
                     `;
                 } else {
                     let newlyDead = [];
@@ -4337,35 +4431,29 @@ newlyDead.forEach(id => {
                     newlyDead.forEach(id => queueShooter(id, causes[id]));
 
                     resultHtml = `
-                        <h3 style="color:var(--btn-danger); margin-top:0;">💥 開槍命中</h3>
-                        <p style="font-size:20px; margin: 10px 0;"><strong>${targetId} 號玩家 <span style="color:var(--color-wolf);">死亡</span></strong></p>
+                        <p style="font-size:24px; margin: 15px 0;"><strong>${targetId} 號玩家 <span style="color:var(--btn-danger);">死亡</span></strong></p>
                     `;
                 }
             } else {
                 GameState.gameHistory[GameState.gameHistory.length-1] += `<div style="padding-left: 5px; margin-top: 8px;">💥 ${getPlayerStr(shooter.id, false)} 選擇不開槍 (或無法開槍)。</div>`;
                 
                 resultHtml = `
-                    <h3 style="color:#aaa; margin-top:0;">💨 放棄開槍</h3>
-                    <p style="font-size:20px; margin: 10px 0;"><strong>沒有玩家死亡</strong></p>
+                    <p style="font-size:24px; margin: 15px 0; color:#aaa;"><strong>沒有玩家死亡</strong></p>
                 `;
             }
             
             UIManager.updateAliveStatus();
-            GameState.shootQueue.shift(); // 移除當前的開槍者
+            GameState.shootQueue.shift(); 
 
-            // 根據遊戲狀態決定按鈕文字
             let nextBtnText = "";
             let btnColor = "var(--btn-primary)";
             if (GameState.shootQueue.length > 0) {
-                // 有可能剛剛被帶走的人也是獵人，列入了下一個開槍佇列
                 nextBtnText = "確認並讓下一位玩家開槍";
                 btnColor = "var(--btn-warning)";
             } else if (GameState.flags.hasVotedToday) {
-                // 如果已經投過票(通常是投票出局或是決鬥後)
                 nextBtnText = "確認並進入天黑";
                 btnColor = "var(--color-wolf)";
             } else {
-                // 通常是晚上結算後的早晨死傷開槍
                 nextBtnText = "確認並繼續投票";
                 btnColor = "var(--btn-primary)";
             }
@@ -4427,7 +4515,7 @@ newlyDead.forEach(id => {
             processNextAction();
         }
 
-        /* ========== 勝負判定 ========== */
+/* ========== 勝負判定 ========== */
         function checkWinCondition() {
             let wolves = GameState.players.filter(p => (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(p.role) || p.isCorrupted) && p.alive).length;
             let gods = GameState.players.filter(p => ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師', '騎士'].includes(p.role) && !p.isCorrupted && p.alive).length;
@@ -4437,16 +4525,17 @@ newlyDead.forEach(id => {
             let wolfWin = (gods === 0 || villagers === 0);
             let goodWin = (wolves === 0);
 
+            // 判斷勝利條件與原因
             if (wolfWin && goodWin) {
-                if (gods === 0) endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:18px; color:#aaa;'>(判定為狼刀在先，神職全滅)</span>";
-                else endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:18px; color:#aaa;'>(判定為狼刀在先，平民全滅)</span>";
+                if (gods === 0) endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:16px; color:#aaa;'>(判定為狼刀在先，神職已全滅)</span>";
+                else endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:16px; color:#aaa;'>(判定為狼刀在先，平民已全滅)</span>";
             } 
             else if (wolfWin) {
-                if (gods === 0) endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:18px; color:#aaa;'>(神職已全滅)</span>";
-                else endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:18px; color:#aaa;'>(平民已全滅)</span>";
+                if (gods === 0) endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:16px; color:#aaa;'>(神職已全滅)</span>";
+                else endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:16px; color:#aaa;'>(平民已全滅)</span>";
             } 
             else if (goodWin) {
-                endMsg = "🏆 好人陣營獲勝！<br><span style='font-size:18px; color:#aaa;'>(狼陣營已全滅)</span>";
+                endMsg = "🏆 好人陣營獲勝！<br><span style='font-size:16px; color:#aaa;'>(狼陣營已全滅)</span>";
             }
 
             if (endMsg !== "") {
@@ -4454,7 +4543,14 @@ newlyDead.forEach(id => {
                 document.getElementById('end-screen').classList.remove('hidden');
                 document.getElementById('win-title').innerHTML = endMsg;
                 
-                document.getElementById('game-log').innerHTML = GameState.gameHistory.join('');
+                // ▼ 新增：將最後的結算原因加入戰報末端，方便複製 ▼
+                let finalLogHtml = `
+                <div class="log-entry" style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #666; text-align: center;">
+                    <div style="color: var(--color-gold); font-size: 20px; font-weight:bold; margin-bottom: 8px;">🎉 遊戲結束 🎉</div>
+                    <div style="font-size: 18px; line-height: 1.5;">${endMsg}</div>
+                </div>`;
+                
+                document.getElementById('game-log').innerHTML = GameState.gameHistory.join('') + finalLogHtml;
                 return true;
             }
             return false;
