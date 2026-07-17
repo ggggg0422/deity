@@ -5,7 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>狼人殺上帝專用小幫手 (百變狼王 + 夢魘 擴充版)</title>
     <style>
-        .role-grid {
+   /* =========================================
+   玩家人數方塊按鈕樣式
+========================================= */
+.player-count-grid {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.player-count-btn {
+    padding: 12px 18px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: #333;
+    color: #ccc;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.player-count-btn:active {
+    transform: scale(0.95);
+}
+
+/* 選中時的發光狀態 (藍色) */
+.player-count-btn.selected {
+    border-color: var(--color-good);
+    background: rgba(77, 166, 255, 0.15);
+    color: white;
+    box-shadow: 0 0 10px rgba(77, 166, 255, 0.4);
+}
+
+            .role-grid {
             display: flex;
             flex-wrap: wrap;
             justify-content: flex-start;
@@ -346,15 +382,17 @@
 
     <div id="setup-screen" style="text-align:center; padding: 10px 0;">
         
-        <div style="margin-bottom: 20px;">
-            <label style="font-size: 18px; font-weight: bold;">玩家人數</label>
-            <select id="player-count-select" style="font-size: 18px; font-weight: bold; color: var(--color-good); width: auto; display: inline-block; margin-left: 10px;">
-                <option value="9">9 人局</option>
-                <option value="10">10 人局</option>
-                <option value="11">11 人局</option>
-                <option value="12" selected>12 人局</option>
-            </select>
-        </div>
+<div style="margin-bottom: 20px;">
+    <label style="font-size: 18px; font-weight: bold;">玩家人數</label>
+    <div class="player-count-grid">
+        <div class="player-count-btn" onclick="selectPlayerCount(9, this)">9 人局</div>
+        <div class="player-count-btn" onclick="selectPlayerCount(10, this)">10 人局</div>
+        <div class="player-count-btn" onclick="selectPlayerCount(11, this)">11 人局</div>
+        <div class="player-count-btn selected" onclick="selectPlayerCount(12, this)">12 人局</div>
+    </div>
+    <!-- 保留原本的 ID 作為隱藏欄位，讓系統無縫讀取數值 -->
+    <input type="hidden" id="player-count-select" value="12">
+</div>
 
         <div style="background: var(--panel-bg); padding: 20px; border-radius: 8px; display: inline-block; text-align: center; max-width: 440px; box-sizing: border-box; width: 100%;">
             <h3 style="margin-top: 0; border-bottom: 1px solid #555; padding-bottom: 10px; color: var(--color-god);">配置神職陣營</h3>
@@ -714,8 +752,8 @@
             <button onclick="processProphet()" id="btn-prophet-next" class="hidden">請閉眼</button>
         </div>
 
-        <div id="phase-shadow" class="action-row hidden">
-            <h3 class="color-god">👁️ 預言家請睜眼 <span style="font-size:16px; color:#aaa;">(實為燈影)</span></h3>
+            <div id="phase-shadow" class="action-row hidden">
+            <h3 class="color-villager">🏮 預言家請睜眼 <span style="font-size:16px; color:#aaa;">(實為燈影)</span></h3>
             <div id="d1-shadow-setup" class="setup-box hidden">
                 <p>燈影號碼</p>
                 <select id="shadow-id"></select>
@@ -1183,6 +1221,22 @@
         window.onload = () => {
             bindSetupEvents();
         };
+ 
+function selectPlayerCount(count, element) {
+    // 1. 更新隱藏的 input 值，讓原本的 startGame() 可以直接讀取
+    document.getElementById('player-count-select').value = count;
+    
+    // 2. 移除所有人數按鈕的發光狀態
+    const btns = document.querySelectorAll('.player-count-btn');
+    btns.forEach(btn => btn.classList.remove('selected'));
+    
+    // 3. 讓當前點擊的按鈕亮起
+    element.classList.add('selected');
+
+    // 4. (UX優化) 即時更新 GameState 人數，讓下方設定神職/狼人的號碼選單自動縮減至對應人數
+    GameState.playerCount = count;
+    updateSetupSelects();
+}
 
         function toggleRole(roleName) {
             const card = document.getElementById('card-' + roleName);
@@ -1737,7 +1791,8 @@ function populateExplodeSelect() {
                 if (!GameState.martyrQueue.includes(id)) GameState.martyrQueue.push(id);
             }
 
-            let canTriggerSkills = !['dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'milk-pierce', 'merchant-fail'].includes(cause);
+// 加入 'knight-duel'，當被騎士決鬥死亡時，封印其連帶死亡技能（如狼美人的魅惑）
+            let canTriggerSkills = !['dream-death', 'dream-link', 'wb-link', 'reflect', 'explode', 'milk-pierce', 'merchant-fail', 'knight-duel'].includes(cause);
             if (canTriggerSkills) {
                 if ((p.role === '狼美人' || (p.role === '熊' && p.isCorrupted)) && GameState.flags.charmedPlayer !== 0 && !deadList.includes(GameState.flags.charmedPlayer)) {
                     registerDeath(GameState.flags.charmedPlayer, 'wb-link', deadList, deadCauses);
