@@ -474,7 +474,7 @@
         </div>
 
         <div id="phase-mechwolf" class="action-row hidden">
-            <h3 class="color-wolf">🐺 機械狼請睜眼</h3>
+            <h3 class="color-wolf">🦾 機械狼請睜眼</h3>
             
             <div id="mw-signal-ui" class="result-box" style="margin-bottom:15px; text-align:center;"></div>
             
@@ -698,7 +698,7 @@
         </div>
 
         <div id="phase-merchant" class="action-row hidden">
-            <h3 class="color-god">💼 黑市商人請睜眼</h3>
+            <h3 class="color-god">💰 黑市商人請睜眼</h3>
             <div id="merchant-night1-container">
                 <div id="d1-merchant-setup" class="setup-box">
                     <p>黑市商人</p>
@@ -833,7 +833,7 @@
         </div>
 
         <div id="phase-mw-result" class="action-row hidden">
-            <h3 class="color-wolf">🐺 機械狼請睜眼 (學習結果)</h3>
+            <h3 class="color-wolf">🦾 機械狼請睜眼 (學習結果)</h3>
             <p>上帝請告知機械狼，他學習到的身分是：</p>
             <div class="result-box">
                 <h2 id="mw-result-role" style="margin:0;"></h2>
@@ -2684,9 +2684,15 @@ let fId = GameState.nightData.nightmareTarget;
 
 if (fId !== 0) {
     if (GameState.day === 1) {
-        // 核心修正 2：第一天時玩家身分還沒寫入陣列，必須透過 getTrueRole 即時抓取下拉選單比對
+        // 【關鍵修正 1】即時抓取畫面上所有狼人選單的當前數值，確保切換號碼時能「馬上」觸發
+        let currentWolfIds = ['w1', 'w2', 'w3', 'w4', 'bwk-id', 'wb-id', 'ek-id', 'wolfbro-id', 'wolflittlebro-id', 'mw-id', 'nightmare-id']
+            .map(id => {
+                let el = document.getElementById(id);
+                return el && el.style.display !== 'none' ? parseInt(el.value) : NaN;
+            });
+            
         let role = getTrueRole(fId);
-        if (['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) || GameState.config.shapeShifterRole === role) {
+        if (currentWolfIds.includes(fId) || GameState.config.shapeShifterRole === role) {
             wolfPackFeared = true;
         }
     } else {
@@ -2696,7 +2702,8 @@ if (fId !== 0) {
         }
     }
 }
-           let excludeWolfKill = GameState.players.filter(p => ['狼美人', '惡靈騎士', '夢魘'].includes(p.role)).map(p => p.id);
+
+let excludeWolfKill = GameState.players.filter(p => ['狼美人', '惡靈騎士', '夢魘'].includes(p.role)).map(p => p.id);
 
 if (GameState.day === 1) {
     let wbSetup = parseInt(document.getElementById('wb-id')?.value);
@@ -2706,18 +2713,23 @@ if (GameState.day === 1) {
     if (!isNaN(ekSetup) && !excludeWolfKill.includes(ekSetup)) excludeWolfKill.push(ekSetup);
     if (!isNaN(nmSetup) && !excludeWolfKill.includes(nmSetup)) excludeWolfKill.push(nmSetup);
 }
-            if (wolfPackFeared) {
-                let alertHtml = `<div class="fear-alert">
-                    <h4 style="color:var(--btn-danger); margin:0 0 5px 0;">⚠️ 狼隊被夢魘恐懼！</h4>
-                    <span style="color:#ddd; font-size:14px;">有狼隊成員被恐懼，今晚狼隊全體無法刀人！請告知狼隊，然後確認閉眼。</span>
-                </div>`;
-                document.querySelector('#phase-wolf h3').insertAdjacentHTML('afterend', alertHtml);
-                populateAliveSelect('wolf-target', true, "被恐懼 無法刀人", false, []);
-                document.getElementById('wolf-target').disabled = true;
-            } else {
-                populateAliveSelect('wolf-target', true, "不擊殺 (空刀)", false, excludeWolfKill);
-                document.getElementById('wolf-target').disabled = false;
-            }
+
+    if (wolfPackFeared) {
+    let alertHtml = `<div class="fear-alert">
+        <h4 style="color:var(--btn-danger); margin:0 0 5px 0;">⚠️ 狼隊被夢魘恐懼！</h4>
+        <span style="color:#ddd; font-size:15px; font-weight:bold;">無法進行擊殺，請上帝給予狼隊 ❌ 手勢，告知今晚只能空刀。</span>
+    </div>`;
+    document.querySelector('#phase-wolf h3').insertAdjacentHTML('afterend', alertHtml);
+    
+    // 【關鍵修正 2】不鎖死 disabled，而是過濾掉所有玩家，只留下唯一的「空刀按鈕」讓上帝可以點擊
+    let allAliveIds = GameState.players.filter(p => p.alive).map(p => p.id);
+    populateAliveSelect('wolf-target', true, "被恐懼 只能空刀", false, allAliveIds);
+    document.getElementById('wolf-target').disabled = false;
+    document.getElementById('wolf-target').value = "0"; // 強制聚焦在空刀
+} else {
+    populateAliveSelect('wolf-target', true, "不擊殺 (空刀)", false, excludeWolfKill);
+    document.getElementById('wolf-target').disabled = false;
+}
 
             document.getElementById('wolf-target2')?.classList.add('hidden');
             let sel = document.getElementById('wolf-target2');
@@ -3446,7 +3458,7 @@ let isFeared = (GameState.nightData.nightmareTarget !== 0 && GameState.nightData
         }
 
         // --- 燈影 ---
-        function prepareShadow() {
+            function prepareShadow() {
             GameState.currentPhase = 'shadow';
             document.getElementById('phase-shadow').classList.remove('hidden');
             let shadow = GameState.players.find(p => p.role === '燈影');
@@ -3464,9 +3476,17 @@ let isFeared = (GameState.nightData.nightmareTarget !== 0 && GameState.nightData
                 document.getElementById('btn-shadow-next').classList.remove('hidden');
                 document.getElementById('shadow-result').classList.add('hidden');
             } else if (isFeared) {
-                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>燈影被恐懼 假裝詢問查驗目標🔍</span>";
-                document.getElementById('btn-shadow-check').classList.add('hidden');
-                document.getElementById('btn-shadow-next').classList.remove('hidden');
+                actionArea.innerHTML = actionArea.getAttribute('data-original') || actionArea.innerHTML;
+                if(!actionArea.getAttribute('data-original')) actionArea.setAttribute('data-original', actionArea.innerHTML);
+                
+                // 【恐懼修正】過濾掉所有玩家，只留下唯一的「不查驗」
+                let allAliveIds = GameState.players.filter(p => p.alive).map(p => p.id);
+                populateAliveSelect('shadow-target', true, "不查驗", false, allAliveIds);
+                document.getElementById('shadow-target').disabled = false;
+                document.getElementById('shadow-target').value = "0";
+                
+                document.getElementById('btn-shadow-check').classList.remove('hidden');
+                document.getElementById('btn-shadow-next').classList.add('hidden');
                 document.getElementById('shadow-result').classList.add('hidden');
             } else {
                 actionArea.innerHTML = actionArea.getAttribute('data-original') || actionArea.innerHTML;
@@ -3767,8 +3787,7 @@ if (GameState.day === 1 && sId !== null) {
         }
 
         // --- 通靈師 ---
-        function preparePsychic() {
-            
+            function preparePsychic() {
             GameState.currentPhase = 'psychic';
 
             applyCorruptedColor('phase-psychic', '通靈師');
@@ -3788,15 +3807,25 @@ if (GameState.day === 1 && sId !== null) {
                 document.getElementById('btn-psychic-next').classList.remove('hidden');
                 document.getElementById('psychic-result').classList.add('hidden');
             } else if (isFeared) {
-                actionArea.innerHTML = "<span style='color:var(--color-wolf);'>通靈師被恐懼 假裝詢問查驗目標🔍</span>";
-                document.getElementById('btn-psychic-check').classList.add('hidden');
-                document.getElementById('btn-psychic-next').classList.remove('hidden');
+                actionArea.innerHTML = actionArea.getAttribute('data-original') || actionArea.innerHTML;
+                if(!actionArea.getAttribute('data-original')) actionArea.setAttribute('data-original', actionArea.innerHTML);
+                
+                // 【恐懼修正】過濾掉所有玩家，只留下唯一的「不查驗」
+                let allAliveIds = GameState.players.filter(p => p.alive).map(p => p.id);
+                populateAliveSelect('psychic-target', true, "不查驗", false, allAliveIds);
+                document.getElementById('psychic-target').disabled = false;
+                document.getElementById('psychic-target').value = "0";
+                
+                document.getElementById('btn-psychic-check').classList.remove('hidden');
+                document.getElementById('btn-psychic-next').classList.add('hidden');
                 document.getElementById('psychic-result').classList.add('hidden');
             } else {
                 actionArea.innerHTML = actionArea.getAttribute('data-original') || actionArea.innerHTML;
                 if(!actionArea.getAttribute('data-original')) actionArea.setAttribute('data-original', actionArea.innerHTML);
                 
-                populateAliveSelect('psychic-target', true, "不查驗");
+                // 【防呆修正】加上 excludes 參數，讓通靈師跟預言家一樣無法查驗自己
+                let excludes = getCheckExcludeIds(psId);
+                populateAliveSelect('psychic-target', true, "不查驗", false, excludes);
                 
                 if (GameState.nightData.psychicCheckTarget !== 0) {
                     document.getElementById('psychic-target').value = GameState.nightData.psychicCheckTarget;
@@ -4055,7 +4084,7 @@ if (GameState.day === 1 && sId !== null) {
                     let merchantP = GameState.players.find(p => p.role === '黑市商人');
                     if (merchantP && merchantP.alive) {
                         DamagePool.addAttack(merchantP.id, 'merchant-fail', 'absolute');
-                        DamagePool.extraLog += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">💼 黑市商人因將禮物發送給狼人陣營，遭到反噬死亡！</div>`;
+                        DamagePool.extraLog += `<div style="padding-left: 5px; margin-top: 5px; color:var(--color-wolf); font-weight:bold;">💰 黑市商人因將禮物發送給狼人陣營，遭到反噬死亡！</div>`;
                     }
                 }
             }
@@ -4071,7 +4100,7 @@ if (GameState.day === 1 && sId !== null) {
                 <ul style="margin: 5px 0; padding-left: 20px; list-style-type: none;">`;
 
             if (GameState.config.nightmare && GameState.nightData.nightmareTarget !== 0) {
-                logHtml += `<li>🌑 ${getRoleStr('夢魘')} 恐懼了 ${getPlayerStr(GameState.nightData.nightmareTarget, false)}${getSwapLogStr(GameState.nightData.nightmareTarget, actuals.nightmare)}。</li>`;
+                logHtml += `<li>👻 ${getRoleStr('夢魘')} 恐懼了 ${getPlayerStr(GameState.nightData.nightmareTarget, false)}${getSwapLogStr(GameState.nightData.nightmareTarget, actuals.nightmare)}。</li>`;
             }
 
             if (GameState.config.guard && GameState.nightData.guardProtect !== 0) logHtml += `<li>🛡️ ${getRoleStr('守衛')} 守護了 ${getPlayerStr(GameState.nightData.guardProtect, false)}${getSwapLogStr(GameState.nightData.guardProtect, actuals.guard)}。</li>`;
@@ -4085,9 +4114,9 @@ if (GameState.day === 1 && sId !== null) {
                 if (GameState.flags.mwStatus.learned) {
                     if (GameState.flags.mwStatus.role === '女巫' && GameState.nightData.mwPoisonTarget !== 0) {
                         let hitImmune = (GameState.config.dreamer && actuals.mwPoison === actuals.dream);
-                        logHtml += `<li>🐺 機械狼(女巫) 毒了 ${getPlayerStr(GameState.nightData.mwPoisonTarget, false)}${getSwapLogStr(GameState.nightData.mwPoisonTarget, actuals.mwPoison)}${hitImmune?' (免疫)':''}。</li>`;
+                        logHtml += `<li>🦾 機械狼(女巫) 毒了 ${getPlayerStr(GameState.nightData.mwPoisonTarget, false)}${getSwapLogStr(GameState.nightData.mwPoisonTarget, actuals.mwPoison)}${hitImmune?' (免疫)':''}。</li>`;
                     }
-                    if (GameState.flags.mwStatus.role === '守衛' && GameState.nightData.mwGuardTarget !== 0) logHtml += `<li>🐺 機械狼(守衛) 施加了防毒盾於 ${getPlayerStr(GameState.nightData.mwGuardTarget, false)}${getSwapLogStr(GameState.nightData.mwGuardTarget, actuals.mwGuard)}。</li>`;
+                    if (GameState.flags.mwStatus.role === '守衛' && GameState.nightData.mwGuardTarget !== 0) logHtml += `<li>🦾 機械狼(守衛) 施加了防毒盾於 ${getPlayerStr(GameState.nightData.mwGuardTarget, false)}${getSwapLogStr(GameState.nightData.mwGuardTarget, actuals.mwGuard)}。</li>`;
                     if ((GameState.flags.mwStatus.role === '預言家' || GameState.flags.mwStatus.role === '通靈師' || GameState.flags.mwStatus.role === '燈影') && GameState.nightData.mwCheckTarget !== 0) {
                         let actT = applyMagic(GameState.nightData.mwCheckTarget);
                         let role = getTrueRole(actT);
@@ -4101,21 +4130,21 @@ if (GameState.day === 1 && sId !== null) {
                         } else {
                             rTxt = `<span class='${isWolf ? "color-wolf" : "color-god"}'>${role}</span>`;
                         }
-                        logHtml += `<li>🐺 機械狼(查驗) 查驗了 ${getPlayerStr(GameState.nightData.mwCheckTarget, false)}${getSwapLogStr(GameState.nightData.mwCheckTarget, actT)}，結果為【${rTxt}】。</li>`;
+                        logHtml += `<li>🦾 機械狼(查驗) 查驗了 ${getPlayerStr(GameState.nightData.mwCheckTarget, false)}${getSwapLogStr(GameState.nightData.mwCheckTarget, actT)}，結果為【${rTxt}】。</li>`;
                     }
                 }
             }
 
             if (GameState.nightData.mwWolfKill !== 0 && GameState.nightData.mwWolfKill !== undefined) {
                 let hitImmune = (GameState.config.dreamer && actuals.mwWolfKill === actuals.dream);
-                logHtml += `<li>🐺 機械狼(狼人) 發動獨立刀，擊殺 ${getPlayerStr(GameState.nightData.mwWolfKill, false)}${getSwapLogStr(GameState.nightData.mwWolfKill, actuals.mwWolfKill)}${hitImmune ? ' (免疫)' : ''}。</li>`;
+                logHtml += `<li>🦾 機械狼(狼人) 發動獨立刀，擊殺 ${getPlayerStr(GameState.nightData.mwWolfKill, false)}${getSwapLogStr(GameState.nightData.mwWolfKill, actuals.mwWolfKill)}${hitImmune ? ' (免疫)' : ''}。</li>`;
             }
 
             let kills = [GameState.nightData.wolfKill, GameState.nightData.wolfKill2].filter(k => k !== 0);
             
             let isWolfFeared = GameState.players.some(p => p.id === actuals.nightmare && (RoleUtils.isWolfCamp(p) || p.isCorrupted));
             
-            if (isWolfFeared && kills.length > 0) {
+             if (isWolfFeared && kills.length > 0) {
                  logHtml += `<li>🐺 狼陣營 原本欲擊殺 ${kills.join(' / ')} 號，但因<span style="color:var(--btn-danger); font-weight:bold;">狼隊被恐懼</span>，無法刀人。</li>`;
             } else if (kills.length > 0) {
                 logHtml += `<li>🐺 狼陣營 `;
@@ -4125,8 +4154,12 @@ if (GameState.day === 1 && sId !== null) {
                     return `擊殺 ${getPlayerStr(k, false)}${getSwapLogStr(k, actK)}${hitImmune ? ' (免疫)' : ''}`;
                 });
                 logHtml += killStrs.join('，且') + `。</li>`;
+            } else if (isWolfFeared) {
+                // 【戰報修正】明確標示狼隊是因為被恐懼而無法出刀
+                logHtml += `<li>🐺 狼陣營 因<span style="color:var(--btn-danger); font-weight:bold;">被夢魘恐懼</span>，被迫空刀。</li>`;
             } else {
-                logHtml += `<li>🐺 狼陣營 選擇空刀 (或被恐懼)。</li>`;
+                // 【戰報修正】明確標示狼隊是主動戰術性空刀
+                logHtml += `<li>🐺 狼陣營 選擇空刀。</li>`;
             }
 
             if (GameState.config.wolfBros && GameState.nightData.wolfRevengeKill !== 0) {
@@ -4141,16 +4174,36 @@ if (GameState.day === 1 && sId !== null) {
             if (GameState.config.wb && GameState.nightData.wbTarget !== 0) logHtml += `<li>💋 ${getRoleStr('狼美人')} 魅惑了 ${getPlayerStr(GameState.nightData.wbTarget, false)}${getSwapLogStr(GameState.nightData.wbTarget, actuals.charm)}。</li>`;
             if (GameState.config.shapeShifterRole === '熊' && GameState.nightData.bearCharmTarget !== 0) logHtml += `<li>💋 百變狼王(熊) 魅惑了 ${getPlayerStr(GameState.nightData.bearCharmTarget, false)}${getSwapLogStr(GameState.nightData.bearCharmTarget, actuals.bearCharm)}。</li>`;
 
-            if (GameState.config.witch) {
-                logHtml += `<li>🧪 ${getRoleStr('女巫')} `;
-                if (GameState.nightData.witchHealTarget !== 0) logHtml += `使用解藥，救起了 ${getPlayerStr(GameState.nightData.witchHealTarget, false)}。</li>`;
-                else if (GameState.nightData.witchPoison !== 0) {
-                    let hitImmune = (GameState.config.dreamer && actuals.poison === actuals.dream);
-                    let mwBlocked = (GameState.config.mechWolf && GameState.flags.mwStatus.role === '守衛' && actuals.mwGuard === actuals.poison);
-                    if (mwBlocked) logHtml += `毒了 ${getPlayerStr(GameState.nightData.witchPoison, false)}${getSwapLogStr(GameState.nightData.witchPoison, actuals.poison)}，但被機械狼的防毒盾擋下。</li>`;
-                    else if (hitImmune) logHtml += `毒了 ${getPlayerStr(GameState.nightData.witchPoison, false)}${getSwapLogStr(GameState.nightData.witchPoison, actuals.poison)}，但因在夢中免疫。</li>`;
-                    else logHtml += `毒了 ${getPlayerStr(GameState.nightData.witchPoison, false)}${getSwapLogStr(GameState.nightData.witchPoison, actuals.poison)}。</li>`;
-                } else logHtml += `未使用任何藥物。</li>`;
+if (GameState.config.witch) {
+                let witchP = GameState.players.find(p => p.role === '女巫');
+                if (witchP) {
+                    // 確保女巫存活（或今晚剛死）才寫入戰報
+                    let wasAlive = witchP.alive || deadTonight.includes(witchP.id);
+                    if (wasAlive) {
+                        let healUsedTonight = GameState.nightData.witchHealTarget !== 0;
+                        let poisonUsedTonight = GameState.nightData.witchPoison !== 0;
+                        let hasAnyPotionLeft = GameState.potions.heal || GameState.potions.poison;
+                        let usedAnyTonight = healUsedTonight || poisonUsedTonight;
+                        
+                        // 只有在「今晚有使用藥物」或「還有藥卻不使用」時才顯示戰報
+                        if (usedAnyTonight || hasAnyPotionLeft) {
+                            logHtml += `<li>🧙‍♀️ ${getRoleStr('女巫')} `;
+                            if (healUsedTonight) {
+                                logHtml += `使用解藥，救起了 ${getPlayerStr(GameState.nightData.witchHealTarget, false)}。</li>`;
+                            } else if (poisonUsedTonight) {
+                                let hitImmune = (GameState.config.dreamer && actuals.poison === actuals.dream);
+                                let mwBlocked = (GameState.config.mechWolf && GameState.flags.mwStatus.role === '守衛' && actuals.mwGuard === actuals.poison);
+                                if (mwBlocked) logHtml += `毒了 ${getPlayerStr(GameState.nightData.witchPoison, false)}${getSwapLogStr(GameState.nightData.witchPoison, actuals.poison)}，但被機械狼的防毒盾擋下。</li>`;
+                                else if (hitImmune) logHtml += `毒了 ${getPlayerStr(GameState.nightData.witchPoison, false)}${getSwapLogStr(GameState.nightData.witchPoison, actuals.poison)}，但因在夢中免疫。</li>`;
+                                else logHtml += `毒了 ${getPlayerStr(GameState.nightData.witchPoison, false)}${getSwapLogStr(GameState.nightData.witchPoison, actuals.poison)}。</li>`;
+                            } else {
+                                let isFeared = (GameState.nightData.nightmareTarget === witchP.id);
+                                if (isFeared) logHtml += `被夢魘恐懼，未使用任何藥物。</li>`;
+                                else logHtml += `未使用任何藥物。</li>`;
+                            }
+                        }
+                    }
+                }
             }
 
             if (GameState.day === 1 && GameState.config.merchant && GameState.nightData.merchantTarget !== 0 && GameState.nightData.merchantGift !== 'none') {
@@ -4170,30 +4223,55 @@ if (GameState.day === 1 && sId !== null) {
                 else logHtml += `<li>🎁 禮物持有者 使用毒藥，毒了 ${getPlayerStr(GameState.nightData.giftPoison, false)}${getSwapLogStr(GameState.nightData.giftPoison, actuals.giftPoison)}。</li>`;
             }
 
-            let buildProphetLog = () => {
-                if (GameState.config.prophet && GameState.nightData.prophetCheck !== 0) {
-                    let role = getTrueRole(actuals.check);
-                    let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
-                    let resCol = isWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
-                    let resTxt = isWolf ? '查殺' : '金水';
-                    
+let buildProphetLog = () => {
+                if (GameState.config.prophet) {
                     let prophetP = GameState.players.find(p => p.role === '預言家');
-                    if (prophetP && prophetP.isCorrupted) {
-                        resTxt = role; 
-                        resCol = ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師', '騎士'].includes(role) ? 'var(--color-god)' : 'var(--color-wolf)';
+                    if (prophetP) {
+                        let wasAlive = prophetP.alive || deadTonight.includes(prophetP.id);
+                        if (wasAlive) {
+                            let isFeared = (GameState.nightData.nightmareTarget === prophetP.id);
+                            if (isFeared) {
+                                logHtml += `<li>👁️ ${getRoleStr('預言家')} 被夢魘恐懼無法查驗。</li>`;
+                            } else if (GameState.nightData.prophetCheck !== 0) {
+                                let role = getTrueRole(actuals.check);
+                                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
+                                let resCol = isWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
+                                let resTxt = isWolf ? '查殺' : '金水';
+                                
+                                if (prophetP.isCorrupted) {
+                                    resTxt = role; 
+                                    resCol = ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師', '騎士'].includes(role) ? 'var(--color-god)' : 'var(--color-wolf)';
+                                }
+                                logHtml += `<li>👁️ ${getRoleStr('預言家')} 查驗了 ${getPlayerStr(GameState.nightData.prophetCheck, false)}${getSwapLogStr(GameState.nightData.prophetCheck, actuals.check)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
+                            } else {
+                                logHtml += `<li>👁️ ${getRoleStr('預言家')} 選擇不查驗。</li>`;
+                            }
+                        }
                     }
-                    logHtml += `<li>👁️ ${getRoleStr('預言家')} 查驗了 ${getPlayerStr(GameState.nightData.prophetCheck, false)}${getSwapLogStr(GameState.nightData.prophetCheck, actuals.check)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
                 }
             };
 
             let buildShadowLog = () => {
-                if (GameState.config.shadow && GameState.nightData.shadowCheck !== 0) {
-                    let role = getTrueRole(actuals.shadowCheck);
-                    let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
-                    let shadowSawWolf = !isWolf;
-                    let resCol = shadowSawWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
-                    let resTxt = shadowSawWolf ? '查殺' : '金水';
-                    logHtml += `<li>🏮 ${getRoleStr('燈影')} 查驗了 ${getPlayerStr(GameState.nightData.shadowCheck, false)}${getSwapLogStr(GameState.nightData.shadowCheck, actuals.shadowCheck)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
+                if (GameState.config.shadow) {
+                    let shadowP = GameState.players.find(p => p.role === '燈影');
+                    if (shadowP) {
+                        let wasAlive = shadowP.alive || deadTonight.includes(shadowP.id);
+                        if (wasAlive) {
+                            let isFeared = (GameState.nightData.nightmareTarget === shadowP.id);
+                            if (isFeared) {
+                                logHtml += `<li>🏮 ${getRoleStr('燈影')} 被夢魘恐懼無法查驗。</li>`;
+                            } else if (GameState.nightData.shadowCheck !== 0) {
+                                let role = getTrueRole(actuals.shadowCheck);
+                                let isWolf = ['狼人', '黑狼王', '狼美人', '惡靈騎士', '狼兄', '狼弟', '機械狼', '夢魘'].includes(role) && !(role === '狼弟' && !GameState.flags.wolfBroDead);
+                                let shadowSawWolf = !isWolf;
+                                let resCol = shadowSawWolf ? 'var(--color-wolf)' : 'var(--color-gold)'; 
+                                let resTxt = shadowSawWolf ? '查殺' : '金水';
+                                logHtml += `<li>🏮 ${getRoleStr('燈影')} 查驗了 ${getPlayerStr(GameState.nightData.shadowCheck, false)}${getSwapLogStr(GameState.nightData.shadowCheck, actuals.shadowCheck)}，結果為 <span style="color:${resCol}; font-weight:bold;">【${resTxt}】</span>。</li>`;
+                            } else {
+                                logHtml += `<li>🏮 ${getRoleStr('燈影')} 選擇不查驗。</li>`;
+                            }
+                        }
+                    }
                 }
             };
 
@@ -4205,12 +4283,25 @@ if (GameState.day === 1 && sId !== null) {
                 buildProphetLog();
             }
 
-            if (GameState.config.psychic && GameState.nightData.psychicCheckTarget !== 0) {
-                let role = getTrueRole(actuals.psychicCheck);
-                if (role === '機械狼' && GameState.flags.mwStatus.learned) role = GameState.flags.mwStatus.role;
-                if (role === '狼弟' && !GameState.flags.wolfBroDead) role = '平民';
-                let roleColor = ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師', '騎士'].includes(role) ? 'var(--color-god)' : 'var(--color-wolf)';
-                logHtml += `<li>🔮 ${getRoleStr('通靈師')} 查驗了 ${getPlayerStr(GameState.nightData.psychicCheckTarget, false)}${getSwapLogStr(GameState.nightData.psychicCheckTarget, actuals.psychicCheck)}，真實身分為 <span style="color:${roleColor}; font-weight:bold;">【${role}】</span>。</li>`;
+if (GameState.config.psychic) {
+                let psychicP = GameState.players.find(p => p.role === '通靈師');
+                if (psychicP) {
+                    let wasAlive = psychicP.alive || deadTonight.includes(psychicP.id);
+                    if (wasAlive) {
+                        let isFeared = (GameState.nightData.nightmareTarget === psychicP.id);
+                        if (isFeared) {
+                            logHtml += `<li>🔮 ${getRoleStr('通靈師')} 被夢魘恐懼無法查驗。</li>`;
+                        } else if (GameState.nightData.psychicCheckTarget !== 0) {
+                            let role = getTrueRole(actuals.psychicCheck);
+                            if (role === '機械狼' && GameState.flags.mwStatus.learned) role = GameState.flags.mwStatus.role;
+                            if (role === '狼弟' && !GameState.flags.wolfBroDead) role = '平民';
+                            let roleColor = ['預言家', '女巫', '獵人', '熊', '守衛', '黑市商人', '攝夢人', '魔術師', '通靈師', '騎士'].includes(role) ? 'var(--color-god)' : 'var(--color-wolf)';
+                            logHtml += `<li>🔮 ${getRoleStr('通靈師')} 查驗了 ${getPlayerStr(GameState.nightData.psychicCheckTarget, false)}${getSwapLogStr(GameState.nightData.psychicCheckTarget, actuals.psychicCheck)}，真實身分為 <span style="color:${roleColor}; font-weight:bold;">【${role}】</span>。</li>`;
+                        } else {
+                            logHtml += `<li>🔮 ${getRoleStr('通靈師')} 選擇不查驗。</li>`;
+                        }
+                    }
+                }
             }
 
             logHtml += `</ul>`;
@@ -4581,16 +4672,18 @@ newlyDead.forEach(id => {
             let goodWin = (wolves === 0);
 
             // 判斷勝利條件與原因
+// 判斷勝利條件與原因
             if (wolfWin && goodWin) {
-                if (gods === 0) endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:16px; color:#aaa;'>(判定為狼刀在先，神職已全滅)</span>";
-                else endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:16px; color:#aaa;'>(判定為狼刀在先，平民已全滅)</span>";
+                if (gods === 0) endMsg = "🏆 <span style='color:var(--color-wolf);'>狼人陣營獲勝！</span><br><span style='font-size:16px; color:#aaa;'>(判定為狼刀在先，神職已全滅)</span>";
+                else endMsg = "🏆 <span style='color:var(--color-wolf);'>狼人陣營獲勝！</span><br><span style='font-size:16px; color:#aaa;'>(判定為狼刀在先，平民已全滅)</span>";
             } 
             else if (wolfWin) {
-                if (gods === 0) endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:16px; color:#aaa;'>(神職已全滅)</span>";
-                else endMsg = "🏆 狼人陣營獲勝！<br><span style='font-size:16px; color:#aaa;'>(平民已全滅)</span>";
+                if (gods === 0) endMsg = "🏆 <span style='color:var(--color-wolf);'>狼人陣營獲勝！</span><br><span style='font-size:16px; color:#aaa;'>(神職已全滅)</span>";
+                else endMsg = "🏆 <span style='color:var(--color-wolf);'>狼人陣營獲勝！</span><br><span style='font-size:16px; color:#aaa;'>(平民已全滅)</span>";
             } 
             else if (goodWin) {
-                endMsg = "🏆 好人陣營獲勝！<br><span style='font-size:16px; color:#aaa;'>(狼陣營已全滅)</span>";
+                // 使用原先定義好的好人陣營藍色 (--color-good)
+                endMsg = "🏆 <span style='color:var(--color-good);'>好人陣營獲勝！</span><br><span style='font-size:16px; color:#aaa;'>(狼陣營已全滅)</span>";
             }
 
             if (endMsg !== "") {
@@ -4601,7 +4694,7 @@ newlyDead.forEach(id => {
                 // ▼ 新增：將最後的結算原因加入戰報末端，方便複製 ▼
                 let finalLogHtml = `
                 <div class="log-entry" style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #666; text-align: center;">
-                    <div style="color: var(--color-gold); font-size: 20px; font-weight:bold; margin-bottom: 8px;">🎉 遊戲結束 🎉</div>
+                    <div style="color: white; font-size: 20px; font-weight:bold; margin-bottom: 8px;">🎉 遊戲結束 🎉</div>
                     <div style="font-size: 18px; line-height: 1.5;">${endMsg}</div>
                 </div>`;
                 
