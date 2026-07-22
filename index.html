@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>狼人殺上帝專用小幫手 (Vue 3 終極完美版)</title>
+    <title>狼人殺上帝專用小幫手 (Vue 3 終極進化版)</title>
     <!-- 引入 Vue 3 CDN -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
@@ -108,7 +108,7 @@
         
         .game-over-panel { background: #111; border: 2px solid #333; padding: 30px 20px; border-radius: 12px; margin-top: 20px; }
         .game-over-title { font-size: 28px; color: white; margin-bottom: 15px; font-weight: bold; }
-        .log-box { background: #111; padding: 15px; border-radius: 8px; text-align: left; font-size: 15px; line-height: 1.8; color: #ddd; max-height: 350px; overflow-y: auto; border: 1px solid #444; margin-top: 15px;}
+        .log-box { background: #111; padding: 15px; border-radius: 8px; text-align: left; font-size: 14px; line-height: 1.6; color: #ccc; max-height: 300px; overflow-y: auto; border: 1px solid #444; margin-top: 15px;}
     </style>
 </head>
 <body>
@@ -159,7 +159,7 @@
             
             <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom: 25px;">
                 <span v-for="p in state.players" :key="p.id" 
-                      :class="['status-badge', getRoleClass(p.id), { dead: !p.alive }]">
+                      :class="['status-badge', getPlayerSetupInfo(p.id).class, { dead: !p.alive }]">
                     [{{ p.id }}號] {{ getPlayerSetupInfo(p.id).role }}
                 </span>
             </div>
@@ -180,7 +180,7 @@
 
             <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom: 20px;">
                 <span v-for="p in state.players" :key="p.id" 
-                      :class="['status-badge', getRoleClass(p.id), { dead: !p.alive }]">
+                      :class="['status-badge', getPlayerSetupInfo(p.id).class, { dead: !p.alive }]">
                     [{{ p.id }}號] {{ getPlayerSetupInfo(p.id).role }}
                 </span>
             </div>
@@ -202,7 +202,7 @@
                 <div class="player-grid-container">
                     <div :class="['player-grid-btn zero-btn', { selected: state.nightRecords.nightmareTarget === 0 }]" @click="state.nightRecords.nightmareTarget = 0">不恐懼 (空技能)</div>
                     <div v-for="p in alivePlayers" :key="p.id" 
-                         :class="['player-grid-btn', getRoleClass(p.id), { selected: state.nightRecords.nightmareTarget === p.id }]"
+                         :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { selected: state.nightRecords.nightmareTarget === p.id }]"
                          @click="state.nightRecords.nightmareTarget = p.id">
                         <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
                     </div>
@@ -237,7 +237,7 @@
                     <div class="player-grid-container">
                         <div :class="['player-grid-btn zero-btn', { selected: state.nightRecords.guardTarget === 0 }]" @click="state.nightRecords.guardTarget = 0">空守</div>
                         <div v-for="p in alivePlayers" :key="p.id" 
-                             :class="['player-grid-btn', getRoleClass(p.id), { 
+                             :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { 
                                  selected: state.nightRecords.guardTarget === p.id,
                                  disabled: state.nightRecords.lastGuardTarget === p.id && state.day > 1 
                              }]"
@@ -306,7 +306,7 @@
                     <div class="player-grid-container">
                         <div :class="['player-grid-btn zero-btn', { selected: state.nightRecords.wolfKill === 0 }]" @click="state.nightRecords.wolfKill = 0">不擊殺 (空刀)</div>
                         <div v-for="p in alivePlayers" :key="p.id" 
-                             :class="['player-grid-btn', getRoleClass(p.id), { 
+                             :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { 
                                  selected: state.nightRecords.wolfKill === p.id,
                                  disabled: ['狼美人', '覺醒狼美人'].includes(getPlayerSetupInfo(p.id).role)
                              }]"
@@ -323,7 +323,7 @@
                         <div v-else class="player-grid-container">
                             <div :class="['player-grid-btn zero-btn', { 'danger-selected': state.nightRecords.charmTarget === 0 }]" @click="state.nightRecords.charmTarget = 0">不魅惑</div>
                             <div v-for="p in alivePlayers" :key="p.id" 
-                                 :class="['player-grid-btn', getRoleClass(p.id), { 'danger-selected': state.nightRecords.charmTarget === p.id }]"
+                                 :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { 'danger-selected': state.nightRecords.charmTarget === p.id }]"
                                  @click="state.nightRecords.charmTarget = p.id">
                                 <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
                             </div>
@@ -343,7 +343,7 @@
                         <div v-else class="player-grid-container">
                             <div :class="['player-grid-btn zero-btn', { 'danger-selected': state.nightRecords.awbCharmTarget === 0 }]" @click="state.nightRecords.awbCharmTarget = 0">不魅惑</div>
                             <div v-for="p in alivePlayers" :key="p.id" 
-                                 :class="['player-grid-btn', getRoleClass(p.id), { 'danger-selected': state.nightRecords.awbCharmTarget === p.id, 'disabled': state.nightRecords.lastAwbCharmTarget === p.id && state.day > 1 }]"
+                                 :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { 'danger-selected': state.nightRecords.awbCharmTarget === p.id, 'disabled': state.nightRecords.lastAwbCharmTarget === p.id && state.day > 1 }]"
                                  @click="state.nightRecords.awbCharmTarget = p.id">
                                 <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
                             </div>
@@ -396,7 +396,7 @@
                             <p style="margin: 5px 0 10px 0; cursor: default;">🧪 點擊下方號碼使用毒藥 ➔</p>
                             <div class="player-grid-container" style="margin-top: 0;">
                                 <div v-for="p in alivePlayers" :key="p.id" 
-                                     :class="['player-grid-btn', getRoleClass(p.id), { selected: state.nightRecords.witchPoison === p.id }]"
+                                     :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { selected: state.nightRecords.witchPoison === p.id }]"
                                      @click="setPoisonTarget(p.id)">
                                     <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
                                 </div>
@@ -440,7 +440,7 @@
                         <div :class="['player-grid-btn zero-btn', { selected: state.nightRecords.seerTarget === 0 }]" @click="state.nightRecords.seerTarget = 0">不查驗</div>
                         <template v-for="p in alivePlayers" :key="p.id">
                             <div v-show="p.id !== state.initialRoleSetup.seer"
-                                 :class="['player-grid-btn', getRoleClass(p.id), { selected: state.nightRecords.seerTarget === p.id }]"
+                                 :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { selected: state.nightRecords.seerTarget === p.id }]"
                                  @click="state.nightRecords.seerTarget = p.id">
                                 <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
                             </div>
@@ -554,7 +554,7 @@
                 <div v-if="state.morningStep === 'charm_reveal'" style="margin-top: 10px; padding-top: 15px;">
                     <h3 style="color: #ff9800;">💔 殉情 / 替死結果</h3>
                     <div v-for="(death, idx) in state.morningData.daytimeCharmDeaths" :key="idx" class="witch-alert-active" style="background: rgba(255, 77, 77, 0.1); border-color: var(--btn-danger); text-align: center; margin-bottom: 10px; padding: 15px;">
-                        <h2 style="margin:0; color:white;"><span :class="getRoleClass(death.id)">{{ death.id }} 號</span> 殉情死亡</h2>
+                        <h2 style="margin:0; color:white;"><span :class="getPlayerSetupInfo(death.id).class">{{ death.id }} 號</span> 殉情死亡</h2>
                         <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(死因：{{ death.cause === 'charm' ? '被狼美人魅惑' : '代替覺醒狼美人死亡' }})</p>
                     </div>
                     <div class="nav-buttons">
@@ -566,7 +566,7 @@
                 <div v-else-if="state.morningStep === 'shoot_reveal'" style="margin-top: 10px; padding-top: 15px;">
                     <h3 style="color: #ff9800;">🔫 開槍結果</h3>
                     <div class="witch-alert-active" style="background: rgba(255, 77, 77, 0.1); border-color: var(--btn-danger); text-align: center; margin-bottom: 10px; padding: 15px;">
-                        <h2 style="margin:0; color:white;"><span :class="getRoleClass(state.morningData.lastShotTarget)">{{ state.morningData.lastShotTarget }} 號玩家</span> 被開槍帶走</h2>
+                        <h2 style="margin:0; color:white;"><span :class="getPlayerSetupInfo(state.morningData.lastShotTarget).class">{{ state.morningData.lastShotTarget }} 號玩家</span> 被開槍帶走</h2>
                         <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(開槍者：{{ state.morningData.lastShooterRole }})</p>
                     </div>
                     <div class="nav-buttons">
@@ -602,7 +602,7 @@
                             壓槍 (不帶走)
                         </div>
                         <div v-for="p in alivePlayers" :key="p.id" 
-                             :class="['player-grid-btn', getRoleClass(p.id), { 'danger-selected': state.morningData.shootTarget === p.id }]"
+                             :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { 'danger-selected': state.morningData.shootTarget === p.id }]"
                              @click="state.morningData.shootTarget = p.id">
                             <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
                         </div>
@@ -651,7 +651,7 @@
                                     無人出局 (棄票/平票)
                                 </div>
                                 <div v-for="p in alivePlayers" :key="p.id" 
-                                     :class="['player-grid-btn', getRoleClass(p.id), { selected: state.morningData.voteTarget === p.id }]"
+                                     :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { selected: state.morningData.voteTarget === p.id }]"
                                      @click="state.morningData.voteTarget = p.id">
                                     <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
                                 </div>
@@ -763,10 +763,6 @@
                 if (s.awakenedHunter === id) return { role: '覺醒獵人', class: 'color-god' };
                 if (s.wolves.includes(id)) return { role: '狼人', class: 'color-wolf' };
                 return { role: '未定', class: 'color-unknown' };
-            },
-
-            getRoleClass(id) {
-                return this.getPlayerSetupInfo(id).class;
             },
 
             checkFeared(roleArray) {
@@ -901,7 +897,7 @@
                         let cp = state.players.find(x => x.id === charmTarget);
                         if (cp && cp.alive) {
                             state.awbUsed = true;
-                            this.addHistory(`✨ ${id}號 觸發替死技能！魅惑目標 ${charmTarget}號 替其死亡！`);
+                            this.addHistory(`✨ 覺醒狼美人(${id}號) 觸發替死技能！魅惑目標 ${charmTarget}號 替其死亡！`);
                             this.executeDeath(charmTarget, 'awb_sub');
                             return; 
                         }
@@ -924,13 +920,13 @@
 
                 if (role === '狼美人') {
                     if (cause === 'ah_shot' || cause === 'awb_sub') {
-                        this.addHistory(`🚫 ${id}號 因${cause === 'ah_shot' ? '覺醒獵人夜槍擊殺' : '替死'}，技能遭封印，無法帶走魅惑目標`);
+                        this.addHistory(`🚫 狼美人(${id}號) 因${cause === 'ah_shot' ? '覺醒獵人夜槍擊殺' : '替死'}，技能遭封印，無法帶走魅惑目標`);
                     } else {
                         let charmTarget = state.nightRecords.charmTarget;
                         if (charmTarget !== 0) {
                             let cp = state.players.find(x => x.id === charmTarget);
                             if (cp && cp.alive) {
-                                this.addHistory(`💔 ${id}號 出局，觸發魅惑連帶帶走 ${charmTarget}號`);
+                                this.addHistory(`💔 狼美人(${id}號) 出局，觸發魅惑連帶帶走 ${charmTarget}號`);
                                 this.executeDeath(charmTarget, 'charm');
                             }
                         }
@@ -947,7 +943,7 @@
                     if (canShoot) state.shootQueue.push({ id, role, cause });
                 } else if (role === '黑狼王') {
                     if (cause === 'ah_shot' || cause === 'awb_sub' || cause === 'explode') {
-                        this.addHistory(`🚫 ${id}號 因${cause === 'ah_shot' ? '覺醒獵人夜槍擊殺' : (cause === 'explode' ? '自爆' : '替死')}，技能遭封印，無法開槍`);
+                        this.addHistory(`🚫 黑狼王(${id}號) 因${cause === 'ah_shot' ? '覺醒獵人夜槍擊殺' : (cause === 'explode' ? '自爆' : '替死')}，技能遭封印，無法開槍`);
                     } else {
                         let canShoot = true;
                         if (cause === 'poison') canShoot = false;
@@ -962,6 +958,7 @@
                 const win = this.checkWinCondition();
                 if (win) {
                     state.pendingGameOver = win;
+                    state.morningStep = 'vote'; // 強制切換回常規白天畫面，以顯示「觸發屠邊局條件」的按鈕
                     return;
                 }
 
@@ -989,13 +986,10 @@
 
             checkAndPrintDaySummary() {
                 if (state.daySummaryPrinted) return;
-                
-                const uniqueDayDeaths = [...new Set(state.morningData.daytimeDeaths)];
-                if (!state.isVotingDone && uniqueDayDeaths.length === 0 && state.morningData.voteTarget === 0 && state.morningData.explodeTarget === 0) {
-                    return; 
-                }
+                if (!state.isVotingDone && state.morningData.daytimeDeaths.length === 0 && state.morningData.voteTarget === 0 && state.pendingGameOver) return; 
 
                 state.daySummaryPrinted = true;
+                const uniqueDayDeaths = [...new Set(state.morningData.daytimeDeaths)];
                 if (uniqueDayDeaths.length === 0) {
                     this.addHistory(`🌇 白天結算：今天白天平安無事`);
                 } else {
@@ -1086,7 +1080,7 @@
                 } else {
                     const diedStr = died.sort((a,b)=>a-b).map(id => id + '號').join('、');
                     this.addHistory(`🌃 夜晚結算：昨晚 ${diedStr} 死亡`);
-                    const deadIdsHtml = died.sort((a, b) => a - b).map(id => `<span class="${this.getRoleClass(id)}">${id} 號</span>`).join('，');
+                    const deadIdsHtml = died.sort((a, b) => a - b).map(id => `<span class="${this.getPlayerSetupInfo(id).class}">${id} 號</span>`).join('，');
                     state.morningResultHtml = `<h3 style='margin: 0;'>昨晚 ${deadIdsHtml} 死亡</h3>`;
                 }
 
@@ -1123,7 +1117,7 @@
                 
                 if (target !== 0) {
                     this.addHistory(`🔫 ${shooter.id}號 開槍帶走了 ${target}號`);
-                    state.morningResultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 <span class="${this.getRoleClass(target)}">${target} 號</span></span>`;
+                    state.morningResultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 <span class="${this.getPlayerSetupInfo(target).class}">${target} 號</span></span>`;
                     this.executeDeath(target, 'shot');
                     
                     state.morningData.lastShotTarget = target;
@@ -1167,7 +1161,7 @@
                     let target = this.findClosestWolf(shooter.id, dir);
                     if (target) {
                         this.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍，擊中了 ${target}號`);
-                        state.morningResultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 <span class="${this.getRoleClass(target)}">${target} 號</span></span>`;
+                        state.morningResultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 <span class="${this.getPlayerSetupInfo(target).class}">${target} 號</span></span>`;
                         let outCause = (shooter.cause === 'vote' || shooter.cause === 'explode') ? 'ah_shot_day' : 'ah_shot';
                         this.executeDeath(target, outCause);
 
@@ -1187,7 +1181,8 @@
             confirmVote() {
                 const voteTargetId = state.morningData.voteTarget;
                 if (voteTargetId !== 0) {
-                    this.addHistory(`🗳️ 白天投票放逐了 ${voteTargetId}號`);
+                    const role = this.getPlayerSetupInfo(voteTargetId).role;
+                    this.addHistory(`🗳️ 白天投票放逐了 ${voteTargetId}號(${role})`);
                     this.executeDeath(voteTargetId, 'vote');
                 } else {
                     this.addHistory(`🗳️ 白天投票結果為 無人出局 (棄票/平票)`);
@@ -1199,8 +1194,9 @@
             confirmExplode() {
                 const targetId = state.morningData.explodeTarget;
                 if (targetId !== 0) {
-                    this.addHistory(`💣 ${targetId}號 選擇自爆！`);
-                    state.morningResultHtml += `<br><span style="color:var(--btn-danger);">💣 <span class="${this.getRoleClass(targetId)}">${targetId} 號</span> 選擇自爆！</span>`;
+                    const role = this.getPlayerSetupInfo(targetId).role;
+                    this.addHistory(`💣 ${targetId}號(${role}) 選擇自爆！`);
+                    state.morningResultHtml += `<br><span style="color:var(--btn-danger);">💣 <span class="${this.getPlayerSetupInfo(targetId).class}">${targetId} 號</span> 選擇自爆！</span>`;
                     this.executeDeath(targetId, 'explode');
                 }
                 state.morningData.explodeTarget = 0;
@@ -1213,6 +1209,7 @@
                 const gameOverCheck = this.checkWinCondition();
                 if (gameOverCheck) {
                     state.pendingGameOver = gameOverCheck;
+                    state.morningStep = 'vote'; // 確保能顯示 Game Over 按鈕
                     return;
                 }
                 state.day++;
@@ -1328,7 +1325,7 @@
                 const formatLog = (log) => {
                     return log.replace(/(\d+)號/g, (match, idStr) => {
                         const id = parseInt(idStr);
-                        const roleClass = GameLogic.getRoleClass(id);
+                        const roleClass = GameLogic.getPlayerSetupInfo(id).class;
                         const roleName = GameLogic.getPlayerSetupInfo(id).role;
                         return `<span class="${roleClass}" style="font-weight: bold;">${id}號${roleName}</span>`;
                     });
@@ -1438,7 +1435,7 @@
                 return {
                     ROLE_DICT, state, alivePlayers, explodableWolves, normalWolfCount, godRoles, specialWolfRoles, bearGrowl,
                     isWitchSelfSaveRestricted, isWitchDead, isWbDead, isAwbDead, formatLog,
-                    startGame, getPlayerSetupInfo: (id) => GameLogic.getPlayerSetupInfo(id), getRoleClass: (id) => GameLogic.getRoleClass(id), isPlayerTaken, isWolfTarget, hunterSignal, ahSignal,
+                    startGame, getPlayerSetupInfo: (id) => GameLogic.getPlayerSetupInfo(id), isPlayerTaken, isWolfTarget, hunterSignal, ahSignal,
                     setGuardTarget: (id) => { if (state.nightRecords.lastGuardTarget !== id || state.day === 1) state.nightRecords.guardTarget = id; },
                     setPoisonTarget, setWitchAction, triggerGameOver,
                     checkFeared: (roles) => GameLogic.checkFeared(roles),
