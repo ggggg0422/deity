@@ -310,6 +310,15 @@
                 <h3 class="color-wolf">🐺 狼陣營請睜眼</h3>
                 
                 <div v-if="state.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                    <div v-if="state.activeRoles.evilKnight" style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #555;">
+                        <p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：<span class="color-wolf">惡靈騎士</span> 是幾號？</p>
+                        <select v-model="state.initialRoleSetup.evilKnight">
+                            <option :value="0">請選擇</option>
+                            <template v-for="p in state.players" :key="p.id">
+                                <option :value="p.id" v-if="!isPlayerTaken(p.id, 'evilKnight')">{{ p.id }} 號</option>
+                            </template>
+                        </select>
+                    </div>
                     <div v-if="state.activeRoles.blackWolf" style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #555;">
                         <p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：<span class="color-wolf">黑狼王</span> 是幾號？</p>
                         <select v-model="state.initialRoleSetup.blackWolf">
@@ -348,7 +357,7 @@
                     </div>
                 </div>
 
-                <div v-if="checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人'])">
+                <div v-if="checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士'])">
                     <div class="witch-alert-active" style="color: white;">⚠️ 被夢魘恐懼無法使用技能</div>
                     <div class="player-grid-container">
                         <div class="player-grid-btn zero-btn selected">被恐懼只能空刀 / 無法魅惑</div>
@@ -794,6 +803,7 @@
         const { createApp, reactive, computed } = Vue;
 
         const ROLE_DICT = {
+            evilKnight:         { id: 'evilKnight', name: '惡靈騎士', emoji: '🏍️', type: 'wolf', selectable: true, executeOrder: -1 },
             nightmare:          { id: 'nightmare', name: '夢魘', emoji: '👻', type: 'wolf', selectable: true, executeOrder: 10 },
             wolfBeauty:         { id: 'wolfBeauty', name: '狼美人', emoji: '💃', type: 'wolf', selectable: true, executeOrder: -1 }, 
             awakenedWolfBeauty: { id: 'awakenedWolfBeauty', name: '覺醒狼美人', emoji: '💃✨', type: 'wolf', selectable: true, executeOrder: -1 },
@@ -820,13 +830,14 @@
             phaseQueue: [],
             playerCount: 12,
             players: [],
-            activeRoles: { witch: true, guard: false, bear: false, dreamer: false, knight: false, nightmare: false, blackWolf: false, wolfBeauty: false, awakenedWolfBeauty: false, wolf: true, seer: true, hunter: true, awakenedHunter: false },
+            activeRoles: { witch: true, guard: false, bear: false, dreamer: false, knight: false, nightmare: false, blackWolf: false, wolfBeauty: false, awakenedWolfBeauty: false, evilKnight: false, wolf: true, seer: true, hunter: true, awakenedHunter: false },
             witchPotions: { heal: true, poison: true },
-            initialRoleSetup: { wolves: [], witch: 0, guard: 0, bear: 0, dreamer: 0, knight: 0, nightmare: 0, blackWolf: 0, wolfBeauty: 0, awakenedWolfBeauty: 0, seer: 0, hunter: 0, awakenedHunter: 0 },
+            initialRoleSetup: { wolves: [], witch: 0, guard: 0, bear: 0, dreamer: 0, knight: 0, nightmare: 0, blackWolf: 0, wolfBeauty: 0, awakenedWolfBeauty: 0, evilKnight: 0, seer: 0, hunter: 0, awakenedHunter: 0 },
             nightRecords: { nightmareTarget: 0, guardTarget: 0, lastGuardTarget: 0, dreamTarget: 0, lastDreamTarget: 0, charmTarget: 0, awbCharmTarget: 0, lastAwbCharmTarget: 0, seerTarget: 0, wolfKill: 0, witchAction: 'none', witchPoison: 0 },
             
             awbUsed: false, 
             knightUsed: false,
+            ekUsed: false,
 
             morningStep: 'vote', 
             morningData: { voteTarget: 0, shootTarget: 0, ahDirection: null, knightDuelTarget: 0, knightDuelTargetInfo: null, daytimeCharmDeaths: [], daytimeDeaths: [], explodeTarget: 0, lastShotTarget: 0, lastShooterRole: '' },
@@ -863,6 +874,7 @@
                 if (s.blackWolf === id) return { role: '黑狼王', class: 'color-wolf' };
                 if (s.wolfBeauty === id) return { role: '狼美人', class: 'color-wolf' };
                 if (s.awakenedWolfBeauty === id) return { role: '覺醒狼美人', class: 'color-wolf' };
+                if (s.evilKnight === id) return { role: '惡靈騎士', class: 'color-wolf' };
                 if (s.guard === id) return { role: '守衛', class: 'color-god' };
                 if (s.dreamer === id) return { role: '攝夢人', class: 'color-god' };
                 if (s.knight === id) return { role: '騎士', class: 'color-god' };
@@ -929,7 +941,7 @@
                     if (!state.activeRoles[r.id]) return false;
                     if (r.executeOrder <= 0) return false;
                     if (r.id === 'bear' && state.day > 1) return false;
-                    if (r.id === 'knight' && state.day > 1) return false; // 騎士只在首夜確認號碼
+                    if (r.id === 'knight' && state.day > 1) return false; 
                     return true;
                 });
                 active.sort((a, b) => a.executeOrder - b.executeOrder);
@@ -945,7 +957,7 @@
                 if (state.currentPhase === 'guard' && this.checkFeared(['守衛'])) state.nightRecords.guardTarget = 0;
                 if (state.currentPhase === 'dreamer' && this.checkFeared(['攝夢人'])) state.nightRecords.dreamTarget = 0;
                 if (state.currentPhase === 'seer' && this.checkFeared(['預言家'])) state.nightRecords.seerTarget = 0;
-                if (state.currentPhase === 'wolf' && this.checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人'])) {
+                if (state.currentPhase === 'wolf' && this.checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士'])) {
                     state.nightRecords.wolfKill = 0;
                     state.nightRecords.charmTarget = 0;
                     state.nightRecords.awbCharmTarget = 0;
@@ -963,6 +975,7 @@
                         if (state.activeRoles.blackWolf && state.initialRoleSetup.blackWolf === 0) return alert('請先設定「黑狼王」！');
                         if (state.activeRoles.wolfBeauty && state.initialRoleSetup.wolfBeauty === 0) return alert('請先設定「狼美人」！');
                         if (state.activeRoles.awakenedWolfBeauty && state.initialRoleSetup.awakenedWolfBeauty === 0) return alert('請先設定「覺醒狼美人」！');
+                        if (state.activeRoles.evilKnight && state.initialRoleSetup.evilKnight === 0) return alert('請先設定「惡靈騎士」！');
                         
                         const maxWolves = state.playerCount <= 10 ? 3 : 4;
                         let specialCount = 0;
@@ -970,6 +983,7 @@
                         if (state.activeRoles.blackWolf) specialCount++;
                         if (state.activeRoles.wolfBeauty) specialCount++;
                         if (state.activeRoles.awakenedWolfBeauty) specialCount++;
+                        if (state.activeRoles.evilKnight) specialCount++;
                         
                         const nWolves = Math.max(0, maxWolves - specialCount);
                         for (let i = 0; i < nWolves; i++) {
@@ -1005,6 +1019,7 @@
                     state.nightRecords.lastDreamTarget = state.morningSnapshot.lastDreamTarget;
                     state.nightRecords.lastAwbCharmTarget = state.morningSnapshot.lastAwbCharmTarget;
                     state.awbUsed = state.morningSnapshot.awbUsed;
+                    state.ekUsed = state.morningSnapshot.ekUsed;
                     state.history = JSON.parse(JSON.stringify(state.morningSnapshot.history));
                     state.shootQueue = [];
                     
@@ -1024,6 +1039,7 @@
                     state.witchPotions = JSON.parse(JSON.stringify(snap.witchPotions));
                     state.nightRecords = JSON.parse(JSON.stringify(snap.nightRecords));
                     state.awbUsed = snap.awbUsed;
+                    state.ekUsed = snap.ekUsed;
                     state.knightUsed = snap.knightUsed;
                     state.history = JSON.parse(JSON.stringify(snap.history));
                     state.shootQueue = JSON.parse(JSON.stringify(snap.shootQueue));
@@ -1047,7 +1063,6 @@
 
                 let role = this.getPlayerSetupInfo(id).role;
 
-                // 覺醒狼美人 替死判定
                 if (role === '覺醒狼美人' && !state.awbUsed && cause !== 'ah_shot' && cause !== 'ah_shot_day' && cause !== 'duel_wolf') {
                     let charmTarget = state.nightRecords.awbCharmTarget;
                     if (charmTarget !== 0) {
@@ -1077,11 +1092,12 @@
                     this.addHistory(`💔 ${id}號 因連續兩晚被夢遊而死亡`);
                 } else if (cause === 'dream_link') {
                     this.addHistory(`💔 ${id}號 因攝夢人死亡而同生共死`);
+                } else if (cause === 'ek_reflect') {
+                    this.addHistory(`💥 ${id}號 因對惡靈騎士使用技能，遭到反傷死亡`);
                 }
 
                 let sealed = this.isSkillSealed(role, cause);
 
-                // 狼美人殉情連帶
                 if (role === '狼美人') {
                     if (sealed) {
                         this.addHistory(`🚫 ${id}號 技能遭封印，無法帶走魅惑目標`);
@@ -1097,7 +1113,6 @@
                     }
                 }
 
-                // 開槍排程處理
                 if (role === '覺醒獵人') {
                     state.shootQueue.push({ id, role, cause });
                 } else if (role === '獵人') {
@@ -1122,8 +1137,9 @@
             popShooter() {
                 const win = this.checkWinCondition();
                 if (win) {
-                    state.pendingGameOver = win;
-                    state.morningStep = 'vote'; 
+                    this.addHistory(`🏁 遊戲結束：${win}`);
+                    state.gameOverResult = win; 
+                    state.screen = 'gameover'; 
                     return;
                 }
 
@@ -1173,6 +1189,7 @@
                     lastGuardTarget: state.nightRecords.lastGuardTarget,
                     lastDreamTarget: state.nightRecords.lastDreamTarget,
                     lastAwbCharmTarget: state.nightRecords.lastAwbCharmTarget,
+                    ekUsed: state.ekUsed,
                     awbUsed: state.awbUsed,
                     history: state.history
                 }));
@@ -1199,6 +1216,7 @@
                     if(state.activeRoles.blackWolf) assign(state.initialRoleSetup.blackWolf, '黑狼王', 'color-wolf');
                     if(state.activeRoles.wolfBeauty) assign(state.initialRoleSetup.wolfBeauty, '狼美人', 'color-wolf');
                     if(state.activeRoles.awakenedWolfBeauty) assign(state.initialRoleSetup.awakenedWolfBeauty, '覺醒狼美人', 'color-wolf');
+                    if(state.activeRoles.evilKnight) assign(state.initialRoleSetup.evilKnight, '惡靈騎士', 'color-wolf');
 
                     state.players.forEach(p => {
                         if (p.role === '?') { p.role = '平民'; p.class = 'color-villager'; }
@@ -1212,7 +1230,7 @@
                 if (state.activeRoles.wolfBeauty && state.nightRecords.charmTarget) this.addHistory(`💃 狼美人魅惑了 ${state.nightRecords.charmTarget}號`);
                 if (state.activeRoles.awakenedWolfBeauty && state.nightRecords.awbCharmTarget) this.addHistory(`💃✨ 覺醒狼美人魅惑了 ${state.nightRecords.awbCharmTarget}號`);
                 if (state.nightRecords.seerTarget) {
-                    const isW = ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人'].includes(this.getPlayerSetupInfo(state.nightRecords.seerTarget).role);
+                    const isW = ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士'].includes(this.getPlayerSetupInfo(state.nightRecords.seerTarget).role);
                     this.addHistory(`👁️ 預言家查驗了 ${state.nightRecords.seerTarget}號 (${isW ? '查殺' : '金水'})`);
                 }
                 if (state.nightRecords.wolfKill) this.addHistory(`🐺 狼人擊殺了 ${state.nightRecords.wolfKill}號`);
@@ -1230,7 +1248,7 @@
                 let actualWitchPoison = (state.nightRecords.witchAction === 'poison') ? state.nightRecords.witchPoison : 0;
                 let dreamTarget = state.nightRecords.dreamTarget;
 
-                if (this.checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人'])) actualWolfKill = 0;
+                if (this.checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士'])) actualWolfKill = 0;
                 if (this.checkFeared(['女巫'])) actualWitchPoison = 0;
                 
                 let isGuardFeared = this.checkFeared(['守衛']);
@@ -1262,12 +1280,40 @@
                     deaths.push({ id: dreamTarget, cause: 'dream_link' });
                 }
 
+                // 惡靈騎士免死與反傷邏輯
+                let ekId = state.initialRoleSetup.evilKnight;
+                if (ekId && state.activeRoles.evilKnight) {
+                    // 永遠不會死於夜晚
+                    deaths = deaths.filter(d => d.id !== ekId);
+
+                    if (!state.ekUsed) {
+                        let witchId = state.initialRoleSetup.witch;
+                        let seerId = state.initialRoleSetup.seer;
+                        let reflected = false;
+
+                        if (actualWitchPoison === ekId) {
+                            if (witchId) deaths.push({ id: witchId, cause: 'ek_reflect' });
+                            reflected = true;
+                        }
+
+                        let isSeerFeared = this.checkFeared(['預言家']);
+                        let actualSeerTarget = isSeerFeared ? 0 : state.nightRecords.seerTarget;
+
+                        if (!reflected && actualSeerTarget === ekId) {
+                            if (seerId) deaths.push({ id: seerId, cause: 'ek_reflect' });
+                            reflected = true;
+                        }
+
+                        if (reflected) state.ekUsed = true;
+                    }
+                }
+
                 let uniqueDeaths = {};
                 deaths.forEach(d => {
                     if (!uniqueDeaths[d.id]) {
                         uniqueDeaths[d.id] = d.cause;
                     } else {
-                        if (['dream_death', 'dream_link'].includes(d.cause)) {
+                        if (['dream_death', 'dream_link', 'ek_reflect'].includes(d.cause)) {
                             uniqueDeaths[d.id] = d.cause;
                         }
                     }
@@ -1306,6 +1352,7 @@
                     witchPotions: state.witchPotions,
                     nightRecords: state.nightRecords,
                     awbUsed: state.awbUsed,
+                    ekUsed: state.ekUsed,
                     knightUsed: state.knightUsed,
                     history: state.history,
                     shootQueue: state.shootQueue,
@@ -1349,7 +1396,7 @@
                     let p = state.players.find(x => x.id === curr);
                     if (p && p.alive) {
                         let r = this.getPlayerSetupInfo(p.id).role;
-                        if (['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人'].includes(r)) {
+                        if (['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士'].includes(r)) {
                             return p.id;
                         }
                     }
@@ -1418,7 +1465,7 @@
                 state.knightUsed = true;
                 
                 let targetRole = this.getPlayerSetupInfo(targetId).role;
-                let isTargetWolf = ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人'].includes(targetRole);
+                let isTargetWolf = ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士'].includes(targetRole);
 
                 state.morningData.knightDuelTargetInfo = { id: targetId, role: targetRole, isWolf: isTargetWolf };
                 state.morningStep = 'knight_reveal';
@@ -1456,7 +1503,7 @@
 
             checkWinCondition() {
                 const alive = state.players.filter(p => p.alive);
-                const aliveWolves = alive.filter(p => ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人'].includes(p.role)).length;
+                const aliveWolves = alive.filter(p => ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士'].includes(p.role)).length;
                 const aliveGods = alive.filter(p => ['女巫', '守衛', '預言家', '獵人', '覺醒獵人', '熊', '攝夢人', '騎士'].includes(p.role)).length;
                 const aliveVillagers = alive.filter(p => p.role === '平民').length;
 
@@ -1510,7 +1557,7 @@
                     const isWolf = (p) => {
                         if(!p) return false;
                         const r = GameLogic.getPlayerSetupInfo(p.id).role;
-                        return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人'].includes(r);
+                        return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士'].includes(r);
                     };
 
                     let growl = false;
@@ -1544,6 +1591,7 @@
                     if (state.activeRoles.blackWolf) count++;
                     if (state.activeRoles.wolfBeauty) count++;
                     if (state.activeRoles.awakenedWolfBeauty) count++;
+                    if (state.activeRoles.evilKnight) count++;
                     return count;
                 });
                 const normalWolfCount = computed(() => Math.max(0, maxWolves.value - specialWolfCount.value));
@@ -1563,6 +1611,7 @@
                     if (roleKey !== 'blackWolf' && s.blackWolf === id) return true;
                     if (roleKey !== 'wolfBeauty' && s.wolfBeauty === id) return true;
                     if (roleKey !== 'awakenedWolfBeauty' && s.awakenedWolfBeauty === id) return true;
+                    if (roleKey !== 'evilKnight' && s.evilKnight === id) return true;
                     if (roleKey !== 'guard' && s.guard === id) return true;
                     if (roleKey !== 'dreamer' && s.dreamer === id) return true;
                     if (roleKey !== 'knight' && s.knight === id) return true;
@@ -1578,7 +1627,7 @@
                 
                 const isWolfTarget = (id) => {
                     const info = GameLogic.getPlayerSetupInfo(id);
-                    return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人'].includes(info.role);
+                    return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士'].includes(info.role);
                 };
 
                 const hunterSignal = computed(() => {
@@ -1627,6 +1676,7 @@
                     state.day = 1;
                     state.awbUsed = false;
                     state.knightUsed = false;
+                    state.ekUsed = false;
                     GameLogic.startNight();
                 };
 
@@ -1675,7 +1725,7 @@
                     prevPhase: () => GameLogic.prevPhase(),
                     confirmShoot: () => GameLogic.confirmShoot(),
                     confirmAhShoot: () => GameLogic.confirmAhShoot(),
-                    confirmShootReveal: () => { state.morningData.lastShotTarget = 0; GameLogic.popShooter(); },
+                    confirmShootReveal: () => { GameLogic.popShooter(); },
                     confirmVote: () => GameLogic.confirmVote(),
                     confirmExplode: () => GameLogic.confirmExplode(),
                     confirmDuel: () => GameLogic.confirmDuel(),
