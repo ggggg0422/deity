@@ -70,7 +70,8 @@
         .player-count-btn.selected { border-color: var(--color-good); background: rgba(77, 166, 255, 0.15); color: white; }
 
         .role-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
-        .role-card { flex: 0 0 calc(50% - 5px); box-sizing: border-box; padding: 12px 8px; border: 2px solid var(--border-color); border-radius: 8px; text-align: center; cursor: pointer; background: #333; color: #ccc; }
+        /* 這裡加入了 white-space: nowrap; 和微調 padding/font-size 來確保手機版不換行 */
+        .role-card { flex: 0 0 calc(50% - 5px); box-sizing: border-box; padding: 12px 4px; border: 2px solid var(--border-color); border-radius: 8px; text-align: center; cursor: pointer; background: #333; color: #ccc; white-space: nowrap; font-size: 15px; }
         .role-card.god.selected { border-color: var(--color-god); background: rgba(200, 121, 255, 0.15); color: white; font-weight: bold; }
         .role-card.wolf.selected { border-color: var(--color-wolf); background: rgba(255, 77, 77, 0.15); color: white; font-weight: bold; }
         .role-card.villager.selected { border-color: var(--color-villager); background: rgba(255, 204, 0, 0.15); color: white; font-weight: bold; }
@@ -665,11 +666,11 @@
                 <div v-else>
                     <p>請選擇今晚要查驗的玩家 <span style="font-size:12px;color:#aaa;">(不含自己、已發動決鬥騎士及對象)</span>：</p>
                     <div class="player-grid-container">
-                        <div :class="['player-grid-btn zero-btn', { selected: state.nightRecords.seerTarget === 0 }]" @click="state.nightRecords.seerTarget = 0">不查驗</div>
+                        <div :class="['player-grid-btn zero-btn', { selected: state.nightRecords.seerTarget === 0 }]" @click="setSeerTarget(0)">不查驗</div>
                         <template v-for="p in alivePlayers" :key="p.id">
                             <div v-show="p.id !== state.initialRoleSetup.seer"
                                  :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { selected: state.nightRecords.seerTarget === p.id, disabled: isTargetInvalidForSeer(p.id) }]"
-                                 @click="!isTargetInvalidForSeer(p.id) && (state.nightRecords.seerTarget = p.id)">
+                                 @click="!isTargetInvalidForSeer(p.id) && setSeerTarget(p.id)">
                                 <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
                             </div>
                         </template>
@@ -991,6 +992,20 @@
             crossDaySnapshot: null 
         });
 
+        // 提取到全域以供 GameLogic 與 UI 共同使用
+        const maxWolves = computed(() => state.playerCount <= 10 ? 3 : 4);
+        const specialWolfCount = computed(() => {
+            let count = 0;
+            if (state.activeRoles.nightmare) count++;
+            if (state.activeRoles.blackWolf) count++;
+            if (state.activeRoles.wolfBeauty) count++;
+            if (state.activeRoles.awakenedWolfBeauty) count++;
+            if (state.activeRoles.evilKnight) count++;
+            if (state.isDittoWolfKingMode) count++;
+            return count;
+        });
+        const normalWolfCount = computed(() => Math.max(0, maxWolves.value - specialWolfCount.value));
+
         const GameLogic = {
             initPlayers() {
                 state.players = Array.from({ length: state.playerCount }, (_, i) => ({
@@ -1006,27 +1021,36 @@
                 let resolvedRole = '未定';
                 let resolvedClass = 'color-unknown';
                 
-                const p = state.players.find(x => x.id === id);
-                if (p && p.role !== '?' && p.role !== '未定') {
-                    resolvedRole = p.role;
-                    resolvedClass = p.class;
-                } else {
-                    const s = state.initialRoleSetup;
-                    if (s.nightmare === id) { resolvedRole = '夢魘'; resolvedClass = 'color-wolf'; }
-                    else if (s.blackWolf === id) { resolvedRole = '黑狼王'; resolvedClass = 'color-wolf'; }
-                    else if (s.wolfBeauty === id) { resolvedRole = '狼美人'; resolvedClass = 'color-wolf'; }
-                    else if (s.awakenedWolfBeauty === id) { resolvedRole = '覺醒狼美人'; resolvedClass = 'color-wolf'; }
-                    else if (s.evilKnight === id) { resolvedRole = '惡靈騎士'; resolvedClass = 'color-wolf'; }
-                    else if (s.guard === id) { resolvedRole = '守衛'; resolvedClass = 'color-god'; }
-                    else if (s.dreamer === id) { resolvedRole = '攝夢人'; resolvedClass = 'color-god'; }
-                    else if (s.knight === id) { resolvedRole = '騎士'; resolvedClass = 'color-god'; }
-                    else if (s.bear === id) { resolvedRole = '熊'; resolvedClass = 'color-god'; }
-                    else if (s.seer === id) { resolvedRole = '預言家'; resolvedClass = 'color-god'; }
-                    else if (s.witch === id) { resolvedRole = '女巫'; resolvedClass = 'color-god'; }
-                    else if (s.hunter === id) { resolvedRole = '獵人'; resolvedClass = 'color-god'; }
-                    else if (s.awakenedHunter === id) { resolvedRole = '覺醒獵人'; resolvedClass = 'color-god'; }
-                    else if (s.shadow === id) { resolvedRole = '燈影'; resolvedClass = 'color-villager'; }
-                    else if (s.wolves.includes(id)) { resolvedRole = '狼人'; resolvedClass = 'color-wolf'; }
+                const s = state.initialRoleSetup;
+                
+                // 優先使用初始設定陣列中的身份
+                if (s.nightmare === id) { resolvedRole = '夢魘'; resolvedClass = 'color-wolf'; }
+                else if (s.blackWolf === id) { resolvedRole = '黑狼王'; resolvedClass = 'color-wolf'; }
+                else if (s.wolfBeauty === id) { resolvedRole = '狼美人'; resolvedClass = 'color-wolf'; }
+                else if (s.awakenedWolfBeauty === id) { resolvedRole = '覺醒狼美人'; resolvedClass = 'color-wolf'; }
+                else if (s.evilKnight === id) { resolvedRole = '惡靈騎士'; resolvedClass = 'color-wolf'; }
+                else if (s.guard === id) { resolvedRole = '守衛'; resolvedClass = 'color-god'; }
+                else if (s.dreamer === id) { resolvedRole = '攝夢人'; resolvedClass = 'color-god'; }
+                else if (s.knight === id) { resolvedRole = '騎士'; resolvedClass = 'color-god'; }
+                else if (s.bear === id) { resolvedRole = '熊'; resolvedClass = 'color-god'; }
+                else if (s.seer === id) { resolvedRole = '預言家'; resolvedClass = 'color-god'; }
+                else if (s.witch === id) { resolvedRole = '女巫'; resolvedClass = 'color-god'; }
+                else if (s.hunter === id) { resolvedRole = '獵人'; resolvedClass = 'color-god'; }
+                else if (s.awakenedHunter === id) { resolvedRole = '覺醒獵人'; resolvedClass = 'color-god'; }
+                else if (s.shadow === id) { resolvedRole = '燈影'; resolvedClass = 'color-villager'; }
+                else {
+                    const activeW = s.wolves.slice(0, normalWolfCount.value);
+                    if (activeW.includes(id)) {
+                        resolvedRole = '狼人'; 
+                        resolvedClass = 'color-wolf';
+                    } else {
+                        // 如果不在以上的初始設定中，再檢查 p.role (用於接住預設平民等機制)
+                        const p = state.players.find(x => x.id === id);
+                        if (p && p.role !== '?' && p.role !== '未定') {
+                            resolvedRole = p.role;
+                            resolvedClass = p.class;
+                        }
+                    }
                 }
 
                 // 百變狼王強制將 class 蓋成狼人顏色
@@ -1141,16 +1165,7 @@
                         if (state.activeRoles.wolfBeauty && state.initialRoleSetup.wolfBeauty === 0) return alert('請設定「狼美人」的號碼！');
                         if (state.activeRoles.awakenedWolfBeauty && state.initialRoleSetup.awakenedWolfBeauty === 0) return alert('請設定「覺醒狼美人」的號碼！');
                         
-                        const maxWolves = state.playerCount <= 10 ? 3 : 4;
-                        let specialCount = 0;
-                        if (state.activeRoles.nightmare) specialCount++;
-                        if (state.activeRoles.blackWolf) specialCount++;
-                        if (state.activeRoles.wolfBeauty) specialCount++;
-                        if (state.activeRoles.awakenedWolfBeauty) specialCount++;
-                        if (state.activeRoles.evilKnight) specialCount++;
-                        if (state.isDittoWolfKingMode) specialCount++;
-                        
-                        const nWolves = Math.max(0, maxWolves - specialCount);
+                        const nWolves = normalWolfCount.value;
                         for (let i = 0; i < nWolves; i++) {
                             if (!state.initialRoleSetup.wolves[i]) return alert(`請設定第 ${i+1} 名普通狼人的號碼！`);
                         }
@@ -1399,21 +1414,12 @@
                         if (p) { p.role = roleName; p.class = className; }
                     };
                     
-                    const maxWolves = state.playerCount <= 10 ? 3 : 4;
-                    let specialCount = 0;
-                    if (state.activeRoles.nightmare) specialCount++;
-                    if (state.activeRoles.blackWolf) specialCount++;
-                    if (state.activeRoles.wolfBeauty) specialCount++;
-                    if (state.activeRoles.awakenedWolfBeauty) specialCount++;
-                    if (state.activeRoles.evilKnight) specialCount++;
-                    if (state.isDittoWolfKingMode) specialCount++;
-                    
-                    const nWolves = Math.max(0, maxWolves - specialCount);
+                    const nWolves = normalWolfCount.value;
                     state.initialRoleSetup.wolves.slice(0, nWolves).forEach(id => { if (id) assign(id, '狼人', 'color-wolf'); });
                     
                     if(state.activeRoles.witch) assign(state.initialRoleSetup.witch, '女巫', 'color-god');
                     if(state.activeRoles.guard) assign(state.initialRoleSetup.guard, '守衛', 'color-god');
-                    if(state.activeRoles.dreamer) assign(state.initialRoleSetup.dreamer, '摄夢人', 'color-god');
+                    if(state.activeRoles.dreamer) assign(state.initialRoleSetup.dreamer, '攝夢人', 'color-god');
                     if(state.activeRoles.knight) assign(state.initialRoleSetup.knight, '騎士', 'color-god');
                     if(state.activeRoles.bear) assign(state.initialRoleSetup.bear, '熊', 'color-god');
                     if(state.activeRoles.seer) assign(state.initialRoleSetup.seer, '預言家', 'color-god');
@@ -1789,6 +1795,42 @@
 
         createApp({
             setup() {
+                const setSeerTarget = (id) => {
+                    state.nightRecords.seerTarget = id;
+                    // 當預言家百變狼王在首夜選擇號碼的瞬間，立刻將其他未定的身份轉為平民
+                    if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'seer' && state.day === 1 && id !== 0) {
+                        const assign = (playerId, roleName, className) => {
+                            let p = state.players.find(x => x.id === playerId);
+                            if (p) { p.role = roleName; p.class = className; }
+                        };
+                        
+                        const nWolves = normalWolfCount.value;
+                        state.initialRoleSetup.wolves.slice(0, nWolves).forEach(wId => { if (wId) assign(wId, '狼人', 'color-wolf'); });
+                        
+                        if(state.activeRoles.witch) assign(state.initialRoleSetup.witch, '女巫', 'color-god');
+                        if(state.activeRoles.guard) assign(state.initialRoleSetup.guard, '守衛', 'color-god');
+                        if(state.activeRoles.dreamer) assign(state.initialRoleSetup.dreamer, '攝夢人', 'color-god');
+                        if(state.activeRoles.knight) assign(state.initialRoleSetup.knight, '騎士', 'color-god');
+                        if(state.activeRoles.bear) assign(state.initialRoleSetup.bear, '熊', 'color-god');
+                        if(state.activeRoles.seer) assign(state.initialRoleSetup.seer, '預言家', 'color-god');
+                        if(state.activeRoles.shadow) assign(state.initialRoleSetup.shadow, '燈影', 'color-villager');
+                        if(state.activeRoles.hunter) assign(state.initialRoleSetup.hunter, '獵人', 'color-god');
+                        if(state.activeRoles.awakenedHunter) assign(state.initialRoleSetup.awakenedHunter, '覺醒獵人', 'color-god');
+                        if(state.activeRoles.nightmare) assign(state.initialRoleSetup.nightmare, '夢魘', 'color-wolf');
+                        if(state.activeRoles.blackWolf) assign(state.initialRoleSetup.blackWolf, '黑狼王', 'color-wolf');
+                        if(state.activeRoles.wolfBeauty) assign(state.initialRoleSetup.wolfBeauty, '狼美人', 'color-wolf');
+                        if(state.activeRoles.awakenedWolfBeauty) assign(state.initialRoleSetup.awakenedWolfBeauty, '覺醒狼美人', 'color-wolf');
+                        if(state.activeRoles.evilKnight) assign(state.initialRoleSetup.evilKnight, '惡靈騎士', 'color-wolf');
+
+                        state.players.forEach(p => {
+                            if (p.role === '?' || p.role === '未定') { 
+                                p.role = '平民'; 
+                                p.class = 'color-villager'; 
+                            }
+                        });
+                    }
+                };
+
                 const isRoleDead = (roleKey) => {
                     const id = state.initialRoleSetup[roleKey];
                     if (!id) return false;
@@ -1868,7 +1910,6 @@
                         reason = `相鄰玩家皆為好人`;
                     }
                     
-                    // 百變狼王(熊) 反轉邏輯
                     if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'bear') {
                         growl = !growl;
                         reason = growl ? `因百變狼王技能反轉 (原本不叫)` : `因百變狼王技能反轉 (原本會叫)`;
@@ -1881,19 +1922,6 @@
                     if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'witch' && state.day === 1) return false;
                     return state.playerCount >= 10 && state.nightRecords.wolfKill !== 0 && state.nightRecords.wolfKill === state.initialRoleSetup.witch;
                 });
-
-                const maxWolves = computed(() => state.playerCount <= 10 ? 3 : 4);
-                const specialWolfCount = computed(() => {
-                    let count = 0;
-                    if (state.activeRoles.nightmare) count++;
-                    if (state.activeRoles.blackWolf) count++;
-                    if (state.activeRoles.wolfBeauty) count++;
-                    if (state.activeRoles.awakenedWolfBeauty) count++;
-                    if (state.activeRoles.evilKnight) count++;
-                    if (state.isDittoWolfKingMode) count++; // 這裡加入百變狼王
-                    return count;
-                });
-                const normalWolfCount = computed(() => Math.max(0, maxWolves.value - specialWolfCount.value));
 
                 const formatLog = (log) => {
                     let formatted = log.replace(/(\d+)號/g, (match, idStr) => {
@@ -1981,7 +2009,6 @@
                     return { isDead: false, notSet: false };
                 });
                 
-                // 確認百變狼王帶刀狀態
                 const canDittoWolfKingKill = computed(() => {
                     if (!state.isDittoWolfKingMode) return false;
                     const dittoId = state.initialRoleSetup[state.dittoWolfKingRole];
@@ -2078,7 +2105,7 @@
                     isWitchSelfSaveRestricted, isRoleDead, formatLog, toggleRole, getPhaseHeaderClass, canDittoWolfKingKill, isDittoWolfKingDead,
                     startGame, getPlayerSetupInfo: (id) => GameLogic.getPlayerSetupInfo(id), getRoleClass: (id) => GameLogic.getRoleClass(id), isPlayerTaken, isWolfTarget, isTargetInvalidForSeer, hunterSignal, ahSignal,
                     setGuardTarget: (id) => { if (state.nightRecords.lastGuardTarget !== id || state.day === 1) state.nightRecords.guardTarget = id; },
-                    setPoisonTarget, setWitchAction, setKnightDuelTarget, triggerGameOver,
+                    setPoisonTarget, setWitchAction, setKnightDuelTarget, setSeerTarget, triggerGameOver,
                     checkFeared: (roles) => GameLogic.checkFeared(roles),
                     nextPhase: () => GameLogic.nextPhase(),
                     prevPhase: () => GameLogic.prevPhase(),
