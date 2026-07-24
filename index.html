@@ -692,115 +692,38 @@
             </div>
 
             <!-- ☀️ 白天 / 揭曉 / 殉情 / 開槍 / 投票 階段 -->
-            <div v-show="state.currentPhase === 'morning'" class="action-row">
-                
-                <!-- 殉情提示畫面 -->
-                <div v-if="state.morningStep === 'charm_reveal'" style="margin-top: 10px; padding-top: 15px;">
-                    <h3 style="color: #ff9800;">💔 殉情 / 替死結果</h3>
-                    <div v-for="(death, idx) in state.morningData.daytimeCharmDeaths" :key="idx" class="witch-alert-active" style="background: rgba(255, 77, 77, 0.1); border-color: var(--btn-danger); text-align: center; margin-bottom: 10px; padding: 15px;">
-                        <h2 style="margin:0; color:white;"><span :class="getPlayerSetupInfo(death.id).class">{{ death.id }} 號</span> 殉情死亡</h2>
-                        <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(死因：{{ death.cause === 'charm' ? '被狼美人魅惑' : '代替覺醒狼美人死亡' }})</p>
-                    </div>
-                    <div class="nav-buttons">
-                        <button @click="confirmCharmReveal" style="margin: 20px auto 0 auto;">確認進入下一步 ➡️</button>
-                    </div>
+            <div v-show="state.currentPhase === 'morning'">
+                <!-- 如果有達成遊戲結束，進入這個最終畫面 -->
+                <div v-if="state.pendingGameOver" class="action-row" style="padding-top: 30px;">
+                    <h2 :style="{ color: state.pendingGameOver.faction.includes('好人') ? 'var(--color-good)' : 'var(--color-wolf)' }" style="margin-bottom: 5px; border: none; font-size: 26px;">遊戲結束 <br> {{ state.pendingGameOver.faction.replace('🎉 ', '').replace('🐺 ', '') }}</h2>
+                    <div class="result-box" style="font-size: 18px; margin-top: 15px; padding: 20px;" v-html="state.finalEventHtml"></div>
+                    <button @click="triggerGameOver" style="background-color: var(--btn-secondary); margin: 30px auto 0 auto; font-size: 18px; padding: 15px 30px;">查看完整結果</button>
                 </div>
 
-                <!-- 開槍揭曉畫面 -->
-                <div v-else-if="state.morningStep === 'shoot_reveal'" style="margin-top: 10px; padding-top: 15px;">
-                    <h3 style="color: #ff9800;">🔫 開槍結果</h3>
-                    <div class="witch-alert-active" style="background: rgba(255, 77, 77, 0.1); border-color: var(--btn-danger); text-align: center; margin-bottom: 10px; padding: 15px;">
-                        <h2 style="margin:0; color:white;"><span :class="getPlayerSetupInfo(state.morningData.lastShotTarget).class">{{ state.morningData.lastShotTarget }} 號玩家</span> 被開槍帶走</h2>
-                        <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(開槍者：{{ state.morningData.lastShooterRole }})</p>
-                    </div>
-                    <div class="nav-buttons">
-                        <button @click="confirmShootReveal" style="margin: 20px auto 0 auto;">確認進入下一步 ➡️</button>
-                    </div>
-                </div>
+                <div v-else>
+                    <div v-if="state.morningStep === 'vote'" class="action-row">
+                        <div class="result-box" v-html="state.morningResultHtml"></div>
 
-                <!-- 騎士決鬥提示畫面 -->
-                <div v-else-if="state.morningStep === 'knight_reveal' && state.morningData.knightDuelTargetInfo" style="margin-top: 10px; padding-top: 15px;">
-                    <h3 style="color: #c879ff;">⚔️ 騎士決鬥結果</h3>
-                    <div class="witch-alert-active" :style="{ borderColor: state.morningData.knightDuelTargetInfo.isWolf ? 'var(--btn-success)' : 'var(--btn-danger)', background: state.morningData.knightDuelTargetInfo.isWolf ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 77, 77, 0.2)' }" style="text-align: center; margin-bottom: 10px; padding: 15px;">
-                        <h2 style="margin:0; color:white;"><span :class="getRoleClass(state.morningData.knightDuelTargetInfo.id)">{{ state.morningData.knightDuelTargetInfo.id }} 號</span> 是 {{ state.morningData.knightDuelTargetInfo.isWolf ? '狼人陣營！' : '好人陣營！' }}</h2>
-                        <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">
-                            {{ state.morningData.knightDuelTargetInfo.isWolf ? '決鬥成功！狼人死亡。' : '決鬥失敗！騎士以死謝罪。' }}
-                        </p>
-                    </div>
-                    <div class="nav-buttons">
-                        <button @click="confirmKnightReveal" style="margin: 20px auto 0 auto;">確認進入下一步 ➡️</button>
-                    </div>
-                </div>
-
-                <!-- 覺醒獵人 開槍方向選擇 -->
-                <div v-else-if="state.morningStep === 'ah_shoot'" style="margin-top: 10px;">
-                    <h3 style="color: #ff9800;">🔫✨ {{ state.currentShooter.role }} ({{ state.currentShooter.id }}號) 出局，請選擇開槍方向：</h3>
-                    <div class="player-grid-container" style="gap: 15px; margin-top: 20px;">
-                        <div :class="['player-grid-btn zero-btn', { selected: state.morningData.ahDirection === 1 }]" @click="state.morningData.ahDirection = 1" style="padding: 15px; font-size: 18px;">
-                            ⬆️ 號碼遞增方向
+                        <!-- 熊的咆哮宣告 -->
+                        <div v-if="state.activeRoles.bear" style="margin-top: 15px; padding: 15px; background: #222; border-radius: 8px; border: 1px solid #555;">
+                            <h3 style="margin-top: 0; color: #ff9800;">🐻 熊的咆哮狀態</h3>
+                            <div v-if="!bearGrowl.isSet" class="witch-alert-active" style="background: #333; border-color: #555; text-align: center; margin-bottom: 0;">
+                                <h2 style="margin:0; color:#ccc; font-size: 18px;">等待設定熊的號碼</h2>
+                            </div>
+                            <div v-else-if="bearGrowl.isDead" class="witch-alert-active" style="background: rgba(76, 175, 80, 0.2); border-color: var(--btn-success); text-align: center; margin-bottom: 0;">
+                                <h2 style="margin:0; color:var(--btn-success);">熊沒有叫</h2>
+                                <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(熊已經死亡)</p>
+                            </div>
+                            <div v-else-if="bearGrowl.growl" class="witch-alert-active" style="background: rgba(255, 77, 77, 0.2); border-color: var(--btn-danger); text-align: center; margin-bottom: 0;">
+                                <h2 style="margin:0; color:var(--btn-danger);">熊叫了！</h2>
+                                <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">({{ bearGrowl.reason }})</p>
+                            </div>
+                            <div v-else class="witch-alert-active" style="background: rgba(76, 175, 80, 0.2); border-color: var(--btn-success); text-align: center; margin-bottom: 0;">
+                                <h2 style="margin:0; color:var(--btn-success);">熊沒有叫</h2>
+                                <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">({{ bearGrowl.reason }})</p>
+                            </div>
                         </div>
-                        <div :class="['player-grid-btn zero-btn', { selected: state.morningData.ahDirection === -1 }]" @click="state.morningData.ahDirection = -1" style="padding: 15px; font-size: 18px;">
-                            ⬇️ 號碼遞減方向
-                        </div>
-                        <div :class="['player-grid-btn zero-btn', { 'danger-selected': state.morningData.ahDirection === 0 }]" @click="state.morningData.ahDirection = 0" style="padding: 15px; font-size: 18px;">
-                            壓槍 (不發動)
-                        </div>
-                    </div>
-                    <div class="nav-buttons">
-                        <button class="btn-prev" @click="prevPhase">⬅️ 重新回朔</button>
-                        <button @click="confirmAhShoot" :disabled="state.morningData.ahDirection === null">確認開槍 ➡️</button>
-                    </div>
-                </div>
-
-                <!-- 常規開槍階段 (連環開槍系統) -->
-                <div v-else-if="state.morningStep === 'shoot'" style="margin-top: 10px;">
-                    <h3 style="color: #ff9800;">🔫 {{ state.currentShooter.role }} ({{ state.currentShooter.id }}號) 出局，請選擇帶走的玩家：</h3>
-                    <div class="player-grid-container">
-                        <div :class="['player-grid-btn zero-btn', { 'danger-selected': state.morningData.shootTarget === 0 }]" @click="state.morningData.shootTarget = 0">
-                            壓槍 (不帶走)
-                        </div>
-                        <div v-for="p in alivePlayers" :key="p.id" 
-                             :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { 'danger-selected': state.morningData.shootTarget === p.id }]"
-                             @click="state.morningData.shootTarget = p.id">
-                            <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
-                        </div>
-                    </div>
-                    <div class="nav-buttons">
-                        <button class="btn-prev" @click="prevPhase">⬅️ 重新回朔</button>
-                        <button @click="confirmShoot">確認開槍 ➡️</button>
-                    </div>
-                </div>
-
-                <!-- 常規白天投票 -->
-                <div v-else-if="state.morningStep === 'vote'">
-                    <h2>☀️ 天亮了</h2>
-                    <div class="result-box" v-html="state.morningResultHtml"></div>
-
-                    <!-- 熊的咆哮宣告 -->
-                    <div v-if="state.activeRoles.bear" style="margin-top: 15px; padding: 15px; background: #222; border-radius: 8px; border: 1px solid #555;">
-                        <h3 style="margin-top: 0; color: #ff9800;">🐻 熊的咆哮狀態</h3>
-                        <div v-if="!bearGrowl.isSet" class="witch-alert-active" style="background: #333; border-color: #555; text-align: center; margin-bottom: 0;">
-                            <h2 style="margin:0; color:#ccc; font-size: 18px;">等待設定熊的號碼</h2>
-                        </div>
-                        <div v-else-if="bearGrowl.isDead" class="witch-alert-active" style="background: rgba(76, 175, 80, 0.2); border-color: var(--btn-success); text-align: center; margin-bottom: 0;">
-                            <h2 style="margin:0; color:var(--btn-success);">熊沒有叫</h2>
-                            <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(熊已經死亡)</p>
-                        </div>
-                        <div v-else-if="bearGrowl.growl" class="witch-alert-active" style="background: rgba(255, 77, 77, 0.2); border-color: var(--btn-danger); text-align: center; margin-bottom: 0;">
-                            <h2 style="margin:0; color:var(--btn-danger);">熊叫了！</h2>
-                            <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">({{ bearGrowl.reason }})</p>
-                        </div>
-                        <div v-else class="witch-alert-active" style="background: rgba(76, 175, 80, 0.2); border-color: var(--btn-success); text-align: center; margin-bottom: 0;">
-                            <h2 style="margin:0; color:var(--btn-success);">熊沒有叫</h2>
-                            <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">({{ bearGrowl.reason }})</p>
-                        </div>
-                    </div>
-                    
-                    <div v-if="state.pendingGameOver" style="margin-top: 20px;">
-                        <h3 style="color: var(--btn-danger);">⚠️ 觸發屠邊局條件！</h3>
-                        <button @click="triggerGameOver" style="background-color: var(--btn-danger); margin: 0 auto;">查看遊戲結果</button>
-                    </div>
-                    <div v-else>
+                        
                         <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #555; text-align: center;">
                             <h3 style="margin-top: 0; color: #fff;">🗳️ 白天投票環節</h3>
                             <p>請選擇被放逐出局的玩家：</p>
@@ -844,7 +767,7 @@
                             <div class="player-grid-container" style="margin-top: 10px;">
                                 <div v-for="p in alivePlayers" :key="p.id" v-show="p.id !== state.initialRoleSetup.knight"
                                      :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { 'danger-selected': state.morningData.knightDuelTarget === p.id, 'disabled': isTargetInvalidForSeer(p.id) }]"
-                                     @click="setKnightDuelTarget(p.id)">
+                                     @click="!isTargetInvalidForSeer(p.id) && setKnightDuelTarget(p.id)">
                                     <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;">{{ getPlayerSetupInfo(p.id).role }}</span></span>
                                 </div>
                             </div>
@@ -854,8 +777,95 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
+                    <!-- 殉情提示畫面 -->
+                    <div v-else-if="state.morningStep === 'charm_reveal'" class="action-row">
+                        <h3 style="color: #ff9800;">💔 殉情 / 替死結果</h3>
+                        <div class="witch-alert-active" style="background: rgba(255, 77, 77, 0.1); border-color: var(--btn-danger); text-align: center; margin-bottom: 10px; padding: 15px;">
+                            <div v-for="(death, idx) in state.morningData.daytimeCharmDeaths" :key="idx" style="margin-bottom: 10px;">
+                                <h2 style="margin:0; color:white;"><span :class="getPlayerSetupInfo(death.id).class">{{ death.id }} 號</span> 殉情死亡</h2>
+                                <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(死因：{{ death.cause === 'charm' ? '被狼美人魅惑' : '代替覺醒狼美人死亡' }})</p>
+                            </div>
+                            <p v-if="state.shootQueue.length === 0 && state.isVotingDone" style="margin:15px 0 0 0; font-size: 18px; font-weight: bold; color:white;">
+                                天黑請閉眼
+                            </p>
+                        </div>
+                        <div class="nav-buttons">
+                            <button @click="confirmCharmReveal" style="margin: 20px auto 0 auto;">確認進入下一步 ➡️</button>
+                        </div>
+                    </div>
+
+                    <!-- 開槍揭曉畫面 -->
+                    <div v-else-if="state.morningStep === 'shoot_reveal'" class="action-row">
+                        <h3 style="color: #ff9800;">🔫 開槍結果</h3>
+                        <div class="witch-alert-active" style="background: rgba(255, 77, 77, 0.1); border-color: var(--btn-danger); text-align: center; margin-bottom: 10px; padding: 15px;">
+                            <h2 style="margin:0; color:white;"><span :class="getPlayerSetupInfo(state.morningData.lastShotTarget).class">{{ state.morningData.lastShotTarget }} 號玩家</span> 被開槍帶走</h2>
+                            <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(開槍者：{{ state.morningData.lastShooterRole }})</p>
+                            <p v-if="state.shootQueue.length === 0 && state.isVotingDone && state.morningData.daytimeCharmDeaths.length === 0" style="margin:15px 0 0 0; font-size: 18px; font-weight: bold; color:white;">
+                                天黑請閉眼
+                            </p>
+                        </div>
+                        <div class="nav-buttons">
+                            <button @click="confirmShootReveal" style="margin: 20px auto 0 auto;">確認進入下一步 ➡️</button>
+                        </div>
+                    </div>
+
+                    <!-- 騎士決鬥提示畫面 -->
+                    <div v-else-if="state.morningStep === 'knight_reveal' && state.morningData.knightDuelTargetInfo" class="action-row">
+                        <h3 style="color: #c879ff;">⚔️ 騎士決鬥結果</h3>
+                        <div class="witch-alert-active" :style="{ borderColor: state.morningData.knightDuelTargetInfo.isWolf ? 'var(--btn-success)' : 'var(--btn-danger)', background: state.morningData.knightDuelTargetInfo.isWolf ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 77, 77, 0.2)' }" style="text-align: center; margin-bottom: 10px; padding: 15px;">
+                            <h2 style="margin:0; color:white;"><span :class="getRoleClass(state.morningData.knightDuelTargetInfo.id)">{{ state.morningData.knightDuelTargetInfo.id }} 號</span> 是 {{ state.morningData.knightDuelTargetInfo.isWolf ? '狼人陣營！' : '好人陣營！' }}</h2>
+                            <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">
+                                {{ state.morningData.knightDuelTargetInfo.isWolf ? '決鬥成功！狼人死亡。' : '決鬥失敗！騎士以死謝罪。' }}
+                            </p>
+                            <p style="margin:15px 0 0 0; font-size: 18px; font-weight: bold; color:white;">
+                                {{ state.morningData.knightDuelTargetInfo.isWolf ? '天黑請閉眼' : '請繼續投票放逐' }}
+                            </p>
+                        </div>
+                        <div class="nav-buttons">
+                            <button @click="confirmKnightReveal" style="margin: 20px auto 0 auto;">確認進入下一步 ➡️</button>
+                        </div>
+                    </div>
+
+                    <!-- 覺醒獵人 開槍方向選擇 -->
+                    <div v-else-if="state.morningStep === 'ah_shoot'" class="action-row">
+                        <h3 style="color: #ff9800;">🔫✨ {{ state.currentShooter.role }} ({{ state.currentShooter.id }}號) 出局，請選擇開槍方向：</h3>
+                        <div class="player-grid-container" style="gap: 15px; margin-top: 20px;">
+                            <div :class="['player-grid-btn zero-btn', { selected: state.morningData.ahDirection === 1 }]" @click="state.morningData.ahDirection = 1" style="padding: 15px; font-size: 18px;">
+                                ⬆️ 號碼遞增方向
+                            </div>
+                            <div :class="['player-grid-btn zero-btn', { selected: state.morningData.ahDirection === -1 }]" @click="state.morningData.ahDirection = -1" style="padding: 15px; font-size: 18px;">
+                                ⬇️ 號碼遞減方向
+                            </div>
+                            <div :class="['player-grid-btn zero-btn', { 'danger-selected': state.morningData.ahDirection === 0 }]" @click="state.morningData.ahDirection = 0" style="padding: 15px; font-size: 18px;">
+                                壓槍 (不發動)
+                            </div>
+                        </div>
+                        <div class="nav-buttons">
+                            <button class="btn-prev" @click="prevPhase">⬅️ 重新回朔</button>
+                            <button @click="confirmAhShoot" :disabled="state.morningData.ahDirection === null">確認開槍 ➡️</button>
+                        </div>
+                    </div>
+
+                    <!-- 常規開槍階段 (連環開槍系統) -->
+                    <div v-else-if="state.morningStep === 'shoot'" class="action-row">
+                        <h3 style="color: #ff9800;">🔫 {{ state.currentShooter.role }} ({{ state.currentShooter.id }}號) 出局，請選擇帶走的玩家：</h3>
+                        <div class="player-grid-container">
+                            <div :class="['player-grid-btn zero-btn', { 'danger-selected': state.morningData.shootTarget === 0 }]" @click="state.morningData.shootTarget = 0">
+                                壓槍 (不帶走)
+                            </div>
+                            <div v-for="p in alivePlayers" :key="p.id" 
+                                 :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { 'danger-selected': state.morningData.shootTarget === p.id }]"
+                                 @click="state.morningData.shootTarget = p.id">
+                                <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
+                            </div>
+                        </div>
+                        <div class="nav-buttons">
+                            <button class="btn-prev" @click="prevPhase">⬅️ 重新回朔</button>
+                            <button @click="confirmShoot">確認開槍 ➡️</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -890,6 +900,7 @@
             isSeerFirst: true, 
             isCalculatingNight: false,
             daySummaryPrinted: false,
+            winReasonPrinted: false,
             currentPhase: 'none',
             currentPhaseIndex: 0,
             phaseQueue: [],
@@ -912,6 +923,7 @@
             isVotingDone: false, 
             
             morningResultHtml: "",
+            finalEventHtml: "",
             pendingGameOver: null,
             gameOverResult: "",
             history: [], 
@@ -1005,6 +1017,7 @@
                 state.nightRecords.witchAction = 'none';
                 state.nightRecords.witchPoison = 0;
 
+                // 隨機決定預言家與燈影誰先睜眼 (遊戲第一晚決定後固定)
                 if (state.day === 1 && state.activeRoles.seer && state.activeRoles.shadow) {
                     state.isSeerFirst = Math.random() < 0.5;
                 }
@@ -1046,6 +1059,7 @@
             },
 
             nextPhase() {
+                // 強制身分填寫防呆 (不能是空號)
                 if (state.day === 1 && state.currentPhase !== 'morning') {
                     const phase = state.currentPhase;
                     if (phase === 'wolf') {
@@ -1097,12 +1111,14 @@
                     state.nightRecords.lastAwbCharmTarget = state.morningSnapshot.lastAwbCharmTarget;
                     state.awbUsed = state.morningSnapshot.awbUsed;
                     state.ekUsed = state.morningSnapshot.ekUsed;
+                    state.winReasonPrinted = state.morningSnapshot.winReasonPrinted;
                     state.history = JSON.parse(JSON.stringify(state.morningSnapshot.history));
                     state.shootQueue = [];
                     
                     state.isNight = true;
                     state.pendingGameOver = null;
                     state.morningResultHtml = "";
+                    state.finalEventHtml = "";
                     
                     state.currentPhaseIndex = state.phaseQueue.length - 1;
                     this.updatePhase();
@@ -1119,11 +1135,13 @@
                     state.ekUsed = snap.ekUsed;
                     state.knightUsed = snap.knightUsed;
                     state.dueledGoodTarget = snap.dueledGoodTarget;
+                    state.winReasonPrinted = snap.winReasonPrinted;
                     state.history = JSON.parse(JSON.stringify(snap.history));
                     state.shootQueue = JSON.parse(JSON.stringify(snap.shootQueue));
                     
                     state.morningStep = snap.morningStep;
                     state.morningResultHtml = snap.morningResultHtml;
+                    state.finalEventHtml = snap.finalEventHtml || "";
                     state.morningData = JSON.parse(JSON.stringify(snap.morningData));
                     state.currentShooter = snap.currentShooter ? JSON.parse(JSON.stringify(snap.currentShooter)) : null;
                     state.isVotingDone = snap.isVotingDone;
@@ -1141,6 +1159,7 @@
 
                 let role = this.getPlayerSetupInfo(id).role;
 
+                // 覺醒狼美人 替死判定
                 if (role === '覺醒狼美人' && !state.awbUsed && cause !== 'ah_shot' && cause !== 'ah_shot_day' && cause !== 'duel_wolf') {
                     let charmTarget = state.nightRecords.awbCharmTarget;
                     if (charmTarget !== 0) {
@@ -1161,10 +1180,10 @@
                 }
 
                 if (cause === 'charm') {
-                    this.addHistory(`💔 ${id}號 因被狼美人魅惑而殉情死亡`);
+                    this.addHistory(`💔 ${id}號(${role}) 因被狼美人魅惑而殉情死亡`);
                     if (!state.isCalculatingNight) state.morningData.daytimeCharmDeaths.push({ id, role, cause });
                 } else if (cause === 'awb_sub') {
-                    this.addHistory(`💔 ${id}號 代替覺醒狼美人死亡`);
+                    this.addHistory(`💔 ${id}號(${role}) 代替覺醒狼美人死亡`);
                     if (!state.isCalculatingNight) state.morningData.daytimeCharmDeaths.push({ id, role, cause });
                 } else if (cause === 'dream_death') {
                     this.addHistory(`💔 ${id}號 因連續兩晚被夢遊而死亡`);
@@ -1176,6 +1195,7 @@
 
                 let sealed = this.isSkillSealed(role, cause);
 
+                // 狼美人殉情連帶
                 if (role === '狼美人') {
                     if (sealed) {
                         this.addHistory(`🚫 ${id}號 技能遭封印，無法帶走魅惑目標`);
@@ -1191,6 +1211,7 @@
                     }
                 }
 
+                // 開槍排程處理
                 if (role === '覺醒獵人') {
                     state.shootQueue.push({ id, role, cause });
                 } else if (role === '獵人') {
@@ -1215,6 +1236,14 @@
             popShooter() {
                 const win = this.checkWinCondition();
                 if (win) {
+                    if (!state.isCalculatingNight && !state.winReasonPrinted) {
+                        state.winReasonPrinted = true;
+                        
+                        if (state.morningData.daytimeCharmDeaths.length > 0) {
+                            let charmHtml = state.morningData.daytimeCharmDeaths.map(d => `<span class="${this.getRoleClass(d.id)}">${d.id} 號</span> 殉情`).join('，');
+                            state.finalEventHtml += `<br><span style="color:#aaa; font-size: 15px;">💔 連帶觸發：${charmHtml}</span>`;
+                        }
+                    }
                     state.pendingGameOver = win;
                     state.morningStep = 'vote'; 
                     return;
@@ -1252,10 +1281,10 @@
 
                 state.daySummaryPrinted = true;
                 if (uniqueDayDeaths.length === 0) {
-                    this.addHistory(`🌇 白天結算：今天白天平安無事`);
+                    this.addHistory(`🌇 白天結算：平安無事`);
                 } else {
-                    const diedStr = uniqueDayDeaths.sort((a,b)=>a-b).map(id => id + '號').join('、');
-                    this.addHistory(`🌇 白天結算：今天白天 ${diedStr} 死亡`);
+                    const diedStr = uniqueDayDeaths.sort((a,b)=>a-b).map(id => id + '號' + this.getPlayerSetupInfo(id).role).join('、');
+                    this.addHistory(`🌇 白天結算：${diedStr} 死亡`);
                 }
             },
 
@@ -1268,6 +1297,7 @@
                     lastAwbCharmTarget: state.nightRecords.lastAwbCharmTarget,
                     awbUsed: state.awbUsed,
                     ekUsed: state.ekUsed,
+                    winReasonPrinted: state.winReasonPrinted,
                     history: state.history
                 }));
 
@@ -1283,7 +1313,7 @@
                     state.initialRoleSetup.wolves.forEach(id => { if (id) assign(id, '狼人', 'color-wolf'); });
                     if(state.activeRoles.witch) assign(state.initialRoleSetup.witch, '女巫', 'color-god');
                     if(state.activeRoles.guard) assign(state.initialRoleSetup.guard, '守衛', 'color-god');
-                    if(state.activeRoles.dreamer) assign(state.initialRoleSetup.dreamer, '攝夢人', 'color-god');
+                    if(state.activeRoles.dreamer) assign(state.initialRoleSetup.dreamer, '摄夢人', 'color-god');
                     if(state.activeRoles.knight) assign(state.initialRoleSetup.knight, '騎士', 'color-god');
                     if(state.activeRoles.bear) assign(state.initialRoleSetup.bear, '熊', 'color-god');
                     if(state.activeRoles.seer) assign(state.initialRoleSetup.seer, '預言家', 'color-god');
@@ -1413,24 +1443,28 @@
                 });
 
                 const nightWin = this.checkWinCondition();
-                if (nightWin) {
-                    state.pendingGameOver = nightWin;
-                    this.addHistory(`🌃 夜晚結算提前結束：達成屠邊條件`);
-                    this.popShooter(); 
-                    return; 
-                }
-
+                
                 let aliveAfter = state.players.filter(p => p.alive).map(p => p.id);
                 let died = aliveBefore.filter(id => !aliveAfter.includes(id));
 
                 if (died.length === 0) {
-                    this.addHistory(`🌃 夜晚結算：昨晚是平安夜`);
-                    state.morningResultHtml = "<h3 style='color:var(--btn-success); margin: 0;'>昨晚是平安夜👏</h3>";
+                    this.addHistory(`🌃 夜晚結算：平安夜`);
+                    state.morningResultHtml = "<h3 style='color:var(--btn-success); margin: 0;'>平安夜👏</h3>";
+                    state.finalEventHtml = "<span style='color:var(--btn-success); font-weight:bold;'>平安夜</span>";
                 } else {
-                    const diedStr = died.sort((a,b)=>a-b).map(id => id + '號').join('、');
-                    this.addHistory(`🌃 夜晚結算：昨晚 ${diedStr} 死亡`);
+                    const diedStr = died.sort((a,b)=>a-b).map(id => id + '號' + this.getPlayerSetupInfo(id).role).join('、');
+                    this.addHistory(`🌃 夜晚結算：${diedStr} 死亡`);
                     const deadIdsHtml = died.sort((a, b) => a - b).map(id => `<span class="${this.getRoleClass(id)}">${id} 號</span>`).join('，');
                     state.morningResultHtml = `<h3 style='margin: 0;'>昨晚 ${deadIdsHtml} 死亡</h3>`;
+                    state.finalEventHtml = `昨晚 ${deadIdsHtml} 死亡`;
+                }
+
+                if (nightWin) {
+                    state.pendingGameOver = nightWin;
+                    this.addHistory(`🏁 遊戲結束：${nightWin.faction}`);
+                    state.winReasonPrinted = true;
+                    this.popShooter(); 
+                    return; 
                 }
 
                 this.addHistory(`<br><span style="color:#fff; font-size:16px; font-weight:bold;">=== 第${state.day}天 白天 ===</span>`);
@@ -1452,10 +1486,12 @@
                     ekUsed: state.ekUsed,
                     knightUsed: state.knightUsed,
                     dueledGoodTarget: state.dueledGoodTarget,
+                    winReasonPrinted: state.winReasonPrinted,
                     history: state.history,
                     shootQueue: state.shootQueue,
                     morningStep: 'vote',
                     morningResultHtml: state.morningResultHtml,
+                    finalEventHtml: state.finalEventHtml,
                     morningData: state.morningData,
                     currentShooter: null,
                     isVotingDone: false
@@ -1471,6 +1507,7 @@
                 if (target !== 0) {
                     this.addHistory(`🔫 ${shooter.id}號 開槍帶走了 ${target}號`);
                     state.morningResultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 <span class="${this.getRoleClass(target)}">${target} 號</span></span>`;
+                    state.finalEventHtml = `💥 ${shooter.role} 開槍帶走了 <span class="${this.getRoleClass(target)}">${target} 號</span>`;
                     this.executeDeath(target, 'shot');
                     
                     state.morningData.lastShotTarget = target;
@@ -1479,6 +1516,7 @@
                 } else {
                     this.addHistory(`🔫 ${shooter.id}號 選擇壓槍`);
                     state.morningResultHtml += `<br><span style="color:#aaa;">💥 ${shooter.role} 選擇壓槍</span>`;
+                    state.finalEventHtml = `💥 ${shooter.role} 選擇壓槍`;
                     this.popShooter();
                 }
                 state.morningData.shootTarget = 0;
@@ -1508,6 +1546,7 @@
                 if (dir === 0) {
                     this.addHistory(`🔫 ${shooter.id}號 選擇壓槍`);
                     state.morningResultHtml += `<br><span style="color:#aaa;">💥 覺醒獵人 選擇壓槍</span>`;
+                    state.finalEventHtml = `💥 覺醒獵人 選擇壓槍`;
                     state.morningData.ahDirection = null;
                     this.popShooter();
                 } else {
@@ -1515,6 +1554,7 @@
                     if (target) {
                         this.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍，擊中了 ${target}號`);
                         state.morningResultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 <span class="${this.getRoleClass(target)}">${target} 號</span></span>`;
+                        state.finalEventHtml = `💥 覺醒獵人 開槍擊殺了 <span class="${this.getRoleClass(target)}">${target} 號</span>`;
                         let outCause = (shooter.cause === 'vote' || shooter.cause === 'explode' || shooter.cause === 'duel_wolf') ? 'ah_shot_day' : 'ah_shot';
                         this.executeDeath(target, outCause);
 
@@ -1525,6 +1565,7 @@
                     } else {
                         this.addHistory(`🔫 ${shooter.id}號 開槍，但場上已無狼人`);
                         state.morningResultHtml += `<br><span style="color:#aaa;">💥 覺醒獵人 開槍，但場上已無狼人</span>`;
+                        state.finalEventHtml = `💥 覺醒獵人 開槍，但場上已無狼人`;
                         state.morningData.ahDirection = null;
                         this.popShooter();
                     }
@@ -1536,9 +1577,11 @@
                 if (voteTargetId !== 0) {
                     const role = this.getPlayerSetupInfo(voteTargetId).role;
                     this.addHistory(`🗳️ 白天投票放逐了 ${voteTargetId}號`);
+                    state.finalEventHtml = `🗳️ 白天投票放逐了 <span class="${this.getRoleClass(voteTargetId)}">${voteTargetId} 號</span>`;
                     this.executeDeath(voteTargetId, 'vote');
                 } else {
                     this.addHistory(`🗳️ 白天投票結果為 無人出局 (棄票/平票)`);
+                    state.finalEventHtml = `🗳️ 白天投票結果為 無人出局`;
                 }
                 state.isVotingDone = true;
                 this.popShooter();
@@ -1550,6 +1593,7 @@
                     const role = this.getPlayerSetupInfo(targetId).role;
                     this.addHistory(`💣 ${targetId}號 選擇自爆！`);
                     state.morningResultHtml += `<br><span style="color:var(--btn-danger);">💣 <span class="${this.getRoleClass(targetId)}">${targetId} 號</span> 選擇自爆！</span>`;
+                    state.finalEventHtml = `💣 <span class="${this.getRoleClass(targetId)}">${targetId} 號</span> 選擇自爆！`;
                     this.executeDeath(targetId, 'explode');
                 }
                 state.morningData.explodeTarget = 0;
@@ -1575,11 +1619,13 @@
                 if (state.morningData.knightDuelTargetInfo.isWolf) {
                     this.addHistory(`⚔️ 騎士(${knightId}號) 決鬥了 ${targetId}號，狼人死亡！`);
                     state.morningResultHtml += `<br><span style="color:var(--btn-success);">⚔️ <span class="color-god">騎士</span> 決鬥成功！<span class="${this.getRoleClass(targetId)}">${targetId} 號</span> 死亡！</span>`;
+                    state.finalEventHtml = `⚔️ <span class="color-god">騎士</span> 決鬥成功！<span class="${this.getRoleClass(targetId)}">${targetId} 號</span> 死亡`;
                     this.executeDeath(targetId, 'duel_wolf');
                     state.isVotingDone = true; 
                 } else {
                     this.addHistory(`⚔️ 騎士(${knightId}號) 決鬥了 ${targetId}號，好人平安，騎士以死謝罪！`);
                     state.morningResultHtml += `<br><span style="color:var(--btn-danger);">⚔️ <span class="color-god">騎士</span> 決鬥失敗！<span class="color-god">${knightId} 號</span> 以死謝罪！</span>`;
+                    state.finalEventHtml = `⚔️ <span class="color-god">騎士</span> 決鬥失敗！<span class="color-god">${knightId} 號</span> 以死謝罪`;
                     state.dueledGoodTarget = targetId; 
                     this.executeDeath(knightId, 'duel_knight');
                 }
@@ -1606,9 +1652,9 @@
                 const aliveGods = alive.filter(p => ['女巫', '守衛', '預言家', '獵人', '覺醒獵人', '熊', '攝夢人', '騎士'].includes(p.role)).length;
                 const aliveVillagers = alive.filter(p => ['平民', '燈影'].includes(p.role)).length;
 
-                if (aliveWolves === 0) return "🎉 好人陣營獲勝！(狼人全數出局)";
-                if (aliveGods === 0) return "🐺 狼人陣營獲勝！(神職全數出局 - 屠神)";
-                if (aliveVillagers === 0) return "🐺 狼人陣營獲勝！(平民全數出局 - 屠民)";
+                if (aliveWolves === 0) return { faction: "🎉 好人陣營獲勝！", reason: "(狼人全數出局)" };
+                if (aliveGods === 0) return { faction: "🐺 狼人陣營獲勝！", reason: "(神職全數出局 - 屠神)" };
+                if (aliveVillagers === 0) return { faction: "🐺 狼人陣營獲勝！", reason: "(平民全數出局 - 屠民)" };
                 return null;
             }
         };
@@ -1706,12 +1752,17 @@
                 const normalWolfCount = computed(() => Math.max(0, maxWolves.value - specialWolfCount.value));
 
                 const formatLog = (log) => {
-                    return log.replace(/(\d+)號/g, (match, idStr) => {
+                    let formatted = log.replace(/(\d+)號/g, (match, idStr) => {
                         const id = parseInt(idStr);
                         const roleClass = GameLogic.getRoleClass(id);
                         const roleName = GameLogic.getPlayerSetupInfo(id).role;
                         return `<span class="${roleClass}" style="font-weight: bold;">${id}號${roleName}</span>`;
                     });
+                    
+                    formatted = formatted.replace(/好人陣營獲勝！/g, '<span style="color: var(--color-good); font-weight: bold;">好人陣營獲勝！</span>');
+                    formatted = formatted.replace(/狼人陣營獲勝！/g, '<span style="color: var(--color-wolf); font-weight: bold;">狼人陣營獲勝！</span>');
+                    
+                    return formatted;
                 };
 
                 const isPlayerTaken = (id, roleKey, wolfIndex = null) => {
@@ -1794,6 +1845,7 @@
                     state.knightUsed = false;
                     state.ekUsed = false;
                     state.dueledGoodTarget = 0;
+                    state.winReasonPrinted = false;
                     GameLogic.startNight();
                 };
 
@@ -1833,14 +1885,14 @@
 
                 const triggerGameOver = () => {
                     GameLogic.checkAndPrintDaySummary();
-                    state.gameOverResult = state.pendingGameOver; 
+                    state.gameOverResult = state.pendingGameOver.faction.replace('🎉 ', '').replace('🐺 ', ''); 
                     state.history.push(`<br><span style="color:#fff; font-size:16px; font-weight:bold;">=== 遊戲結束 ===</span>`);
-                    state.history.push(`🏁 ${state.pendingGameOver}`); 
+                    state.history.push(`🏁 ${state.pendingGameOver.faction}`); 
                     state.screen = 'gameover'; 
                 };
 
                 return {
-                    ROLE_DICT, state, alivePlayers, explodableWolves, normalWolfCount, godRoles, specialWolfRoles, specialVillagerRoles, bearGrowl,
+                    ROLE_DICT, state, alivePlayers, explodableWolves, normalWolfCount, godRoles, specialWolfRoles, specialVillagerRoles: computed(() => Object.values(ROLE_DICT).filter(r => r.type === 'villager' && r.selectable)), bearGrowl,
                     isWitchSelfSaveRestricted, isRoleDead, formatLog, toggleRole,
                     startGame, getPlayerSetupInfo: (id) => GameLogic.getPlayerSetupInfo(id), getRoleClass: (id) => GameLogic.getRoleClass(id), isPlayerTaken, isWolfTarget, isTargetInvalidForSeer, hunterSignal, ahSignal,
                     setGuardTarget: (id) => { if (state.nightRecords.lastGuardTarget !== id || state.day === 1) state.nightRecords.guardTarget = id; },
