@@ -6,6 +6,8 @@
     <title>狼人殺上帝專用小幫手 (Vue 3 終極擴充版)</title>
     <!-- 引入 Vue 3 CDN -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 引入 html2canvas 供戰報匯出圖片使用 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         /* =========================================
             共用及版面樣式
@@ -115,8 +117,15 @@
 </head>
 <body>
     <div id="app">
-        <!-- ================= 畫面：遊戲設定 ================= -->
-        <div v-if="state.screen === 'setup'" style="text-align:center; padding: 10px 0;">
+        <!-- 組件化架構：三大主畫面切換 -->
+        <setup-screen v-if="state.screen === 'setup'"></setup-screen>
+        <game-over-screen v-else-if="state.screen === 'gameover'"></game-over-screen>
+        <game-screen v-else-if="state.screen === 'game'"></game-screen>
+    </div>
+
+    <!-- ================= 模板 1：遊戲設定畫面 ================= -->
+    <template id="setup-template">
+        <div style="text-align:center; padding: 10px 0;">
             <div style="margin-bottom: 20px;">
                 <label style="font-size: 18px; font-weight: bold;">玩家人數</label>
                 <div class="player-count-grid">
@@ -160,9 +169,11 @@
                 <button @click="startGame" style="background-color: var(--btn-primary); font-size: 18px; padding: 12px 30px; margin: 20px auto 0 auto;">遊戲開始</button>
             </div>
         </div>
+    </template>
 
-        <!-- ================= 畫面：遊戲結束 (戰報與屠邊局) ================= -->
-        <div v-else-if="state.screen === 'gameover'" class="game-over-panel">
+    <!-- ================= 模板 2：遊戲結束與戰報 ================= -->
+    <template id="game-over-template">
+        <div class="game-over-panel">
             <div class="game-over-title">遊戲結束</div>
             <h2 style="border: none; margin-bottom: 20px;" 
                 :style="{ color: state.gameOverResult.includes('好人') ? 'var(--color-good)' : 'var(--btn-danger)' }">
@@ -178,15 +189,20 @@
             </div>
 
             <h3 style="border-bottom: 1px solid #555; padding-bottom: 10px; color: #fff;">📜 完整戰報紀錄</h3>
-            <div class="log-box">
+            <div id="battle-report" class="log-box">
                 <div v-for="(log, idx) in state.history" :key="idx" style="margin-bottom: 4px;" v-html="formatLog(log)"></div>
             </div>
 
-            <button @click="reloadPage" style="background-color: var(--btn-primary); margin: 30px auto 0 auto;">重新開始新局</button>
+            <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+                <button @click="downloadReportAsImage" style="background-color: #4CAF50;">📸 下載戰報圖片</button>
+                <button @click="reloadPage" style="background-color: var(--btn-primary);">重新開始新局</button>
+            </div>
         </div>
+    </template>
 
-        <!-- ================= 畫面：進行中 ================= -->
-        <div v-else-if="state.screen === 'game'">
+    <!-- ================= 模板 3：遊戲進行中 ================= -->
+    <template id="game-template">
+        <div>
             <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
                 <h2 style="margin: 0; border: none; padding: 0;">第 {{ state.day }} 天 {{ state.isNight ? '夜晚' : '白天' }}</h2>
             </div>
@@ -199,7 +215,7 @@
                 </span>
             </div>
 
-            <!-- 🎁 幸運兒行動階段 (第二晚起，改至最前面) -->
+            <!-- 🎁 幸運兒行動階段 -->
             <div v-show="state.currentPhase === 'giftedPlayerPhase'" class="action-row">
                 <h3 class="color-god">🎁 幸運兒請睜眼</h3>
                 <p v-if="state.giftedState.item === 'verify'">請使用 👁️ 放大鏡 (查驗) 技能：</p>
@@ -457,6 +473,64 @@
                 </div>
             </div>
 
+            <!-- 🗿 石像鬼階段 -->
+            <div v-show="state.currentPhase === 'gargoyle'" class="action-row">
+                <h3 class="color-wolf">🗿 石像鬼請睜眼</h3>
+                <div v-if="state.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：石像鬼是幾號？</p>
+                    <select v-model="state.initialRoleSetup.gargoyle">
+                        <option :value="0">請選擇</option>
+                        <template v-for="p in state.players" :key="p.id">
+                            <option :value="p.id" v-if="!isPlayerTaken(p.id, 'gargoyle')">{{ p.id }} 號</option>
+                        </template>
+                    </select>
+                </div>
+
+                <div v-if="isRoleDead('gargoyle')" class="witch-alert-active" style="border-color: #555; background: #333;">
+                    <h1 style="margin:0; color:white; font-size: 18px;">🪦 石像鬼已經死亡</h1>
+                </div>
+                <div v-else-if="checkFeared(['石像鬼'])">
+                    <div class="witch-alert-active" style="color: white;">⚠️ 被夢魘恐懼無法使用技能</div>
+                    <div class="player-grid-container">
+                        <div class="player-grid-btn zero-btn selected">被恐懼無法查驗</div>
+                    </div>
+                </div>
+                <div v-else>
+                    <div v-if="state.day > 1" style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #555;">
+                        <p>上帝請對石像鬼給予帶刀狀態手勢：</p>
+                        <div v-if="isWolfTeamDeadExcludingGargoyle" class="witch-alert-active" style="border-color: var(--btn-success); background: rgba(76, 175, 80, 0.2);">
+                            <h1 style="margin:0; color:white;">👍 可以帶刀</h1>
+                            <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(其他狼人已死光，可於狼人階段帶刀)</p>
+                        </div>
+                        <div v-else class="witch-alert-active" style="border-color: var(--btn-danger);">
+                            <h1 style="margin:0; color:white;">❌ 不能帶刀</h1>
+                            <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(場上還有其他狼人存活)</p>
+                        </div>
+                    </div>
+
+                    <p>請選擇要查驗真實身分的玩家 <span style="font-size:12px;color:#aaa;">(不可選自己)</span>：</p>
+                    <div class="player-grid-container">
+                        <div :class="['player-grid-btn zero-btn', { selected: state.nightRecords.gargoyleTarget === 0 }]" @click="state.nightRecords.gargoyleTarget = 0">不查驗</div>
+                        <template v-for="p in alivePlayers" :key="p.id">
+                            <div v-show="p.id !== state.initialRoleSetup.gargoyle"
+                                 :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { selected: state.nightRecords.gargoyleTarget === p.id }]"
+                                 @click="state.nightRecords.gargoyleTarget = p.id">
+                                <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
+                            </div>
+                        </template>
+                    </div>
+                    
+                    <div v-if="state.day > 1 && state.nightRecords.gargoyleTarget !== 0" class="witch-alert-active" style="margin-top: 15px; background: #222; border-color: #555;">
+                        <span style="color:#aaa;">查驗結果：</span>
+                        <span :class="getPlayerSetupInfo(getActualTarget(state.nightRecords.gargoyleTarget)).class" style="font-size:22px;">{{ getMediumCheckResult(getActualTarget(state.nightRecords.gargoyleTarget)) }}</span>
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button class="btn-prev" @click="prevPhase" >⬅️ 上一階段</button>
+                    <button @click="nextPhase">確認 請閉眼 ➡️</button>
+                </div>
+            </div>
+
             <!-- 💤 攝夢人階段 -->
             <div v-show="state.currentPhase === 'dreamer'" class="action-row">
                 <h3 :class="getPhaseHeaderClass('dreamer', 'color-god')">💤 攝夢人請睜眼</h3>
@@ -525,7 +599,6 @@
                     </div>
                 </div>
                 <div v-else>
-                    <!-- 🎭 帶刀狀態 (第二晚起) -->
                     <div v-if="state.day > 1" style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #555;">
                         <p>上帝請對機械狼給予常規帶刀狀態手勢：</p>
                         <div v-if="isWolfTeamDeadExcludingMech" class="witch-alert-active" style="border-color: var(--btn-success); background: rgba(76, 175, 80, 0.2);">
@@ -538,7 +611,6 @@
                         </div>
                     </div>
 
-                    <!-- 學習階段 (尚未學習) -->
                     <div v-if="!state.mechWolfState.hasLearned">
                         <p style="color: #4da6ff; font-weight: bold;">請選擇要學習的玩家 <span style="font-size:12px;color:#aaa;">(只能學一次)</span>：</p>
                         <div class="player-grid-container">
@@ -552,7 +624,6 @@
                             </template>
                         </div>
                     </div>
-                    <!-- 已經學習，展示對應技能 -->
                     <div v-else>
                         <p style="color: #ffcc00; font-weight: bold;">機械狼已學習身分：{{ state.mechWolfState.learnedRole }}</p>
                         
@@ -740,7 +811,7 @@
                     </div>
                 </div>
 
-                <div v-if="checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '狼兄'])">
+                <div v-if="checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '狼兄', '石像鬼'])">
                     <div class="witch-alert-active" style="color: white;">⚠️ 被夢魘恐懼無法使用技能</div>
                     <div class="player-grid-container">
                         <div class="player-grid-btn zero-btn selected">被恐懼只能空刀 / 無法魅惑</div>
@@ -943,7 +1014,6 @@
                     </select>
                 </div>
 
-                <!-- 百變狼王(熊) 專屬魅惑面板 -->
                 <div v-if="state.isDittoWolfKingMode && state.dittoWolfKingRole === 'bear'" style="margin-top: 15px; border-top: 1px dashed #555; padding-top: 15px;">
                     <p style="color: #ff9800; font-weight: bold;">🎭 百變狼王(熊)請選擇魅惑目標：</p>
                     <div v-if="isRoleDead('bear')" class="witch-alert-active" style="border-color: #555; background: #333; padding: 10px; margin-top: 10px;">
@@ -979,6 +1049,44 @@
                             <option :value="p.id" v-if="!isPlayerTaken(p.id, 'knight')">{{ p.id }} 號</option>
                         </template>
                     </select>
+                </div>
+                <div class="nav-buttons">
+                    <button class="btn-prev" @click="prevPhase" >⬅️ 上一階段</button>
+                    <button @click="nextPhase">確認 請閉眼 ➡️</button>
+                </div>
+            </div>
+
+            <!-- 🪦 守墓人階段 -->
+            <div v-show="state.currentPhase === 'gravekeeper'" class="action-row">
+                <h3 :class="getPhaseHeaderClass('gravekeeper', 'color-god')">🪦 守墓人請睜眼</h3>
+                <div v-if="state.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：守墓人是幾號？</p>
+                    <select v-model="state.initialRoleSetup.gravekeeper">
+                        <option :value="0">請選擇</option>
+                        <template v-for="p in state.players" :key="p.id">
+                            <option :value="p.id" v-if="!isPlayerTaken(p.id, 'gravekeeper')">{{ p.id }} 號</option>
+                        </template>
+                    </select>
+                </div>
+
+                <div v-if="isRoleDead('gravekeeper')" class="witch-alert-active" style="border-color: #555; background: #333;">
+                    <h1 style="margin:0; color:white; font-size: 18px;">🪦 守墓人已經死亡</h1>
+                </div>
+                <div v-else-if="state.day > 1">
+                    <p>上帝請對守墓人給予以下手勢：</p>
+                    <div v-if="state.lastDayExploded || state.lastExiledTarget === 0" class="witch-alert-active" style="border-color: var(--btn-danger); background: #333;">
+                        <h1 style="margin:0; color:white;">❌ 沒有人被放逐</h1>
+                        <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(狼人自爆或平票/棄票)</p>
+                    </div>
+                    <div v-else class="witch-alert-active" :style="{ borderColor: isWolfTarget(state.lastExiledTarget) ? 'var(--color-wolf)' : 'var(--color-good)', background: '#222' }">
+                        <h1 style="margin:0; color:white;">
+                            前一天放逐的 {{ state.lastExiledTarget }} 號為：
+                            <span :class="isWolfTarget(state.lastExiledTarget) ? 'color-wolf' : 'color-good'">{{ isWolfTarget(state.lastExiledTarget) ? '🐺 狼人' : '💧 好人' }}</span>
+                        </h1>
+                    </div>
+                </div>
+                <div v-else>
+                    <p style="color: #aaa;">(第一晚僅確認身分，不需行動)</p>
                 </div>
                 <div class="nav-buttons">
                     <button class="btn-prev" @click="prevPhase" >⬅️ 上一階段</button>
@@ -1075,7 +1183,6 @@
                         </template>
                     </div>
 
-                    <!-- 燈影的結果是反的 -->
                     <div v-if="state.nightRecords.shadowTarget !== 0" 
                          :class="['witch-alert-active', { 'bg-danger': !isWolfTarget(getActualTarget(state.nightRecords.shadowTarget)) }]" 
                          style="margin-top: 15px; background: #222; border-color: #555;">
@@ -1137,7 +1244,7 @@
                 </div>
             </div>
 
-            <!-- 🎁 黑商發貨確認階段 (第一晚限定，補上的 UI 區塊) -->
+            <!-- 🎁 黑商發貨確認階段 (第一晚限定) -->
             <div v-show="state.currentPhase === 'blackMerchantReceive'" class="action-row">
                 <h3 class="color-god">🎁 幸運兒請睜眼</h3>
                 <p>確認收到的禮物：</p>
@@ -1149,6 +1256,20 @@
                             {{ state.nightRecords.blackMerchantItem === 'verify' ? '👁️ 放大鏡' : (state.nightRecords.blackMerchantItem === 'poison' ? '🧪 毒藥' : '🔫 獵槍') }}
                         </span>
                     </h1>
+                </div>
+                <div class="nav-buttons">
+                    <button class="btn-prev" @click="prevPhase">⬅️ 上一階段</button>
+                    <button @click="nextPhase">確認 請閉眼 ➡️</button>
+                </div>
+            </div>
+
+            <!-- 🗿 石像鬼 第一晚最後確認結果階段 -->
+            <div v-show="state.currentPhase === 'gargoyleResult'" class="action-row">
+                <h3 class="color-wolf">🗿 石像鬼請睜眼 (確認查驗結果)</h3>
+                <p>上帝請告知石像鬼，他查驗到的身分為：</p>
+                <div class="witch-alert-active" style="border-color: var(--color-wolf); background: #333; padding: 20px 40px; margin-top: 15px;">
+                    <h1 style="margin:0; color:white; font-size: 24px;" v-if="state.nightRecords.gargoyleTarget === 0">沒有查驗 (空驗)</h1>
+                    <h1 style="margin:0; color:white; font-size: 24px;" v-else>{{ getMediumCheckResult(getActualTarget(state.nightRecords.gargoyleTarget)) }}</h1>
                 </div>
                 <div class="nav-buttons">
                     <button class="btn-prev" @click="prevPhase">⬅️ 上一階段</button>
@@ -1172,7 +1293,6 @@
 
             <!-- ☀️ 白天 / 揭曉 / 殉情 / 開槍 / 投票 階段 -->
             <div v-show="state.currentPhase === 'morning'">
-                <!-- 如果有達成遊戲結束，進入這個最終畫面 -->
                 <div v-if="state.pendingGameOver" class="action-row" style="padding-top: 30px;">
                     <h2 :style="{ color: state.pendingGameOver.faction.includes('好人') ? 'var(--color-good)' : 'var(--color-wolf)' }" style="margin-bottom: 5px; border: none; font-size: 26px;">遊戲結束 <br> {{ state.pendingGameOver.faction.replace('🎉 ', '').replace('🐺 ', '') }}</h2>
                     <div class="result-box" style="font-size: 18px; margin-top: 15px; padding: 20px;" v-html="state.finalEventHtml"></div>
@@ -1240,7 +1360,7 @@
                         </div>
 
                         <!-- 騎士決鬥面板 -->
-                        <div v-if="state.activeRoles.knight && !GameLogic.isRoleDead('knight') && !state.knightUsed" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #555;">
+                        <div v-if="state.activeRoles.knight && !isRoleDead('knight') && !state.knightUsed" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #555;">
                             <h3 style="color: var(--color-god); margin-top: 0;">⚔️ 騎士決鬥</h3>
                             <p style="font-size: 13px; color: #aaa; margin-top:-5px;">(若決鬥狼人，狼人死亡並天黑；若決鬥好人，騎士死亡繼續投票)</p>
                             <div class="player-grid-container" style="margin-top: 10px;">
@@ -1347,7 +1467,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </template>
 
     <script>
         const { createApp, reactive, computed } = Vue;
@@ -1361,7 +1481,7 @@
             nightmare:          { id: 'nightmare', name: '夢魘', emoji: '👻', type: 'wolf', selectable: true, executeOrder: 10 },
             wolfBeauty:         { id: 'wolfBeauty', name: '狼美人', emoji: '💃', type: 'wolf', selectable: true, executeOrder: -1 }, 
             awakenedWolfBeauty: { id: 'awakenedWolfBeauty', name: '覺醒狼美人', emoji: '💃✨', type: 'wolf', selectable: true, executeOrder: -1 },
-            blackWolf:          { id: 'blackWolf', name: '黑狼王', emoji: '🐺👑', type: 'wolf', selectable: true, executeOrder: -1 },
+            blackWolf:          { id: 'blackWolf', name: '黑狼王', emoji: '👑', type: 'wolf', selectable: true, executeOrder: -1 },
             
             wolfBrothers:       { id: 'wolfBrothers', name: '狼兄狼弟', emoji: '🧑‍🤝‍🧑', type: 'wolf', selectable: true, executeOrder: -1 }, 
             wolfBrotherPhase:   { id: 'wolfBrotherPhase', name: '狼兄狼弟', emoji: '🧑‍🤝‍🧑', type: 'wolf', selectable: false, executeOrder: 27 }, 
@@ -1370,6 +1490,7 @@
             wolf:               { id: 'wolf', name: '狼人', emoji: '🐺', type: 'wolf', selectable: false, executeOrder: 30 },
             
             guard:              { id: 'guard', name: '守衛', emoji: '🛡️', type: 'god', selectable: true, executeOrder: 20 },
+            gargoyle:           { id: 'gargoyle', name: '石像鬼', emoji: '🗿', type: 'wolf', selectable: true, executeOrder: 22 },
             dreamer:            { id: 'dreamer', name: '攝夢人', emoji: '💤', type: 'god', selectable: true, executeOrder: 25 },
             witch:              { id: 'witch', name: '女巫', emoji: '🧙‍♀️', type: 'god', selectable: true, executeOrder: 40 },
             hunter:             { id: 'hunter', name: '獵人', emoji: '🔫', type: 'god', selectable: true, executeOrder: 60 },
@@ -1377,14 +1498,17 @@
             bear:               { id: 'bear', name: '熊', emoji: '🐻', type: 'god', selectable: true, executeOrder: 80 },
             knight:             { id: 'knight', name: '騎士', emoji: '⚔️', type: 'god', selectable: true, executeOrder: 90 }, 
             
+            gravekeeper:        { id: 'gravekeeper', name: '守墓人', emoji: '🪦', type: 'god', selectable: true, executeOrder: 95 },
             seer:               { id: 'seer', name: '預言家', emoji: '👁️', type: 'god', selectable: true, executeOrder: 100 },
             shadow:             { id: 'shadow', name: '燈影', emoji: '🏮', type: 'villager', selectable: true, executeOrder: 101 },
             medium:             { id: 'medium', name: '通靈師', emoji: '🔮', type: 'god', selectable: true, executeOrder: 102 },
             
+            gargoyleResult:     { id: 'gargoyleResult', name: '石像鬼確認', emoji: '🗿', type: 'wolf', selectable: false, executeOrder: 996 },
             blackMerchantReceive:{ id: 'blackMerchantReceive', name: '幸運兒請睜眼', emoji: '🎁', type: 'god', selectable: false, executeOrder: 998 },
             mechWolfResult:     { id: 'mechWolfResult', name: '機械狼確認', emoji: '🤖', type: 'wolf', selectable: false, executeOrder: 999 }
         };
 
+        // 全域狀態 (State)
         const state = reactive({
             screen: 'setup', 
             day: 1,
@@ -1398,15 +1522,15 @@
             phaseQueue: [],
             playerCount: 12,
             players: [],
-            activeRoles: { magician: false, blackMerchant: false, witch: true, guard: false, bear: false, dreamer: false, knight: false, nightmare: false, blackWolf: false, wolfBeauty: false, awakenedWolfBeauty: false, evilKnight: false, mechWolf: false, wolfBrothers: false, wolf: true, seer: true, shadow: false, medium: false, hunter: true, awakenedHunter: false },
+            activeRoles: { magician: false, blackMerchant: false, witch: true, guard: false, bear: false, dreamer: false, knight: false, gravekeeper: false, seer: true, shadow: false, medium: false, hunter: true, awakenedHunter: false, nightmare: false, blackWolf: false, wolfBeauty: false, awakenedWolfBeauty: false, evilKnight: false, gargoyle: false, mechWolf: false, wolfBrothers: false, wolf: true },
             witchPotions: { heal: true, poison: true },
-            initialRoleSetup: { magician: 0, blackMerchant: 0, wolves: [], witch: 0, guard: 0, bear: 0, dreamer: 0, knight: 0, nightmare: 0, blackWolf: 0, wolfBeauty: 0, awakenedWolfBeauty: 0, evilKnight: 0, mechWolf: 0, wolfBrother: 0, wolfYoungerBrother: 0, seer: 0, shadow: 0, medium: 0, hunter: 0, awakenedHunter: 0 },
+            initialRoleSetup: { magician: 0, blackMerchant: 0, wolves: [], witch: 0, guard: 0, bear: 0, dreamer: 0, knight: 0, gravekeeper: 0, seer: 0, shadow: 0, medium: 0, hunter: 0, awakenedHunter: 0, nightmare: 0, blackWolf: 0, wolfBeauty: 0, awakenedWolfBeauty: 0, evilKnight: 0, gargoyle: 0, mechWolf: 0, wolfBrother: 0, wolfYoungerBrother: 0 },
             nightRecords: { 
                 magicianSwaps: [], 
                 blackMerchantTarget: 0, 
                 blackMerchantItem: '', 
                 giftedPlayerTarget: 0,
-                nightmareTarget: 0, guardTarget: 0, lastGuardTarget: 0, dreamTarget: 0, lastDreamTarget: 0, charmTarget: 0, awbCharmTarget: 0, lastAwbCharmTarget: 0, bearCharmTarget: 0, lastBearCharmTarget: 0, seerTarget: 0, shadowTarget: 0, mediumTarget: 0, wolfKill: 0, witchAction: 'none', witchPoison: 0, mechWolfLearnTarget: 0, mechWolfActionTarget: 0, lastMechWolfActionTarget: 0, wolfBrotherRevengeTarget: 0 
+                nightmareTarget: 0, guardTarget: 0, lastGuardTarget: 0, gargoyleTarget: 0, dreamTarget: 0, lastDreamTarget: 0, charmTarget: 0, awbCharmTarget: 0, lastAwbCharmTarget: 0, bearCharmTarget: 0, lastBearCharmTarget: 0, seerTarget: 0, shadowTarget: 0, mediumTarget: 0, wolfKill: 0, witchAction: 'none', witchPoison: 0, mechWolfLearnTarget: 0, mechWolfActionTarget: 0, lastMechWolfActionTarget: 0, wolfBrotherRevengeTarget: 0 
             },
             
             isDittoWolfKingMode: false,
@@ -1429,6 +1553,9 @@
             shootQueue: [], 
             isVotingDone: false, 
             
+            lastExiledTarget: 0,
+            lastDayExploded: false,
+
             morningResultHtml: "",
             finalEventHtml: "",
             pendingGameOver: null,
@@ -1439,21 +1566,7 @@
             crossDaySnapshot: null 
         });
 
-        const maxWolves = computed(() => state.playerCount <= 10 ? 3 : 4);
-        const specialWolfCount = computed(() => {
-            let count = 0;
-            if (state.activeRoles.nightmare) count++;
-            if (state.activeRoles.blackWolf) count++;
-            if (state.activeRoles.wolfBeauty) count++;
-            if (state.activeRoles.awakenedWolfBeauty) count++;
-            if (state.activeRoles.evilKnight) count++;
-            if (state.activeRoles.mechWolf) count++;
-            if (state.activeRoles.wolfBrothers) count += 2; 
-            if (state.isDittoWolfKingMode) count++;
-            return count;
-        });
-        const normalWolfCount = computed(() => Math.max(0, maxWolves.value - specialWolfCount.value));
-
+        // 全域 Helper 函數
         const getActualTarget = (id) => {
             if (id === 0) return 0;
             const swaps = state.nightRecords.magicianSwaps;
@@ -1465,7 +1578,29 @@
         };
 
         const actualWolfKillForWitch = computed(() => getActualTarget(state.nightRecords.wolfKill));
+               
+        const isWitchSelfSaveRestricted = computed(() => {
+            if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'witch' && state.day === 1) return false;
+            return state.playerCount >= 10 && actualWolfKillForWitch.value !== 0 && actualWolfKillForWitch.value === state.initialRoleSetup.witch;
+        });
 
+        const maxWolves = computed(() => state.playerCount <= 10 ? 3 : 4);
+        const specialWolfCount = computed(() => {
+            let count = 0;
+            if (state.activeRoles.nightmare) count++;
+            if (state.activeRoles.blackWolf) count++;
+            if (state.activeRoles.wolfBeauty) count++;
+            if (state.activeRoles.awakenedWolfBeauty) count++;
+            if (state.activeRoles.evilKnight) count++;
+            if (state.activeRoles.gargoyle) count++;
+            if (state.activeRoles.mechWolf) count++;
+            if (state.activeRoles.wolfBrothers) count += 2; 
+            if (state.isDittoWolfKingMode) count++;
+            return count;
+        });
+        const normalWolfCount = computed(() => Math.max(0, maxWolves.value - specialWolfCount.value));
+
+        // 核心邏輯
         const GameLogic = {
             initPlayers() {
                 state.players = Array.from({ length: state.playerCount }, (_, i) => ({
@@ -1497,6 +1632,7 @@
                 else if (s.wolfBeauty === id) { resolvedRole = '狼美人'; resolvedClass = 'color-wolf'; }
                 else if (s.awakenedWolfBeauty === id) { resolvedRole = '覺醒狼美人'; resolvedClass = 'color-wolf'; }
                 else if (s.evilKnight === id) { resolvedRole = '惡靈騎士'; resolvedClass = 'color-wolf'; }
+                else if (s.gargoyle === id) { resolvedRole = '石像鬼'; resolvedClass = 'color-wolf'; }
                 else if (s.mechWolf === id) { resolvedRole = '機械狼'; resolvedClass = 'color-wolf'; }
                 else if (s.wolfBrother === id) { resolvedRole = '狼兄'; resolvedClass = 'color-wolf'; }
                 else if (s.wolfYoungerBrother === id) { resolvedRole = '狼弟'; resolvedClass = 'color-wolf'; }
@@ -1504,6 +1640,7 @@
                 else if (s.dreamer === id) { resolvedRole = '攝夢人'; resolvedClass = 'color-god'; }
                 else if (s.knight === id) { resolvedRole = '騎士'; resolvedClass = 'color-god'; }
                 else if (s.bear === id) { resolvedRole = '熊'; resolvedClass = 'color-god'; }
+                else if (s.gravekeeper === id) { resolvedRole = '守墓人'; resolvedClass = 'color-god'; }
                 else if (s.seer === id) { resolvedRole = '預言家'; resolvedClass = 'color-god'; }
                 else if (s.witch === id) { resolvedRole = '女巫'; resolvedClass = 'color-god'; }
                 else if (s.hunter === id) { resolvedRole = '獵人'; resolvedClass = 'color-god'; }
@@ -1532,7 +1669,7 @@
             },
 
             getRoleClass(id) {
-                return this.getPlayerSetupInfo(id).class;
+                return GameLogic.getPlayerSetupInfo(id).class;
             },
 
             getMediumCheckResult(id) {
@@ -1546,18 +1683,33 @@
                     } else if (state.nightRecords.mechWolfLearnTarget !== 0) {
                         const targetId = getActualTarget(state.nightRecords.mechWolfLearnTarget);
                         if (targetId === mechWolfId) return '機械狼';
-                        return this.getMediumCheckResult(targetId);
+                        return GameLogic.getMediumCheckResult(targetId);
                     }
                     return '機械狼';
                 }
-                return this.getPlayerSetupInfo(id).role;
+                return GameLogic.getPlayerSetupInfo(id).role;
             },
 
             checkFeared(roleArray) {
                 if (state.nightRecords.nightmareTarget === 0) return false;
                 let targetId = getActualTarget(state.nightRecords.nightmareTarget);
-                let targetRole = this.getPlayerSetupInfo(targetId).role;
+                let targetRole = GameLogic.getPlayerSetupInfo(targetId).role;
                 return roleArray.includes(targetRole);
+            },
+            
+            isWolfTarget(id) {
+                if (state.isDittoWolfKingMode && id === state.initialRoleSetup[state.dittoWolfKingRole]) return true;
+                const info = GameLogic.getPlayerSetupInfo(id);
+                if (info.role === '狼弟') {
+                    return GameLogic.isRoleDead('wolfBrother');
+                }
+                return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '石像鬼', '機械狼', '狼兄'].includes(info.role);
+            },
+            
+            isStrictWolfTeam(id) {
+                if (state.isDittoWolfKingMode && id === state.initialRoleSetup[state.dittoWolfKingRole]) return true;
+                const info = GameLogic.getPlayerSetupInfo(id);
+                return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '石像鬼', '機械狼', '狼兄', '狼弟'].includes(info.role);
             },
 
             isSkillSealed(role, cause) {
@@ -1596,6 +1748,7 @@
 
                 state.nightRecords.nightmareTarget = 0;
                 state.nightRecords.guardTarget = 0;
+                state.nightRecords.gargoyleTarget = 0;
                 state.nightRecords.dreamTarget = 0;
                 state.nightRecords.charmTarget = 0;
                 state.nightRecords.awbCharmTarget = 0;
@@ -1630,11 +1783,12 @@
                         let isGiftedAlive = p && p.alive;
                         return state.giftedState.hasGift && !state.giftedState.isUsed && state.day > 1 && isGiftedAlive && ['verify', 'poison'].includes(state.giftedState.item);
                     }
+                    if (r.id === 'gargoyleResult') return state.activeRoles.gargoyle && state.day === 1;
                     if (r.id === 'mechWolfResult') return state.activeRoles.mechWolf && state.day === 1; 
                     if (r.id === 'wolfBrotherPhase') return state.activeRoles.wolfBrothers && state.day === 1;
                     if (r.id === 'wolfYoungerBrotherPhase') {
-                        const isWbDead = this.isRoleDead('wolfBrother');
-                        return state.activeRoles.wolfBrothers && state.day > 1 && isWbDead && !state.wolfBrotherRevengeUsed && !this.isRoleDead('wolfYoungerBrother');
+                        const isWbDead = GameLogic.isRoleDead('wolfBrother');
+                        return state.activeRoles.wolfBrothers && state.day > 1 && isWbDead && !state.wolfBrotherRevengeUsed && !GameLogic.isRoleDead('wolfYoungerBrother');
                     }
                     if (r.id === 'wolf') return true; 
 
@@ -1647,33 +1801,34 @@
                 state.phaseQueue = active.map(r => r.id);
                 
                 state.currentPhaseIndex = 0;
-                this.updatePhase();
+                GameLogic.updatePhase();
             },
 
             updatePhase() {
                 state.currentPhase = state.phaseQueue[state.currentPhaseIndex];
                 
-                if (state.currentPhase === 'magician' && this.checkFeared(['魔術師'])) state.nightRecords.magicianSwaps = [];
-                if (state.currentPhase === 'blackMerchant' && this.checkFeared(['黑市商人'])) state.nightRecords.blackMerchantTarget = 0;
-                if (state.currentPhase === 'giftedPlayerPhase' && this.checkFeared([this.getPlayerSetupInfo(state.giftedState.id).role])) state.nightRecords.giftedPlayerTarget = 0;
+                if (state.currentPhase === 'magician' && GameLogic.checkFeared(['魔術師'])) state.nightRecords.magicianSwaps = [];
+                if (state.currentPhase === 'blackMerchant' && GameLogic.checkFeared(['黑市商人'])) state.nightRecords.blackMerchantTarget = 0;
+                if (state.currentPhase === 'giftedPlayerPhase' && GameLogic.checkFeared([GameLogic.getPlayerSetupInfo(state.giftedState.id).role])) state.nightRecords.giftedPlayerTarget = 0;
 
-                if (state.currentPhase === 'mechWolf' && this.checkFeared(['機械狼'])) {
+                if (state.currentPhase === 'mechWolf' && GameLogic.checkFeared(['機械狼'])) {
                     state.nightRecords.mechWolfLearnTarget = 0;
                     state.nightRecords.mechWolfActionTarget = 0;
                 }
-                if (state.currentPhase === 'wolfYoungerBrotherPhase' && this.checkFeared(['狼弟'])) state.nightRecords.wolfBrotherRevengeTarget = 0;
-                if (state.currentPhase === 'guard' && this.checkFeared(['守衛'])) state.nightRecords.guardTarget = 0;
-                if (state.currentPhase === 'dreamer' && this.checkFeared(['攝夢人'])) state.nightRecords.dreamTarget = 0;
-                if (state.currentPhase === 'seer' && this.checkFeared(['預言家'])) state.nightRecords.seerTarget = 0;
-                if (state.currentPhase === 'shadow' && this.checkFeared(['燈影'])) state.nightRecords.shadowTarget = 0;
-                if (state.currentPhase === 'medium' && this.checkFeared(['通靈師'])) state.nightRecords.mediumTarget = 0;
-                if (state.currentPhase === 'bear' && this.checkFeared(['熊'])) state.nightRecords.bearCharmTarget = 0;
-                if (state.currentPhase === 'wolf' && this.checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '狼兄'])) {
+                if (state.currentPhase === 'wolfYoungerBrotherPhase' && GameLogic.checkFeared(['狼弟'])) state.nightRecords.wolfBrotherRevengeTarget = 0;
+                if (state.currentPhase === 'guard' && GameLogic.checkFeared(['守衛'])) state.nightRecords.guardTarget = 0;
+                if (state.currentPhase === 'gargoyle' && GameLogic.checkFeared(['石像鬼'])) state.nightRecords.gargoyleTarget = 0;
+                if (state.currentPhase === 'dreamer' && GameLogic.checkFeared(['攝夢人'])) state.nightRecords.dreamTarget = 0;
+                if (state.currentPhase === 'seer' && GameLogic.checkFeared(['預言家'])) state.nightRecords.seerTarget = 0;
+                if (state.currentPhase === 'shadow' && GameLogic.checkFeared(['燈影'])) state.nightRecords.shadowTarget = 0;
+                if (state.currentPhase === 'medium' && GameLogic.checkFeared(['通靈師'])) state.nightRecords.mediumTarget = 0;
+                if (state.currentPhase === 'bear' && GameLogic.checkFeared(['熊'])) state.nightRecords.bearCharmTarget = 0;
+                if (state.currentPhase === 'wolf' && GameLogic.checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '狼兄', '石像鬼'])) {
                     state.nightRecords.wolfKill = 0;
                     state.nightRecords.charmTarget = 0;
                     state.nightRecords.awbCharmTarget = 0;
                 }
-                if (state.currentPhase === 'witch' && this.checkFeared(['女巫'])) {
+                if (state.currentPhase === 'witch' && GameLogic.checkFeared(['女巫'])) {
                     state.nightRecords.witchAction = 'none';
                     state.nightRecords.witchPoison = 0;
                 }
@@ -1703,7 +1858,7 @@
                     } else if (phase === 'wolfBrotherPhase') {
                         if (state.initialRoleSetup.wolfBrother === 0) return alert('請設定「狼兄」的號碼！');
                         if (state.initialRoleSetup.wolfYoungerBrother === 0) return alert('請設定「狼弟」的號碼！');
-                    } else if (state.initialRoleSetup[phase] === 0 && phase !== 'blackMerchantReceive' && phase !== 'giftedPlayerPhase' && phase !== 'mechWolfResult' && phase !== 'wolfYoungerBrotherPhase' && phase !== 'wolfBrothers') {
+                    } else if (state.initialRoleSetup[phase] === 0 && phase !== 'blackMerchantReceive' && phase !== 'giftedPlayerPhase' && phase !== 'gargoyleResult' && phase !== 'mechWolfResult' && phase !== 'wolfYoungerBrotherPhase' && phase !== 'wolfBrothers') {
                         return alert(`請設定「${ROLE_DICT[phase].name}」的號碼！`);
                     }
                 }
@@ -1712,16 +1867,16 @@
                     let isDead = false;
                     let p = state.players.find(x => x.id === state.initialRoleSetup.dreamer);
                     if (p && !p.alive) isDead = true;
-                    if (!isDead && !this.checkFeared(['攝夢人']) && state.nightRecords.dreamTarget === 0) {
+                    if (!isDead && !GameLogic.checkFeared(['攝夢人']) && state.nightRecords.dreamTarget === 0) {
                         return alert('攝夢人每晚必須選擇一名玩家夢遊！(不能不攝)');
                     }
                 }
 
                 if (state.currentPhaseIndex < state.phaseQueue.length - 1) {
                     state.currentPhaseIndex++;
-                    this.updatePhase();
+                    GameLogic.updatePhase();
                 } else {
-                    this.calculateMorningResult();
+                    GameLogic.calculateMorningResult();
                 }
             },
 
@@ -1750,10 +1905,10 @@
                     state.finalEventHtml = "";
                     
                     state.currentPhaseIndex = state.phaseQueue.length - 1;
-                    this.updatePhase();
+                    GameLogic.updatePhase();
                 } else if (state.currentPhaseIndex > 0) {
                     state.currentPhaseIndex--;
-                    this.updatePhase();
+                    GameLogic.updatePhase();
                 } else if (state.currentPhaseIndex === 0 && state.day === 1) {
                     state.screen = 'setup';
                 } else if (state.currentPhaseIndex === 0 && state.day > 1 && state.crossDaySnapshot) {
@@ -1774,6 +1929,9 @@
                     state.history = JSON.parse(JSON.stringify(snap.history));
                     state.shootQueue = JSON.parse(JSON.stringify(snap.shootQueue));
                     
+                    state.lastExiledTarget = snap.lastExiledTarget;
+                    state.lastDayExploded = snap.lastDayExploded;
+
                     state.morningStep = snap.morningStep;
                     state.morningResultHtml = snap.morningResultHtml;
                     state.finalEventHtml = snap.finalEventHtml || "";
@@ -1792,7 +1950,7 @@
                 let p = state.players.find(x => x.id === id);
                 if (!p || !p.alive) return;
 
-                let role = this.getPlayerSetupInfo(id).role;
+                let role = GameLogic.getPlayerSetupInfo(id).role;
 
                 if (role === '覺醒狼美人' && !state.awbUsed && cause !== 'ah_shot' && cause !== 'ah_shot_day' && cause !== 'duel_wolf') {
                     let charmTarget = getActualTarget(state.nightRecords.awbCharmTarget);
@@ -1800,8 +1958,8 @@
                         let cp = state.players.find(x => x.id === charmTarget);
                         if (cp && cp.alive) {
                             state.awbUsed = true;
-                            this.addHistory(`✨ ${id}號 觸發替死技能！魅惑目標 ${charmTarget}號 替其死亡！`);
-                            this.executeDeath(charmTarget, 'awb_sub');
+                            GameLogic.addHistory(`✨ ${id}號 觸發替死技能！魅惑目標 ${charmTarget}號 替其死亡！`);
+                            GameLogic.executeDeath(charmTarget, 'awb_sub');
                             return; 
                         }
                     }
@@ -1814,33 +1972,33 @@
                 }
 
                 if (cause === 'charm') {
-                    this.addHistory(`💔 ${id}號 因被魅惑而殉情死亡`);
+                    GameLogic.addHistory(`💔 ${id}號 因被魅惑而殉情死亡`);
                     if (!state.isCalculatingNight) state.morningData.daytimeCharmDeaths.push({ id, role, cause });
                 } else if (cause === 'awb_sub') {
-                    this.addHistory(`💔 ${id}號 代替覺醒狼美人死亡`);
+                    GameLogic.addHistory(`💔 ${id}號 代替覺醒狼美人死亡`);
                     if (!state.isCalculatingNight) state.morningData.daytimeCharmDeaths.push({ id, role, cause });
                 } else if (cause === 'dream_death') {
-                    this.addHistory(`💔 ${id}號 因連續兩晚被夢遊而死亡`);
+                    GameLogic.addHistory(`💔 ${id}號 因連續兩晚被夢遊而死亡`);
                 } else if (cause === 'dream_link') {
-                    this.addHistory(`💔 ${id}號 因攝夢人死亡而同生共死`);
+                    GameLogic.addHistory(`💔 ${id}號 因攝夢人死亡而同生共死`);
                 } else if (cause === 'ek_reflect') {
-                    this.addHistory(`💥 ${id}號 因對惡靈騎士使用技能，遭到反傷死亡`);
+                    GameLogic.addHistory(`💥 ${id}號 因對惡靈騎士使用技能，遭到反傷死亡`);
                 } else if (cause === 'merchant_wolf') {
                     // 黑商送狼反噬 (戰報已在其他地方記錄)
                 }
 
-                let sealed = this.isSkillSealed(role, cause);
+                let sealed = GameLogic.isSkillSealed(role, cause);
 
                 if (role === '狼美人') {
                     if (sealed) {
-                        this.addHistory(`🚫 ${id}號 技能遭封印，無法帶走魅惑目標`);
+                        GameLogic.addHistory(`🚫 ${id}號 技能遭封印，無法帶走魅惑目標`);
                     } else {
                         let charmTarget = getActualTarget(state.nightRecords.charmTarget);
                         if (charmTarget !== 0) {
                             let cp = state.players.find(x => x.id === charmTarget);
                             if (cp && cp.alive) {
-                                this.addHistory(`💔 ${id}號 出局，觸發魅惑連帶帶走 ${charmTarget}號`);
-                                this.executeDeath(charmTarget, 'charm');
+                                GameLogic.addHistory(`💔 ${id}號 出局，觸發魅惑連帶帶走 ${charmTarget}號`);
+                                GameLogic.executeDeath(charmTarget, 'charm');
                             }
                         }
                     }
@@ -1848,14 +2006,14 @@
 
                 if (role === '熊' && state.isDittoWolfKingMode && state.dittoWolfKingRole === 'bear') {
                     if (sealed) {
-                        this.addHistory(`🚫 ${id}號 技能遭封印，無法帶走魅惑目標`);
+                        GameLogic.addHistory(`🚫 ${id}號 技能遭封印，無法帶走魅惑目標`);
                     } else {
                         let charmTarget = getActualTarget(state.nightRecords.bearCharmTarget);
                         if (charmTarget !== 0) {
                             let cp = state.players.find(x => x.id === charmTarget);
                             if (cp && cp.alive) {
-                                this.addHistory(`💔 ${id}號 出局，觸發魅惑連帶帶走 ${charmTarget}號`);
-                                this.executeDeath(charmTarget, 'charm');
+                                GameLogic.addHistory(`💔 ${id}號 出局，觸發魅惑連帶帶走 ${charmTarget}號`);
+                                GameLogic.executeDeath(charmTarget, 'charm');
                             }
                         }
                     }
@@ -1863,12 +2021,12 @@
 
                 if (role === '機械狼' && state.mechWolfState.hasLearned && ['獵人', '覺醒獵人'].includes(state.mechWolfState.learnedRole)) {
                     if (sealed) {
-                        this.addHistory(`🚫 ${id}號 因${cause === 'ah_shot' ? '覺醒獵人夜槍擊殺' : (cause === 'explode' ? '自爆' : (cause === 'duel_wolf' ? '被決鬥' : '替死'))}，技能遭封印，無法開槍`);
+                        GameLogic.addHistory(`🚫 ${id}號 因${cause === 'ah_shot' ? '覺醒獵人夜槍擊殺' : (cause === 'explode' ? '自爆' : (cause === 'duel_wolf' ? '被決鬥' : '替死'))}，技能遭封印，無法開槍`);
                     } else {
                         let canShoot = true;
                         if (cause === 'poison') canShoot = false;
                         if (cause === 'charm') canShoot = false;
-                        if (cause === 'wolf' && this.checkFeared(['機械狼'])) canShoot = false; 
+                        if (cause === 'wolf' && GameLogic.checkFeared(['機械狼'])) canShoot = false; 
                         if (canShoot) state.shootQueue.push({ id, role: '機械狼(獵槍)', cause });
                     }
                 }
@@ -1879,38 +2037,37 @@
                     let canShoot = true;
                     if (cause === 'poison') canShoot = false;
                     if (cause === 'charm' || cause === 'awb_sub') canShoot = false;
-                    if (cause === 'wolf' && this.checkFeared(['獵人'])) canShoot = false;
+                    if (cause === 'wolf' && GameLogic.checkFeared(['獵人'])) canShoot = false;
                     if (canShoot) state.shootQueue.push({ id, role, cause });
                 } else if (role === '黑狼王') {
                     if (cause === 'ah_shot' || cause === 'awb_sub' || cause === 'explode' || cause === 'duel_wolf') {
-                        this.addHistory(`🚫 ${id}號 因${cause === 'ah_shot' ? '覺醒獵人夜槍擊殺' : (cause === 'explode' ? '自爆' : (cause === 'duel_wolf' ? '被決鬥' : '替死'))}，技能遭封印，無法開槍`);
+                        GameLogic.addHistory(`🚫 ${id}號 因${cause === 'ah_shot' ? '覺醒獵人夜槍擊殺' : (cause === 'explode' ? '自爆' : (cause === 'duel_wolf' ? '被決鬥' : '替死'))}，技能遭封印，無法開槍`);
                     } else {
                         let canShoot = true;
                         if (cause === 'poison') canShoot = false;
                         if (cause === 'charm') canShoot = false;
-                        if (cause === 'wolf' && this.checkFeared(['黑狼王'])) canShoot = false; 
+                        if (cause === 'wolf' && GameLogic.checkFeared(['黑狼王'])) canShoot = false; 
                         if (canShoot) state.shootQueue.push({ id, role, cause });
                     }
                 }
 
-                // 受贈者持有獵槍出局
                 if (state.giftedState.hasGift && state.giftedState.id === id && state.giftedState.item === 'gun') {
                     let canShoot = true;
                     if (cause === 'poison') canShoot = false;
                     if (cause === 'charm' || cause === 'awb_sub') canShoot = false;
-                    if (cause === 'wolf' && this.checkFeared([this.getPlayerSetupInfo(id).role])) canShoot = false;
+                    if (cause === 'wolf' && GameLogic.checkFeared([GameLogic.getPlayerSetupInfo(id).role])) canShoot = false;
                     if (canShoot) state.shootQueue.push({ id, role: `${role}(黑商獵槍)`, cause });
                 }
             },
 
             popShooter() {
-                const win = this.checkWinCondition();
+                const win = GameLogic.checkWinCondition();
                 if (win) {
                     if (!state.isCalculatingNight && !state.winReasonPrinted) {
                         state.winReasonPrinted = true;
                         
                         if (state.morningData.daytimeCharmDeaths.length > 0) {
-                            let charmHtml = state.morningData.daytimeCharmDeaths.map(d => `<span class="${this.getRoleClass(d.id)}">${d.role}(${d.id}號)</span> 殉情`).join('，');
+                            let charmHtml = state.morningData.daytimeCharmDeaths.map(d => `<span class="${GameLogic.getRoleClass(d.id)}">${d.role}(${d.id}號)</span> 殉情`).join('，');
                             state.finalEventHtml += `<br><span style="color:#aaa; font-size: 15px;">💔 連帶觸發：${charmHtml}</span>`;
                         }
                     }
@@ -1936,7 +2093,7 @@
                     if (!state.isVotingDone) {
                         state.morningStep = 'vote';
                     } else {
-                        this.processNextDay();
+                        GameLogic.processNextDay();
                     }
                 }
             },
@@ -1951,10 +2108,10 @@
 
                 state.daySummaryPrinted = true;
                 if (uniqueDayDeaths.length === 0) {
-                    this.addHistory(`🌇 白天結算：平安無事`);
+                    GameLogic.addHistory(`🌇 白天結算：平安無事`);
                 } else {
                     const diedStr = uniqueDayDeaths.sort((a,b)=>a-b).map(id => id + '號').join('、');
-                    this.addHistory(`🌇 白天結算：${diedStr} 死亡`);
+                    GameLogic.addHistory(`🌇 白天結算：${diedStr} 死亡`);
                 }
             },
 
@@ -1982,7 +2139,6 @@
                 state.currentPhase = 'morning';
 
                 if (state.day === 1) {
-                    // 還原身分標籤，防範下拉選單修改殘留
                     state.players.forEach(p => {
                         p.role = '?';
                         p.class = 'color-unknown';
@@ -2000,9 +2156,11 @@
                     if(state.activeRoles.blackMerchant) assign(state.initialRoleSetup.blackMerchant, '黑市商人', 'color-god');
                     if(state.activeRoles.witch) assign(state.initialRoleSetup.witch, '女巫', 'color-god');
                     if(state.activeRoles.guard) assign(state.initialRoleSetup.guard, '守衛', 'color-god');
+                    if(state.activeRoles.gargoyle) assign(state.initialRoleSetup.gargoyle, '石像鬼', 'color-wolf');
                     if(state.activeRoles.dreamer) assign(state.initialRoleSetup.dreamer, '攝夢人', 'color-god');
                     if(state.activeRoles.knight) assign(state.initialRoleSetup.knight, '騎士', 'color-god');
                     if(state.activeRoles.bear) assign(state.initialRoleSetup.bear, '熊', 'color-god');
+                    if(state.activeRoles.gravekeeper) assign(state.initialRoleSetup.gravekeeper, '守墓人', 'color-god');
                     if(state.activeRoles.seer) assign(state.initialRoleSetup.seer, '預言家', 'color-god');
                     if(state.activeRoles.shadow) assign(state.initialRoleSetup.shadow, '燈影', 'color-villager');
                     if(state.activeRoles.medium) assign(state.initialRoleSetup.medium, '通靈師', 'color-god');
@@ -2024,7 +2182,7 @@
                     });
                 }
 
-                this.addHistory(`<br><span style="color:#fff; font-size:16px; font-weight:bold;">=== 第${state.day}天 夜晚 ===</span>`);
+                GameLogic.addHistory(`<br><span style="color:#fff; font-size:16px; font-weight:bold;">=== 第${state.day}天 夜晚 ===</span>`);
                 
                 const logTarget = (origId) => {
                     if (!origId) return '';
@@ -2033,11 +2191,11 @@
                     return `${origId}號，實際作用於 ${actualId}號`;
                 };
 
-                // 真實目標轉換
                 let actualWolfKill = getActualTarget(state.nightRecords.wolfKill);
                 let actualWitchPoison = getActualTarget((state.nightRecords.witchAction === 'poison') ? state.nightRecords.witchPoison : 0);
                 let actualDreamTarget = getActualTarget(state.nightRecords.dreamTarget);
                 let actualGuardTarget = getActualTarget(state.nightRecords.guardTarget);
+                let actualGargoyleTarget = getActualTarget(state.nightRecords.gargoyleTarget);
                 let actualMechPoison = getActualTarget(state.nightRecords.mechWolfActionTarget); 
                 let actualMechShield = getActualTarget(state.nightRecords.mechWolfActionTarget);
                 let actualWolfBrotherRevenge = getActualTarget(state.nightRecords.wolfBrotherRevengeTarget);
@@ -2051,51 +2209,46 @@
 
                 if (state.nightRecords.magicianSwaps.length === 2) {
                     state.magicianUsedSwaps.push(...state.nightRecords.magicianSwaps);
-                    this.addHistory(`🎩 ${state.initialRoleSetup.magician}號 交換了 ${state.nightRecords.magicianSwaps[0]}號 與 ${state.nightRecords.magicianSwaps[1]}號`);
+                    GameLogic.addHistory(`🎩 ${state.initialRoleSetup.magician}號 交換了 ${state.nightRecords.magicianSwaps[0]}號 與 ${state.nightRecords.magicianSwaps[1]}號`);
                 }
 
-                if (state.nightRecords.nightmareTarget) this.addHistory(`👻 ${state.initialRoleSetup.nightmare}號 恐懼了 ${logTarget(state.nightRecords.nightmareTarget)}`);
-                if (state.nightRecords.guardTarget) this.addHistory(`🛡️ ${state.initialRoleSetup.guard}號 守護了 ${logTarget(state.nightRecords.guardTarget)}`);
-                if (state.activeRoles.dreamer && state.nightRecords.dreamTarget) this.addHistory(`💤 ${state.initialRoleSetup.dreamer}號 夢遊了 ${logTarget(state.nightRecords.dreamTarget)}`);
+                if (state.nightRecords.nightmareTarget) GameLogic.addHistory(`👻 ${state.initialRoleSetup.nightmare}號 恐懼了 ${logTarget(state.nightRecords.nightmareTarget)}`);
+                if (state.nightRecords.guardTarget) GameLogic.addHistory(`🛡️ ${state.initialRoleSetup.guard}號 守護了 ${logTarget(state.nightRecords.guardTarget)}`);
+                if (state.activeRoles.dreamer && state.nightRecords.dreamTarget) GameLogic.addHistory(`💤 ${state.initialRoleSetup.dreamer}號 夢遊了 ${logTarget(state.nightRecords.dreamTarget)}`);
                 
-                // 黑商發貨
                 if (state.day === 1 && state.activeRoles.blackMerchant && state.nightRecords.blackMerchantTarget !== 0) {
                     let bmTargetOrig = state.nightRecords.blackMerchantTarget;
                     let bmTarget = getActualTarget(bmTargetOrig);
                     
-                    const isStrictWolfTeam = (id) => {
-                        if (state.isDittoWolfKingMode && id === state.initialRoleSetup[state.dittoWolfKingRole]) return true;
-                        const info = GameLogic.getPlayerSetupInfo(id);
-                        return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '機械狼', '狼兄', '狼弟'].includes(info.role);
-                    };
-
-                    if (isStrictWolfTeam(bmTarget)) {
-                        state.morningData.daytimeDeaths.push(state.initialRoleSetup.blackMerchant); // add to deaths below
-                        this.addHistory(`🛍️ ${state.initialRoleSetup.blackMerchant}號 錯將禮物送給了 ${logTarget(bmTargetOrig)} (狼陣營)，遭到反噬死亡！`);
+                    if (GameLogic.isStrictWolfTeam(bmTarget)) {
+                        state.morningData.daytimeDeaths.push(state.initialRoleSetup.blackMerchant); 
+                        GameLogic.addHistory(`🛍️ ${state.initialRoleSetup.blackMerchant}號 錯將禮物送給了 ${logTarget(bmTargetOrig)} (狼陣營)，遭到反噬死亡！`);
                     } else {
                         state.giftedState = { hasGift: true, id: bmTarget, item: state.nightRecords.blackMerchantItem, isUsed: false };
-                        this.addHistory(`🛍️ 黑市商人 成功將 ${state.nightRecords.blackMerchantItem === 'verify' ? '放大鏡' : (state.nightRecords.blackMerchantItem === 'poison' ? '毒藥' : '獵槍')} 送給了 ${logTarget(bmTargetOrig)}`);
+                        GameLogic.addHistory(`🛍️ 黑市商人 成功將 ${state.nightRecords.blackMerchantItem === 'verify' ? '放大鏡' : (state.nightRecords.blackMerchantItem === 'poison' ? '毒藥' : '獵槍')} 送給了 ${logTarget(bmTargetOrig)}`);
                     }
                 }
 
                 let poisons = [];
 
-                // 受贈者行動
                 if (state.day > 1 && state.giftedState.hasGift && !state.giftedState.isUsed && state.nightRecords.giftedPlayerTarget !== 0) {
                     let origGiftTarget = state.nightRecords.giftedPlayerTarget;
                     let actualGiftTarget = getActualTarget(origGiftTarget);
                     if (state.giftedState.item === 'poison') {
                         poisons.push({ id: actualGiftTarget, source: 'gift' });
                         state.giftedState.isUsed = true;
-                        this.addHistory(`🎁 ${state.giftedState.id}號 使用黑商毒藥毒殺了 ${logTarget(origGiftTarget)}`);
+                        GameLogic.addHistory(`🎁 ${state.giftedState.id}號 使用黑商毒藥毒殺了 ${logTarget(origGiftTarget)}`);
                     } else if (state.giftedState.item === 'verify') {
-                        let isW = isWolfTarget(actualGiftTarget);
+                        let isW = GameLogic.isWolfTarget(actualGiftTarget);
                         state.giftedState.isUsed = true;
-                        this.addHistory(`🎁 ${state.giftedState.id}號 使用黑商查驗了 ${logTarget(origGiftTarget)} (${isW ? '查殺' : '金水'})`);
+                        GameLogic.addHistory(`🎁 ${state.giftedState.id}號 使用黑商查驗了 ${logTarget(origGiftTarget)} (${isW ? '查殺' : '金水'})`);
                     }
                 }
 
-                // 機械狼行動結算
+                if (state.nightRecords.gargoyleTarget) {
+                    GameLogic.addHistory(`🗿 ${state.initialRoleSetup.gargoyle}號 查驗了 ${logTarget(state.nightRecords.gargoyleTarget)} (真實身分: ${GameLogic.getMediumCheckResult(actualGargoyleTarget)})`);
+                }
+
                 let actualMechWolfKill = 0;
                 let isMechWolfAwakenedKill = false;
                 
@@ -2103,9 +2256,9 @@
                     if (!state.mechWolfState.hasLearned && state.nightRecords.mechWolfLearnTarget !== 0) {
                         let origLearn = state.nightRecords.mechWolfLearnTarget;
                         state.mechWolfState.hasLearned = true;
-                        state.mechWolfState.learnedRole = this.getMediumCheckResult(getActualTarget(origLearn));
-                        this.addHistory(`🤖 ${state.initialRoleSetup.mechWolf}號 學習了 ${logTarget(origLearn)}，真實身分為：${state.mechWolfState.learnedRole}`);
-                    } else if (state.mechWolfState.hasLearned && state.nightRecords.mechWolfActionTarget !== 0 && !this.checkFeared(['機械狼'])) {
+                        state.mechWolfState.learnedRole = GameLogic.getMediumCheckResult(getActualTarget(origLearn));
+                        GameLogic.addHistory(`🤖 ${state.initialRoleSetup.mechWolf}號 學習了 ${logTarget(origLearn)}，真實身分為：${state.mechWolfState.learnedRole}`);
+                    } else if (state.mechWolfState.hasLearned && state.nightRecords.mechWolfActionTarget !== 0 && !GameLogic.checkFeared(['機械狼'])) {
                         let role = state.mechWolfState.learnedRole;
                         let origTarget = state.nightRecords.mechWolfActionTarget;
                         let target = getActualTarget(origTarget);
@@ -2113,56 +2266,56 @@
                             actualMechWolfKill = target;
                             state.mechWolfState.wolfKillUsed = true; 
                             if (state.playerCount >= 11) isMechWolfAwakenedKill = true;
-                            this.addHistory(`🐺🤖 ${state.initialRoleSetup.mechWolf}號 使用${isMechWolfAwakenedKill ? '覺醒刀' : '額外一刀'}擊殺了 ${logTarget(origTarget)}`);
+                            GameLogic.addHistory(`🐺🤖 ${state.initialRoleSetup.mechWolf}號 使用${isMechWolfAwakenedKill ? '覺醒刀' : '額外一刀'}擊殺了 ${logTarget(origTarget)}`);
                         } else if (role === '女巫' && !state.mechWolfState.poisonUsed) {
                             poisons.push({ id: target, source: 'mech' });
                             state.mechWolfState.poisonUsed = true;
-                            this.addHistory(`🤖🧪 ${state.initialRoleSetup.mechWolf}號 毒殺了 ${logTarget(origTarget)}`);
+                            GameLogic.addHistory(`🤖🧪 ${state.initialRoleSetup.mechWolf}號 毒殺了 ${logTarget(origTarget)}`);
                         } else if (role === '守衛' && !state.mechWolfState.shieldBroken) {
-                            this.addHistory(`🤖🛡️ ${state.initialRoleSetup.mechWolf}號 放置了防毒盾給 ${logTarget(origTarget)}`);
+                            GameLogic.addHistory(`🤖🛡️ ${state.initialRoleSetup.mechWolf}號 放置了防毒盾給 ${logTarget(origTarget)}`);
                         } else if (role === '通靈師') {
-                            let res = this.getMediumCheckResult(target);
-                            this.addHistory(`🤖🔮 ${state.initialRoleSetup.mechWolf}號 查驗了 ${logTarget(origTarget)} (${res})`);
+                            let res = GameLogic.getMediumCheckResult(target);
+                            GameLogic.addHistory(`🤖🔮 ${state.initialRoleSetup.mechWolf}號 查驗了 ${logTarget(origTarget)} (${res})`);
                         } else if (role === '預言家') {
-                            let isW = isWolfTarget(target);
-                            this.addHistory(`🤖👁️ ${state.initialRoleSetup.mechWolf}號 查驗了 ${logTarget(origTarget)} (${isW ? '查殺' : '金水'})`);
+                            let isW = GameLogic.isWolfTarget(target);
+                            GameLogic.addHistory(`🤖👁️ ${state.initialRoleSetup.mechWolf}號 查驗了 ${logTarget(origTarget)} (${isW ? '查殺' : '金水'})`);
                         } else if (role === '燈影') {
-                            let isW = isWolfTarget(target);
-                            this.addHistory(`🤖🏮 ${state.initialRoleSetup.mechWolf}號 查驗了 ${logTarget(origTarget)} (${!isW ? '查殺' : '金水'})`);
+                            let isW = GameLogic.isWolfTarget(target);
+                            GameLogic.addHistory(`🤖🏮 ${state.initialRoleSetup.mechWolf}號 查驗了 ${logTarget(origTarget)} (${!isW ? '查殺' : '金水'})`);
                         }
                     }
                 }
 
                 if (state.nightRecords.wolfBrotherRevengeTarget !== 0) {
-                    if (!this.checkFeared(['狼弟'])) {
+                    if (!GameLogic.checkFeared(['狼弟'])) {
                         state.wolfBrotherRevengeUsed = true;
-                        this.addHistory(`🐺👦 ${state.initialRoleSetup.wolfYoungerBrother}號 復仇刀擊殺了 ${logTarget(state.nightRecords.wolfBrotherRevengeTarget)}`);
+                        GameLogic.addHistory(`🐺👦 ${state.initialRoleSetup.wolfYoungerBrother}號 復仇刀擊殺了 ${logTarget(state.nightRecords.wolfBrotherRevengeTarget)}`);
                     }
                 }
 
-                if (state.activeRoles.wolfBeauty && state.nightRecords.charmTarget) this.addHistory(`💃 ${state.initialRoleSetup.wolfBeauty}號 魅惑了 ${logTarget(state.nightRecords.charmTarget)}`);
-                if (state.activeRoles.awakenedWolfBeauty && state.nightRecords.awbCharmTarget) this.addHistory(`💃✨ ${state.initialRoleSetup.awakenedWolfBeauty}號 魅惑了 ${logTarget(state.nightRecords.awbCharmTarget)}`);
-                if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'bear' && state.nightRecords.bearCharmTarget) this.addHistory(`🎭 ${state.initialRoleSetup[state.dittoWolfKingRole]}號 魅惑了 ${logTarget(state.nightRecords.bearCharmTarget)}`);
+                if (state.activeRoles.wolfBeauty && state.nightRecords.charmTarget) GameLogic.addHistory(`💃 ${state.initialRoleSetup.wolfBeauty}號 魅惑了 ${logTarget(state.nightRecords.charmTarget)}`);
+                if (state.activeRoles.awakenedWolfBeauty && state.nightRecords.awbCharmTarget) GameLogic.addHistory(`💃✨ ${state.initialRoleSetup.awakenedWolfBeauty}號 魅惑了 ${logTarget(state.nightRecords.awbCharmTarget)}`);
+                if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'bear' && state.nightRecords.bearCharmTarget) GameLogic.addHistory(`🎭 ${state.initialRoleSetup[state.dittoWolfKingRole]}號 魅惑了 ${logTarget(state.nightRecords.bearCharmTarget)}`);
                 
                 if (state.nightRecords.seerTarget) {
                     if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'seer') {
-                        this.addHistory(`👁️ ${state.initialRoleSetup.seer}號 查驗了 ${logTarget(state.nightRecords.seerTarget)} (真實身分: ${this.getPlayerSetupInfo(actualSeerTarget).role})`);
+                        GameLogic.addHistory(`👁️ ${state.initialRoleSetup.seer}號 查驗了 ${logTarget(state.nightRecords.seerTarget)} (真實身分: ${GameLogic.getPlayerSetupInfo(actualSeerTarget).role})`);
                     } else {
-                        const isW = isWolfTarget(actualSeerTarget);
-                        this.addHistory(`👁️ ${state.initialRoleSetup.seer}號 查驗了 ${logTarget(state.nightRecords.seerTarget)} (${isW ? '查殺' : '金水'})`);
+                        const isW = GameLogic.isWolfTarget(actualSeerTarget);
+                        GameLogic.addHistory(`👁️ ${state.initialRoleSetup.seer}號 查驗了 ${logTarget(state.nightRecords.seerTarget)} (${isW ? '查殺' : '金水'})`);
                     }
                 }
                 if (state.nightRecords.shadowTarget) {
-                    const isW = isWolfTarget(actualShadowTarget);
-                    this.addHistory(`🏮 ${state.initialRoleSetup.shadow}號 查驗了 ${logTarget(state.nightRecords.shadowTarget)} (${!isW ? '查殺' : '金水'})`);
+                    const isW = GameLogic.isWolfTarget(actualShadowTarget);
+                    GameLogic.addHistory(`🏮 ${state.initialRoleSetup.shadow}號 查驗了 ${logTarget(state.nightRecords.shadowTarget)} (${!isW ? '查殺' : '金水'})`);
                 }
                 if (state.nightRecords.mediumTarget) {
-                    this.addHistory(`🔮 ${state.initialRoleSetup.medium}號 查驗了 ${logTarget(state.nightRecords.mediumTarget)} (${this.getMediumCheckResult(actualMediumTarget)})`);
+                    GameLogic.addHistory(`🔮 ${state.initialRoleSetup.medium}號 查驗了 ${logTarget(state.nightRecords.mediumTarget)} (${GameLogic.getMediumCheckResult(actualMediumTarget)})`);
                 }
-                if (state.nightRecords.wolfKill) this.addHistory(`🐺 狼陣營 擊殺了 ${logTarget(state.nightRecords.wolfKill)}`);
+                if (state.nightRecords.wolfKill) GameLogic.addHistory(`🐺 狼陣營 擊殺了 ${logTarget(state.nightRecords.wolfKill)}`);
                 if (state.nightRecords.witchAction !== 'none') {
-                    if (state.nightRecords.witchAction === 'heal') this.addHistory(`🧙‍♀️ ${state.initialRoleSetup.witch}號 使用了解藥`);
-                    if (state.nightRecords.witchAction === 'poison') this.addHistory(`🧪 ${state.initialRoleSetup.witch}號 毒殺了 ${logTarget(state.nightRecords.witchPoison)}`);
+                    if (state.nightRecords.witchAction === 'heal') GameLogic.addHistory(`🧙‍♀️ ${state.initialRoleSetup.witch}號 使用了解藥`);
+                    if (state.nightRecords.witchAction === 'poison') GameLogic.addHistory(`🧪 ${state.initialRoleSetup.witch}號 毒殺了 ${logTarget(state.nightRecords.witchPoison)}`);
                 }
 
                 if (state.nightRecords.witchAction === 'heal') state.witchPotions.heal = false;
@@ -2170,11 +2323,11 @@
 
                 let aliveBefore = state.players.filter(p => p.alive).map(p => p.id);
 
-                if (this.checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '機械狼', '狼兄'])) actualWolfKill = 0;
-                if (this.checkFeared(['女巫'])) actualWitchPoison = 0;
+                if (GameLogic.checkFeared(['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '機械狼', '狼兄', '石像鬼'])) actualWolfKill = 0;
+                if (GameLogic.checkFeared(['女巫'])) actualWitchPoison = 0;
                 
-                let isGuardFeared = this.checkFeared(['守衛']);
-                let isWitchFeared = this.checkFeared(['女巫']);
+                let isGuardFeared = GameLogic.checkFeared(['守衛']);
+                let isWitchFeared = GameLogic.checkFeared(['女巫']);
 
                 if (actualWolfKill !== 0 && actualWolfKill === actualDreamTarget) actualWolfKill = 0;
                 if (actualWitchPoison !== 0 && actualWitchPoison === actualDreamTarget) actualWitchPoison = 0;
@@ -2184,13 +2337,8 @@
                 let deaths = [];
 
                 if (state.day === 1 && state.activeRoles.blackMerchant && state.nightRecords.blackMerchantTarget !== 0) {
-                    const isStrictWolfTeam = (id) => {
-                        if (state.isDittoWolfKingMode && id === state.initialRoleSetup[state.dittoWolfKingRole]) return true;
-                        const info = GameLogic.getPlayerSetupInfo(id);
-                        return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '機械狼', '狼兄', '狼弟'].includes(info.role);
-                    };
                     let bmTarget = getActualTarget(state.nightRecords.blackMerchantTarget);
-                    if (isStrictWolfTeam(bmTarget)) {
+                    if (GameLogic.isStrictWolfTeam(bmTarget)) {
                         deaths.push({ id: state.initialRoleSetup.blackMerchant, cause: 'merchant_wolf' });
                     }
                 }
@@ -2227,7 +2375,7 @@
                 poisons = poisons.filter(p => {
                     if (p.id === actualMechShield && state.mechWolfState.learnedRole === '守衛' && !state.mechWolfState.shieldBroken) {
                         state.mechWolfState.shieldBroken = true;
-                        this.addHistory(`🛡️ ${state.initialRoleSetup.mechWolf}號 的防毒盾成功擋下了毒藥 (${p.id}號)！防毒盾碎裂。`);
+                        GameLogic.addHistory(`🛡️ ${state.initialRoleSetup.mechWolf}號 的防毒盾成功擋下了毒藥 (${p.id}號)！防毒盾碎裂。`);
                         return false;
                     }
                     return true;
@@ -2272,31 +2420,31 @@
                             reflected = true;
                         }
 
-                        let isSeerFeared = this.checkFeared(['預言家']);
+                        let isSeerFeared = GameLogic.checkFeared(['預言家']);
                         if (!reflected && !isSeerFeared && actualSeerTarget === ekId) {
                             if (seerId) deaths.push({ id: seerId, cause: 'ek_reflect' });
                             reflected = true;
                         }
 
-                        let isShadowFeared = this.checkFeared(['燈影']);
+                        let isShadowFeared = GameLogic.checkFeared(['燈影']);
                         if (!reflected && !isShadowFeared && actualShadowTarget === ekId) {
                             if (shadowId) deaths.push({ id: shadowId, cause: 'ek_reflect' });
                             reflected = true;
                         }
                         
-                        let isMediumFeared = this.checkFeared(['通靈師']);
+                        let isMediumFeared = GameLogic.checkFeared(['通靈師']);
                         if (!reflected && !isMediumFeared && actualMediumTarget === ekId) {
                             if (mediumId) deaths.push({ id: mediumId, cause: 'ek_reflect' });
                             reflected = true;
                         }
                         
-                        let isGiftedFeared = this.checkFeared([this.getPlayerSetupInfo(state.giftedState.id).role]);
+                        let isGiftedFeared = GameLogic.checkFeared([GameLogic.getPlayerSetupInfo(state.giftedState.id).role]);
                         if (!reflected && state.giftedState.hasGift && state.giftedState.item === 'verify' && !isGiftedFeared && getActualTarget(state.nightRecords.giftedPlayerTarget) === ekId) {
                             if (state.giftedState.id) deaths.push({ id: state.giftedState.id, cause: 'ek_reflect' });
                             reflected = true;
                         }
 
-                        if (!reflected && state.activeRoles.mechWolf && state.mechWolfState.hasLearned && !this.checkFeared(['機械狼']) && getActualTarget(state.nightRecords.mechWolfActionTarget) === ekId) {
+                        if (!reflected && state.activeRoles.mechWolf && state.mechWolfState.hasLearned && !GameLogic.checkFeared(['機械狼']) && getActualTarget(state.nightRecords.mechWolfActionTarget) === ekId) {
                             if (['預言家', '燈影', '通靈師'].includes(state.mechWolfState.learnedRole)) {
                                 if (mechWolfId) deaths.push({ id: mechWolfId, cause: 'ek_reflect' });
                                 reflected = true;
@@ -2319,35 +2467,35 @@
                 });
 
                 Object.keys(uniqueDeaths).forEach(idStr => {
-                    this.executeDeath(parseInt(idStr), uniqueDeaths[idStr]);
+                    GameLogic.executeDeath(parseInt(idStr), uniqueDeaths[idStr]);
                 });
 
-                const nightWin = this.checkWinCondition();
+                const nightWin = GameLogic.checkWinCondition();
                 
                 let aliveAfter = state.players.filter(p => p.alive).map(p => p.id);
                 let died = aliveBefore.filter(id => !aliveAfter.includes(id));
 
                 if (died.length === 0) {
-                    this.addHistory(`🌃 夜晚結算：平安夜`);
+                    GameLogic.addHistory(`🌃 夜晚結算：平安夜`);
                     state.morningResultHtml = "<h3 style='color:var(--btn-success); margin: 0;'>平安夜👏</h3>";
                     state.finalEventHtml = "<span style='color:var(--btn-success); font-weight:bold;'>平安夜</span>";
                 } else {
                     const diedStr = died.sort((a,b)=>a-b).map(id => id + '號').join('、');
-                    this.addHistory(`🌃 夜晚結算：${diedStr} 死亡`);
-                    const deadIdsHtml = died.sort((a, b) => a - b).map(id => `<span class="${this.getRoleClass(id)}">${this.getPlayerSetupInfo(id).role}(${id}號)</span>`).join('，');
+                    GameLogic.addHistory(`🌃 夜晚結算：${diedStr} 死亡`);
+                    const deadIdsHtml = died.sort((a, b) => a - b).map(id => `<span class="${GameLogic.getRoleClass(id)}">${GameLogic.getPlayerSetupInfo(id).role}(${id}號)</span>`).join('，');
                     state.morningResultHtml = `<h3 style='margin: 0;'>昨晚 ${deadIdsHtml} 死亡</h3>`;
                     state.finalEventHtml = `昨晚 ${deadIdsHtml} 死亡`;
                 }
 
                 if (nightWin) {
                     state.pendingGameOver = nightWin;
-                    this.addHistory(`🏁 遊戲結束：${nightWin.faction}`);
+                    GameLogic.addHistory(`🏁 遊戲結束：${nightWin.faction}`);
                     state.winReasonPrinted = true;
-                    this.popShooter(); 
+                    GameLogic.popShooter(); 
                     return; 
                 }
 
-                this.addHistory(`<br><span style="color:#fff; font-size:16px; font-weight:bold;">=== 第${state.day}天 白天 ===</span>`);
+                GameLogic.addHistory(`<br><span style="color:#fff; font-size:16px; font-weight:bold;">=== 第${state.day}天 白天 ===</span>`);
 
                 state.isCalculatingNight = false;
                 state.daySummaryPrinted = false;
@@ -2375,6 +2523,10 @@
                     winReasonPrinted: state.winReasonPrinted,
                     history: state.history,
                     shootQueue: state.shootQueue,
+                    
+                    lastExiledTarget: state.lastExiledTarget,
+                    lastDayExploded: state.lastDayExploded,
+
                     morningStep: 'vote',
                     morningResultHtml: state.morningResultHtml,
                     finalEventHtml: state.finalEventHtml,
@@ -2383,7 +2535,7 @@
                     isVotingDone: false
                 }));
 
-                this.popShooter();
+                GameLogic.popShooter();
             },
 
             confirmShoot() {
@@ -2391,19 +2543,19 @@
                 const shooter = state.currentShooter;
                 
                 if (target !== 0) {
-                    this.addHistory(`🔫 ${shooter.id}號 開槍帶走了 ${target}號`);
-                    state.morningResultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 <span class="${this.getRoleClass(target)}">${this.getPlayerSetupInfo(target).role}(${target}號)</span></span>`;
-                    state.finalEventHtml = `💥 ${shooter.role} 開槍帶走了 <span class="${this.getRoleClass(target)}">${this.getPlayerSetupInfo(target).role}(${target}號)</span>`;
-                    this.executeDeath(target, 'shot');
+                    GameLogic.addHistory(`🔫 ${shooter.id}號 開槍帶走了 ${target}號`);
+                    state.morningResultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 <span class="${GameLogic.getRoleClass(target)}">${GameLogic.getPlayerSetupInfo(target).role}(${target}號)</span></span>`;
+                    state.finalEventHtml = `💥 ${shooter.role} 開槍帶走了 <span class="${GameLogic.getRoleClass(target)}">${GameLogic.getPlayerSetupInfo(target).role}(${target}號)</span>`;
+                    GameLogic.executeDeath(target, 'shot');
                     
                     state.morningData.lastShotTarget = target;
                     state.morningData.lastShooterRole = shooter.role;
                     state.morningStep = 'shoot_reveal';
                 } else {
-                    this.addHistory(`🔫 ${shooter.id}號 選擇壓槍`);
+                    GameLogic.addHistory(`🔫 ${shooter.id}號 選擇壓槍`);
                     state.morningResultHtml += `<br><span style="color:#aaa;">💥 ${shooter.role} 選擇壓槍</span>`;
                     state.finalEventHtml = `💥 ${shooter.role} 選擇壓槍`;
-                    this.popShooter();
+                    GameLogic.popShooter();
                 }
                 state.morningData.shootTarget = 0;
             },
@@ -2420,8 +2572,8 @@
                         let isW = false;
                         if (state.isDittoWolfKingMode && p.id === state.initialRoleSetup[state.dittoWolfKingRole]) isW = true;
                         else {
-                            let r = this.getPlayerSetupInfo(p.id).role;
-                            isW = ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '機械狼', '狼兄', '狼弟'].includes(r);
+                            let r = GameLogic.getPlayerSetupInfo(p.id).role;
+                            isW = ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '石像鬼', '機械狼', '狼兄', '狼弟'].includes(r);
                         }
                         if (isW) return p.id;
                     }
@@ -2433,70 +2585,71 @@
                 let dir = state.morningData.ahDirection;
                 let shooter = state.currentShooter;
                 if (dir === 0) {
-                    this.addHistory(`🔫 ${shooter.id}號 選擇壓槍`);
+                    GameLogic.addHistory(`🔫 ${shooter.id}號 選擇壓槍`);
                     state.morningResultHtml += `<br><span style="color:#aaa;">💥 覺醒獵人 選擇壓槍</span>`;
                     state.finalEventHtml = `💥 覺醒獵人 選擇壓槍`;
                     state.morningData.ahDirection = null;
-                    this.popShooter();
+                    GameLogic.popShooter();
                 } else {
-                    let target = this.findClosestWolf(shooter.id, dir);
+                    let target = GameLogic.findClosestWolf(shooter.id, dir);
                     if (target) {
-                        this.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍，擊中了 ${target}號`);
-                        state.morningResultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 <span class="${this.getRoleClass(target)}">${this.getPlayerSetupInfo(target).role}(${target}號)</span></span>`;
-                        state.finalEventHtml = `💥 覺醒獵人 開槍擊殺了 <span class="${this.getRoleClass(target)}">${this.getPlayerSetupInfo(target).role}(${target}號)</span>`;
+                        GameLogic.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍，擊中了 ${target}號`);
+                        state.morningResultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 <span class="${GameLogic.getRoleClass(target)}">${GameLogic.getPlayerSetupInfo(target).role}(${target}號)</span></span>`;
+                        state.finalEventHtml = `💥 覺醒獵人 開槍擊殺了 <span class="${GameLogic.getRoleClass(target)}">${GameLogic.getPlayerSetupInfo(target).role}(${target}號)</span>`;
                         let outCause = (shooter.cause === 'vote' || shooter.cause === 'explode' || shooter.cause === 'duel_wolf') ? 'ah_shot_day' : 'ah_shot';
-                        this.executeDeath(target, outCause);
+                        GameLogic.executeDeath(target, outCause);
 
                         state.morningData.ahDirection = null;
                         state.morningData.lastShotTarget = target;
                         state.morningData.lastShooterRole = shooter.role;
                         state.morningStep = 'shoot_reveal';
                     } else {
-                        this.addHistory(`🔫 ${shooter.id}號 開槍，但場上已無狼人`);
+                        GameLogic.addHistory(`🔫 ${shooter.id}號 開槍，但場上已無狼人`);
                         state.morningResultHtml += `<br><span style="color:#aaa;">💥 覺醒獵人 開槍，但場上已無狼人</span>`;
                         state.finalEventHtml = `💥 覺醒獵人 開槍，但場上已無狼人`;
                         state.morningData.ahDirection = null;
-                        this.popShooter();
+                        GameLogic.popShooter();
                     }
                 }
             },
 
             confirmVote() {
                 const voteTargetId = state.morningData.voteTarget;
+                state.lastExiledTarget = voteTargetId;
                 if (voteTargetId !== 0) {
-                    const role = this.getPlayerSetupInfo(voteTargetId).role;
-                    this.addHistory(`🗳️ 白天投票放逐了 ${voteTargetId}號`);
-                    state.finalEventHtml = `🗳️ 白天投票放逐了 <span class="${this.getRoleClass(voteTargetId)}">${role}(${voteTargetId}號)</span>`;
-                    this.executeDeath(voteTargetId, 'vote');
+                    const role = GameLogic.getPlayerSetupInfo(voteTargetId).role;
+                    GameLogic.addHistory(`🗳️ 白天投票放逐了 ${voteTargetId}號`);
+                    state.finalEventHtml = `🗳️ 白天投票放逐了 <span class="${GameLogic.getRoleClass(voteTargetId)}">${role}(${voteTargetId}號)</span>`;
+                    GameLogic.executeDeath(voteTargetId, 'vote');
                 } else {
-                    this.addHistory(`🗳️ 白天投票結果為 無人出局 (棄票/平票)`);
+                    GameLogic.addHistory(`🗳️ 白天投票結果為 無人出局 (棄票/平票)`);
                     state.finalEventHtml = `🗳️ 白天投票結果為 無人出局`;
                 }
                 state.isVotingDone = true;
-                this.popShooter();
+                GameLogic.popShooter();
             },
 
             confirmExplode() {
                 const targetId = state.morningData.explodeTarget;
+                state.lastDayExploded = true;
                 if (targetId !== 0) {
-                    const role = this.getPlayerSetupInfo(targetId).role;
-                    this.addHistory(`💣 ${targetId}號 選擇自爆！`);
-                    state.morningResultHtml += `<br><span style="color:var(--btn-danger);">💣 <span class="${this.getRoleClass(targetId)}">${role}(${targetId}號)</span> 選擇自爆！</span>`;
-                    state.finalEventHtml = `💣 <span class="${this.getRoleClass(targetId)}">${role}(${targetId}號)</span> 選擇自爆！`;
-                    this.executeDeath(targetId, 'explode');
+                    const role = GameLogic.getPlayerSetupInfo(targetId).role;
+                    GameLogic.addHistory(`💣 ${targetId}號 選擇自爆！`);
+                    state.morningResultHtml += `<br><span style="color:var(--btn-danger);">💣 <span class="${GameLogic.getRoleClass(targetId)}">${role}(${targetId}號)</span> 選擇自爆！</span>`;
+                    state.finalEventHtml = `💣 <span class="${GameLogic.getRoleClass(targetId)}">${role}(${targetId}號)</span> 選擇自爆！`;
+                    GameLogic.executeDeath(targetId, 'explode');
                 }
                 state.morningData.explodeTarget = 0;
                 state.isVotingDone = true; 
-                this.popShooter(); 
+                GameLogic.popShooter(); 
             },
 
             confirmDuel() {
                 const targetId = state.morningData.knightDuelTarget;
-                const knightId = state.initialRoleSetup.knight;
                 state.knightUsed = true;
                 
-                let targetRole = this.getPlayerSetupInfo(targetId).role;
-                let isTargetWolf = ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '機械狼', '狼兄', '狼弟'].includes(targetRole) || (state.isDittoWolfKingMode && targetId === state.initialRoleSetup[state.dittoWolfKingRole]);
+                let targetRole = GameLogic.getPlayerSetupInfo(targetId).role;
+                let isTargetWolf = ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '石像鬼', '機械狼', '狼兄', '狼弟'].includes(targetRole) || (state.isDittoWolfKingMode && targetId === state.initialRoleSetup[state.dittoWolfKingRole]);
 
                 state.morningData.knightDuelTargetInfo = { id: targetId, role: targetRole, isWolf: isTargetWolf };
                 state.morningStep = 'knight_reveal';
@@ -2508,33 +2661,37 @@
                 const knightId = state.initialRoleSetup.knight;
                 
                 if (state.morningData.knightDuelTargetInfo.isWolf) {
-                    this.addHistory(`⚔️ ${knightId}號 決鬥了 ${targetId}號，狼人死亡！`);
-                    state.morningResultHtml += `<br><span style="color:var(--btn-success);">⚔️ <span class="color-god">騎士</span> 決鬥成功！<span class="${this.getRoleClass(targetId)}">${targetRole}(${targetId}號)</span> 死亡！</span>`;
-                    state.finalEventHtml = `⚔️ <span class="color-god">騎士</span> 決鬥成功！<span class="${this.getRoleClass(targetId)}">${targetRole}(${targetId}號)</span> 死亡`;
-                    this.executeDeath(targetId, 'duel_wolf');
+                    GameLogic.addHistory(`⚔️ ${knightId}號 決鬥了 ${targetId}號，狼人死亡！`);
+                    state.morningResultHtml += `<br><span style="color:var(--btn-success);">⚔️ <span class="color-god">騎士</span> 決鬥成功！<span class="${GameLogic.getRoleClass(targetId)}">${targetRole}(${targetId}號)</span> 死亡！</span>`;
+                    state.finalEventHtml = `⚔️ <span class="color-god">騎士</span> 決鬥成功！<span class="${GameLogic.getRoleClass(targetId)}">${targetRole}(${targetId}號)</span> 死亡`;
+                    GameLogic.executeDeath(targetId, 'duel_wolf');
                     state.isVotingDone = true; 
                 } else {
-                    this.addHistory(`⚔️ ${knightId}號 決鬥了 ${targetId}號，好人平安，${knightId}號 以死謝罪！`);
+                    GameLogic.addHistory(`⚔️ ${knightId}號 決鬥了 ${targetId}號，好人平安，${knightId}號 以死謝罪！`);
                     state.morningResultHtml += `<br><span style="color:var(--btn-danger);">⚔️ <span class="color-god">騎士</span> 決鬥失敗！<span class="color-god">騎士(${knightId}號)</span> 以死謝罪！</span>`;
                     state.finalEventHtml = `⚔️ <span class="color-god">騎士</span> 決鬥失敗！<span class="color-god">騎士(${knightId}號)</span> 以死謝罪`;
                     state.dueledGoodTarget = targetId; 
-                    this.executeDeath(knightId, 'duel_knight');
+                    GameLogic.executeDeath(knightId, 'duel_knight');
                 }
                 state.morningData.knightDuelTarget = 0;
                 state.morningData.knightDuelTargetInfo = null;
-                this.popShooter(); 
+                GameLogic.popShooter(); 
             },
 
             processNextDay() {
-                this.checkAndPrintDaySummary();
-                const gameOverCheck = this.checkWinCondition();
+                GameLogic.checkAndPrintDaySummary();
+                const gameOverCheck = GameLogic.checkWinCondition();
                 if (gameOverCheck) {
                     state.pendingGameOver = gameOverCheck;
                     state.morningStep = 'vote'; 
                     return;
                 }
+                
+                state.lastExiledTarget = state.morningData.voteTarget;
+                state.lastDayExploded = state.morningData.explodeTarget !== 0;
+
                 state.day++;
-                this.startNight();
+                GameLogic.startNight();
             },
 
             checkWinCondition() {
@@ -2543,12 +2700,12 @@
 
                 const aliveWolves = alive.filter(p => {
                     if (p.id === dittoId) return true;
-                    return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '機械狼', '狼兄', '狼弟'].includes(p.role);
+                    return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '石像鬼', '機械狼', '狼兄', '狼弟'].includes(p.role);
                 }).length;
 
                 const aliveGods = alive.filter(p => {
                     if (p.id === dittoId) return false;
-                    return ['魔術師', '黑市商人', '女巫', '守衛', '預言家', '獵人', '覺醒獵人', '熊', '攝夢人', '騎士', '通靈師'].includes(p.role);
+                    return ['魔術師', '黑市商人', '女巫', '守衛', '預言家', '獵人', '覺醒獵人', '熊', '攝夢人', '騎士', '守墓人', '通靈師'].includes(p.role);
                 }).length;
                 
                 const aliveVillagers = alive.filter(p => {
@@ -2556,7 +2713,6 @@
                     return ['平民', '燈影'].includes(p.role);
                 }).length;
 
-                // 狼刀在先
                 if (aliveGods === 0) return { faction: "🐺 狼人陣營獲勝！", reason: "(神職全數出局 - 屠神)" };
                 if (aliveVillagers === 0) return { faction: "🐺 狼人陣營獲勝！", reason: "(平民全數出局 - 屠民)" };
                 if (aliveWolves === 0) return { faction: "🎉 好人陣營獲勝！", reason: "(狼人全數出局)" };
@@ -2564,19 +2720,66 @@
             }
         };
 
-        const isWolfTarget = (id) => {
-            if (state.isDittoWolfKingMode && id === state.initialRoleSetup[state.dittoWolfKingRole]) return true;
-            const info = GameLogic.getPlayerSetupInfo(id);
-            if (info.role === '狼弟') {
-                return GameLogic.isRoleDead('wolfBrother');
+        const isPlayerTaken = (id, roleKey, wolfIndex = null) => {
+            const s = state.initialRoleSetup;
+            if (roleKey !== 'magician' && s.magician === id) return true;
+            if (roleKey !== 'blackMerchant' && s.blackMerchant === id) return true;
+            if (roleKey !== 'nightmare' && s.nightmare === id) return true;
+            if (roleKey !== 'blackWolf' && s.blackWolf === id) return true;
+            if (roleKey !== 'wolfBeauty' && s.wolfBeauty === id) return true;
+            if (roleKey !== 'awakenedWolfBeauty' && s.awakenedWolfBeauty === id) return true;
+            if (roleKey !== 'evilKnight' && s.evilKnight === id) return true;
+            if (roleKey !== 'gargoyle' && s.gargoyle === id) return true;
+            if (roleKey !== 'mechWolf' && s.mechWolf === id) return true;
+            if (roleKey !== 'wolfBrother' && s.wolfBrother === id) return true;
+            if (roleKey !== 'wolfYoungerBrother' && s.wolfYoungerBrother === id) return true;
+            if (roleKey !== 'guard' && s.guard === id) return true;
+            if (roleKey !== 'dreamer' && s.dreamer === id) return true;
+            if (roleKey !== 'knight' && s.knight === id) return true;
+            if (roleKey !== 'bear' && s.bear === id) return true;
+            if (roleKey !== 'gravekeeper' && s.gravekeeper === id) return true;
+            if (roleKey !== 'seer' && s.seer === id) return true;
+            if (roleKey !== 'witch' && s.witch === id) return true;
+            if (roleKey !== 'hunter' && s.hunter === id) return true;
+            if (roleKey !== 'awakenedHunter' && s.awakenedHunter === id) return true;
+            if (roleKey !== 'shadow' && s.shadow === id) return true;
+            if (roleKey !== 'medium' && s.medium === id) return true;
+            
+            if (roleKey === 'wolf') {
+                const activeW = s.wolves.slice(0, normalWolfCount.value);
+                return activeW.some((wId, idx) => wId === id && idx !== wolfIndex);
+            } else {
+                const activeW = s.wolves.slice(0, normalWolfCount.value);
+                return activeW.includes(id);
             }
-            return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '機械狼', '狼兄'].includes(info.role);
         };
-        
-        const isStrictWolfTeam = (id) => {
-            if (state.isDittoWolfKingMode && id === state.initialRoleSetup[state.dittoWolfKingRole]) return true;
-            const info = GameLogic.getPlayerSetupInfo(id);
-            return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '機械狼', '狼兄', '狼弟'].includes(info.role);
+
+        const isTargetInvalidForSeer = (id) => {
+            if (state.activeRoles.knight && state.knightUsed && id === state.initialRoleSetup.knight) return true;
+            if (state.dueledGoodTarget !== 0 && id === state.dueledGoodTarget) return true;
+            return false;
+        };
+
+        const getPhaseHeaderClass = (roleKey, defaultClass) => {
+            if (state.isDittoWolfKingMode && state.dittoWolfKingRole === roleKey) {
+                return 'color-wolf';
+            }
+            return defaultClass;
+        };
+
+        const formatLog = (log) => {
+            let formatted = log.replace(/(\d+)\s*號/g, (match, idStr) => {
+                const id = parseInt(idStr);
+                const roleClass = GameLogic.getRoleClass(id);
+                const roleName = GameLogic.getPlayerSetupInfo(id).role;
+                const dittoTag = (state.isDittoWolfKingMode && id === state.initialRoleSetup[state.dittoWolfKingRole]) ? '<span style="color:#ff9800;">(百變)</span>' : '';
+                return `<span class="${roleClass}" style="font-weight: bold;">${roleName}(${id}號)${dittoTag}</span>`;
+            });
+            
+            formatted = formatted.replace(/好人陣營獲勝！/g, '<span style="color: var(--color-good); font-weight: bold;">好人陣營獲勝！</span>');
+            formatted = formatted.replace(/狼人陣營獲勝！/g, '<span style="color: var(--color-wolf); font-weight: bold;">狼人陣營獲勝！</span>');
+            
+            return formatted;
         };
 
         const toggleMagicianSwap = (id) => {
@@ -2588,100 +2791,248 @@
             }
         };
 
-        createApp({
+        const setSeerTarget = (id) => {
+            state.nightRecords.seerTarget = id;
+            if (state.day === 1 && id !== 0) fillUnknownWithVillager();
+        };
+
+        const setMediumTarget = (id) => {
+            state.nightRecords.mediumTarget = id;
+            if (state.day === 1 && id !== 0) fillUnknownWithVillager();
+        };
+
+        const fillUnknownWithVillager = () => {
+            state.players.forEach(p => {
+                p.role = '?';
+                p.class = 'color-unknown';
+            });
+            const assign = (playerId, roleName, className) => {
+                let p = state.players.find(x => x.id === playerId);
+                if (p) { p.role = roleName; p.class = className; }
+            };
+            const nWolves = normalWolfCount.value;
+            state.initialRoleSetup.wolves.slice(0, nWolves).forEach(wId => { if (wId) assign(wId, '狼人', 'color-wolf'); });
+            
+            if(state.activeRoles.magician) assign(state.initialRoleSetup.magician, '魔術師', 'color-god');
+            if(state.activeRoles.blackMerchant) assign(state.initialRoleSetup.blackMerchant, '黑市商人', 'color-god');
+            if(state.activeRoles.witch) assign(state.initialRoleSetup.witch, '女巫', 'color-god');
+            if(state.activeRoles.guard) assign(state.initialRoleSetup.guard, '守衛', 'color-god');
+            if(state.activeRoles.gargoyle) assign(state.initialRoleSetup.gargoyle, '石像鬼', 'color-wolf');
+            if(state.activeRoles.dreamer) assign(state.initialRoleSetup.dreamer, '攝夢人', 'color-god');
+            if(state.activeRoles.knight) assign(state.initialRoleSetup.knight, '騎士', 'color-god');
+            if(state.activeRoles.bear) assign(state.initialRoleSetup.bear, '熊', 'color-god');
+            if(state.activeRoles.gravekeeper) assign(state.initialRoleSetup.gravekeeper, '守墓人', 'color-god');
+            if(state.activeRoles.seer) assign(state.initialRoleSetup.seer, '預言家', 'color-god');
+            if(state.activeRoles.shadow) assign(state.initialRoleSetup.shadow, '燈影', 'color-villager');
+            if(state.activeRoles.medium) assign(state.initialRoleSetup.medium, '通靈師', 'color-god');
+            if(state.activeRoles.hunter) assign(state.initialRoleSetup.hunter, '獵人', 'color-god');
+            if(state.activeRoles.awakenedHunter) assign(state.initialRoleSetup.awakenedHunter, '覺醒獵人', 'color-god');
+            if(state.activeRoles.nightmare) assign(state.initialRoleSetup.nightmare, '夢魘', 'color-wolf');
+            if(state.activeRoles.mechWolf) assign(state.initialRoleSetup.mechWolf, '機械狼', 'color-wolf');
+            if(state.activeRoles.wolfBrothers) {
+                assign(state.initialRoleSetup.wolfBrother, '狼兄', 'color-wolf');
+                assign(state.initialRoleSetup.wolfYoungerBrother, '狼弟', 'color-wolf');
+            }
+            if(state.activeRoles.blackWolf) assign(state.initialRoleSetup.blackWolf, '黑狼王', 'color-wolf');
+            if(state.activeRoles.wolfBeauty) assign(state.initialRoleSetup.wolfBeauty, '狼美人', 'color-wolf');
+            if(state.activeRoles.awakenedWolfBeauty) assign(state.initialRoleSetup.awakenedWolfBeauty, '覺醒狼美人', 'color-wolf');
+            if(state.activeRoles.evilKnight) assign(state.initialRoleSetup.evilKnight, '惡靈騎士', 'color-wolf');
+
+            state.players.forEach(p => {
+                if (p.role === '?' || p.role === '未定') { 
+                    p.role = '平民'; 
+                    p.class = 'color-villager'; 
+                }
+            });
+        };
+
+        const toggleRole = (roleId) => {
+            state.activeRoles[roleId] = !state.activeRoles[roleId];
+            if (roleId === 'shadow' && state.activeRoles.shadow) {
+                state.activeRoles.seer = true;
+            } else if (roleId === 'seer' && !state.activeRoles.seer) {
+                state.activeRoles.shadow = false;
+            }
+        };
+
+        const startGame = () => {
+            const godRolesList = Object.values(ROLE_DICT).filter(r => r.type === 'god' && r.selectable);
+            const activeGods = godRolesList.filter(r => state.activeRoles[r.id]);
+            let isDitto = false;
+            if (activeGods.length === 5) {
+                isDitto = true;
+            }
+
+            let spWolfCount = 0;
+            if (state.activeRoles.nightmare) spWolfCount++;
+            if (state.activeRoles.blackWolf) spWolfCount++;
+            if (state.activeRoles.wolfBeauty) spWolfCount++;
+            if (state.activeRoles.awakenedWolfBeauty) spWolfCount++;
+            if (state.activeRoles.evilKnight) spWolfCount++;
+            if (state.activeRoles.gargoyle) spWolfCount++;
+            if (state.activeRoles.mechWolf) spWolfCount++;
+            if (state.activeRoles.wolfBrothers) spWolfCount += 2; 
+            if (isDitto) spWolfCount++;
+
+            const maxW = state.playerCount <= 10 ? 3 : 4;
+            
+            if (spWolfCount > maxW) {
+                alert(`【特殊狼人超過數量】\n${state.playerCount} 人局狼陣營總數不可超過 ${maxW} 名！\n您目前的特殊狼人（含百變狼王）已達 ${spWolfCount} 名，請減少配置。`);
+                return;
+            }
+
+            if (isDitto) {
+                state.isDittoWolfKingMode = true;
+                const randomGod = activeGods[Math.floor(Math.random() * activeGods.length)];
+                state.dittoWolfKingRole = randomGod.id;
+             alert(`【百變狼王模式已啟動】\n系統偵測到 5 張神牌，隨機抽取「${randomGod.name}」成為百變狼王！\n（該角色底牌為狼人，與狼隊不互認，且擁有專屬變異技能）`);
+            } else {
+                state.isDittoWolfKingMode = false;
+                state.dittoWolfKingRole = null;
+            }
+
+            GameLogic.initPlayers();
+            state.history = [];
+            state.screen = 'game';
+            state.day = 1;
+            state.initialRoleSetup.wolves = [];
+            state.awbUsed = false;
+            state.knightUsed = false;
+            state.ekUsed = false;
+            state.mechWolfState = { hasLearned: false, learnedRole: null, poisonUsed: false, shieldBroken: false, wolfKillUsed: false };
+            state.wolfBrotherRevengeUsed = false;
+            state.dueledGoodTarget = 0;
+            state.winReasonPrinted = false;
+            
+            state.nightRecords.bearCharmTarget = 0;
+            state.nightRecords.lastBearCharmTarget = 0;
+            state.nightRecords.wolfBrotherRevengeTarget = 0;
+            
+            state.magicianUsedSwaps = [];
+            state.giftedState = { hasGift: false, id: 0, item: '', isUsed: false };
+
+            GameLogic.startNight();
+        };
+
+        const setWitchAction = (action) => {
+            if (action === 'heal') {
+                if (actualWolfKillForWitch.value === 0 || !state.witchPotions.heal || isWitchSelfSaveRestricted.value) return;
+                if (state.nightRecords.witchAction === 'heal') {
+                    state.nightRecords.witchAction = 'none';
+                } else {
+                    state.nightRecords.witchAction = 'heal';
+                    state.nightRecords.witchPoison = 0;
+                }
+            } else if (action === 'none') {
+                if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'witch' && state.day === 1 && actualWolfKillForWitch.value !== 0) return;
+                state.nightRecords.witchAction = 'none';
+                state.nightRecords.witchPoison = 0;
+            }
+        };
+
+        const setPoisonTarget = (id) => {
+            if (!state.witchPotions.poison) return;
+            if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'witch' && state.day === 1) return;
+            
+            if (state.nightRecords.witchPoison === id) {
+                state.nightRecords.witchPoison = 0;
+                if (state.nightRecords.witchAction === 'poison') state.nightRecords.witchAction = 'none';
+            } else {
+                state.nightRecords.witchPoison = id;
+                state.nightRecords.witchAction = 'poison';
+            }
+        };
+
+        const setKnightDuelTarget = (id) => {
+            if (!isTargetInvalidForSeer(id)) {
+                state.morningData.knightDuelTarget = id;
+                state.morningData.voteTarget = 0;
+                state.morningData.explodeTarget = 0;
+            }
+        };
+
+        const triggerGameOver = () => {
+            GameLogic.checkAndPrintDaySummary();
+            state.gameOverResult = state.pendingGameOver.faction.replace('🎉 ', '').replace('🐺 ', ''); 
+            state.history.push(`<br><span style="color:#fff; font-size:16px; font-weight:bold;">=== 遊戲結束 ===</span>`);
+            state.history.push(`🏁 ${state.pendingGameOver.faction}`); 
+            state.screen = 'gameover'; 
+        };
+
+        // ================= 各大組件定義 =================
+
+        // [設定畫面組件]
+        const SetupScreen = {
+            template: '#setup-template',
             setup() {
-                const setSeerTarget = (id) => {
-                    state.nightRecords.seerTarget = id;
-                    if (state.day === 1 && id !== 0) {
-                        fillUnknownWithVillager();
-                    }
-                };
-
-                const setMediumTarget = (id) => {
-                    state.nightRecords.mediumTarget = id;
-                    if (state.day === 1 && id !== 0) {
-                        fillUnknownWithVillager();
-                    }
-                };
-                
-                const fillUnknownWithVillager = () => {
-                    // 還原身分標籤，防範下拉選單修改殘留
-                    state.players.forEach(p => {
-                        p.role = '?';
-                        p.class = 'color-unknown';
-                    });
-
-                    const assign = (playerId, roleName, className) => {
-                        let p = state.players.find(x => x.id === playerId);
-                        if (p) { p.role = roleName; p.class = className; }
-                    };
-                    
-                    const nWolves = normalWolfCount.value;
-                    state.initialRoleSetup.wolves.slice(0, nWolves).forEach(wId => { if (wId) assign(wId, '狼人', 'color-wolf'); });
-                    
-                    if(state.activeRoles.magician) assign(state.initialRoleSetup.magician, '魔術師', 'color-god');
-                    if(state.activeRoles.blackMerchant) assign(state.initialRoleSetup.blackMerchant, '黑市商人', 'color-god');
-                    if(state.activeRoles.witch) assign(state.initialRoleSetup.witch, '女巫', 'color-god');
-                    if(state.activeRoles.guard) assign(state.initialRoleSetup.guard, '守衛', 'color-god');
-                    if(state.activeRoles.dreamer) assign(state.initialRoleSetup.dreamer, '攝夢人', 'color-god');
-                    if(state.activeRoles.knight) assign(state.initialRoleSetup.knight, '騎士', 'color-god');
-                    if(state.activeRoles.bear) assign(state.initialRoleSetup.bear, '熊', 'color-god');
-                    if(state.activeRoles.seer) assign(state.initialRoleSetup.seer, '預言家', 'color-god');
-                    if(state.activeRoles.shadow) assign(state.initialRoleSetup.shadow, '燈影', 'color-villager');
-                    if(state.activeRoles.medium) assign(state.initialRoleSetup.medium, '通靈師', 'color-god');
-                    if(state.activeRoles.hunter) assign(state.initialRoleSetup.hunter, '獵人', 'color-god');
-                    if(state.activeRoles.awakenedHunter) assign(state.initialRoleSetup.awakenedHunter, '覺醒獵人', 'color-god');
-                    if(state.activeRoles.nightmare) assign(state.initialRoleSetup.nightmare, '夢魘', 'color-wolf');
-                    if(state.activeRoles.mechWolf) assign(state.initialRoleSetup.mechWolf, '機械狼', 'color-wolf');
-                    if(state.activeRoles.wolfBrothers) {
-                        assign(state.initialRoleSetup.wolfBrother, '狼兄', 'color-wolf');
-                        assign(state.initialRoleSetup.wolfYoungerBrother, '狼弟', 'color-wolf');
-                    }
-                    if(state.activeRoles.blackWolf) assign(state.initialRoleSetup.blackWolf, '黑狼王', 'color-wolf');
-                    if(state.activeRoles.wolfBeauty) assign(state.initialRoleSetup.wolfBeauty, '狼美人', 'color-wolf');
-                    if(state.activeRoles.awakenedWolfBeauty) assign(state.initialRoleSetup.awakenedWolfBeauty, '覺醒狼美人', 'color-wolf');
-                    if(state.activeRoles.evilKnight) assign(state.initialRoleSetup.evilKnight, '惡靈騎士', 'color-wolf');
-
-                    state.players.forEach(p => {
-                        if (p.role === '?' || p.role === '未定') { 
-                            p.role = '平民'; 
-                            p.class = 'color-villager'; 
-                        }
-                    });
-                };
-
-                const isRoleDead = (roleKey) => GameLogic.isRoleDead(roleKey);
-
-                const getPhaseHeaderClass = (roleKey, defaultClass) => {
-                    if (state.isDittoWolfKingMode && state.dittoWolfKingRole === roleKey) {
-                        return 'color-wolf';
-                    }
-                    return defaultClass;
-                };
-
-                const alivePlayers = computed(() => state.players.filter(p => p.alive));
-                const explodableWolves = computed(() => alivePlayers.value.filter(p => {
-                    const role = GameLogic.getPlayerSetupInfo(p.id).role;
-                    return role === '狼人' || role === '黑狼王';
-                }));
                 const godRoles = computed(() => Object.values(ROLE_DICT).filter(r => r.type === 'god' && r.selectable));
                 const specialWolfRoles = computed(() => Object.values(ROLE_DICT).filter(r => r.type === 'wolf' && r.selectable && r.id !== 'wolfBrothers'));
                 const specialVillagerRoles = computed(() => Object.values(ROLE_DICT).filter(r => r.type === 'villager' && r.selectable));
-
                 const wolfMenuRoles = computed(() => {
                     const roles = [...specialWolfRoles.value];
                     roles.push(ROLE_DICT.wolfBrothers);
                     return roles;
                 });
 
-                const toggleRole = (roleId) => {
-                    state.activeRoles[roleId] = !state.activeRoles[roleId];
-                    if (roleId === 'shadow' && state.activeRoles.shadow) {
-                        state.activeRoles.seer = true;
-                    } else if (roleId === 'seer' && !state.activeRoles.seer) {
-                        state.activeRoles.shadow = false;
+                return {
+                    state, normalWolfCount, godRoles, specialWolfRoles, wolfMenuRoles, specialVillagerRoles, toggleRole, startGame
+                };
+            }
+        };
+
+        // [遊戲結束畫面組件]
+        const GameOverScreen = {
+            template: '#game-over-template',
+            setup() {
+                const downloadReportAsImage = async () => {
+                    const reportEl = document.getElementById('battle-report');
+                    if (!reportEl) return;
+                    
+                    const originalMaxHeight = reportEl.style.maxHeight;
+                    const originalOverflow = reportEl.style.overflowY;
+                    reportEl.style.maxHeight = 'none';
+                    reportEl.style.overflowY = 'visible';
+
+                    try {
+                        const canvas = await html2canvas(reportEl, {
+                            backgroundColor: '#111', 
+                            scale: 2 
+                        });
+                        
+                        const imgData = canvas.toDataURL('image/png');
+                        const link = document.createElement('a');
+                        
+                        const date = new Date();
+                        const dateString = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+                        link.download = `狼人殺戰報_${dateString}.png`;
+                        
+                        link.href = imgData;
+                        link.click();
+                    } catch (error) {
+                        console.error('匯出戰報失敗:', error);
+                        alert('匯出戰報失敗，請重試。');
+                    } finally {
+                        reportEl.style.maxHeight = originalMaxHeight;
+                        reportEl.style.overflowY = originalOverflow;
                     }
                 };
+                const reloadPage = () => window.location.reload();
+
+                return {
+                    state, formatLog, getPlayerSetupInfo: GameLogic.getPlayerSetupInfo, downloadReportAsImage, reloadPage
+                };
+            }
+        };
+
+        // [遊戲進行中組件]
+        const GameScreen = {
+            template: '#game-template',
+            setup() {
+                const alivePlayers = computed(() => state.players.filter(p => p.alive));
+                const explodableWolves = computed(() => alivePlayers.value.filter(p => {
+                    const role = GameLogic.getPlayerSetupInfo(p.id).role;
+                    return role === '狼人' || role === '黑狼王';
+                }));
 
                 const bearGrowl = computed(() => {
                     const bearId = state.initialRoleSetup.bear;
@@ -2708,7 +3059,7 @@
 
                     const isWolf = (p) => {
                         if(!p) return false;
-                        return isWolfTarget(p.id);
+                        return GameLogic.isWolfTarget(p.id);
                     };
 
                     let growl = false;
@@ -2735,65 +3086,6 @@
 
                     return { isSet: true, isDead: false, growl, reason };
                 });
-
-                const isWitchSelfSaveRestricted = computed(() => {
-                    if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'witch' && state.day === 1) return false;
-                    return state.playerCount >= 10 && actualWolfKillForWitch.value !== 0 && actualWolfKillForWitch.value === state.initialRoleSetup.witch;
-                });
-
-                const formatLog = (log) => {
-                    let formatted = log.replace(/(\d+)\s*號/g, (match, idStr) => {
-                        const id = parseInt(idStr);
-                        const roleClass = GameLogic.getRoleClass(id);
-                        const roleName = GameLogic.getPlayerSetupInfo(id).role;
-                        const dittoTag = (state.isDittoWolfKingMode && id === state.initialRoleSetup[state.dittoWolfKingRole]) ? '<span style="color:#ff9800;">(百變)</span>' : '';
-                        return `<span class="${roleClass}" style="font-weight: bold;">${roleName}(${id}號)${dittoTag}</span>`;
-                    });
-                    
-                    formatted = formatted.replace(/好人陣營獲勝！/g, '<span style="color: var(--color-good); font-weight: bold;">好人陣營獲勝！</span>');
-                    formatted = formatted.replace(/狼人陣營獲勝！/g, '<span style="color: var(--color-wolf); font-weight: bold;">狼人陣營獲勝！</span>');
-                    
-                    return formatted;
-                };
-
-                const isPlayerTaken = (id, roleKey, wolfIndex = null) => {
-                    const s = state.initialRoleSetup;
-                    if (roleKey !== 'magician' && s.magician === id) return true;
-                    if (roleKey !== 'blackMerchant' && s.blackMerchant === id) return true;
-                    if (roleKey !== 'nightmare' && s.nightmare === id) return true;
-                    if (roleKey !== 'blackWolf' && s.blackWolf === id) return true;
-                    if (roleKey !== 'wolfBeauty' && s.wolfBeauty === id) return true;
-                    if (roleKey !== 'awakenedWolfBeauty' && s.awakenedWolfBeauty === id) return true;
-                    if (roleKey !== 'evilKnight' && s.evilKnight === id) return true;
-                    if (roleKey !== 'mechWolf' && s.mechWolf === id) return true;
-                    if (roleKey !== 'wolfBrother' && s.wolfBrother === id) return true;
-                    if (roleKey !== 'wolfYoungerBrother' && s.wolfYoungerBrother === id) return true;
-                    if (roleKey !== 'guard' && s.guard === id) return true;
-                    if (roleKey !== 'dreamer' && s.dreamer === id) return true;
-                    if (roleKey !== 'knight' && s.knight === id) return true;
-                    if (roleKey !== 'bear' && s.bear === id) return true;
-                    if (roleKey !== 'seer' && s.seer === id) return true;
-                    if (roleKey !== 'witch' && s.witch === id) return true;
-                    if (roleKey !== 'hunter' && s.hunter === id) return true;
-                    if (roleKey !== 'awakenedHunter' && s.awakenedHunter === id) return true;
-                    if (roleKey !== 'shadow' && s.shadow === id) return true;
-                    if (roleKey !== 'medium' && s.medium === id) return true;
-                    
-                    if (roleKey === 'wolf') {
-                        const activeW = s.wolves.slice(0, normalWolfCount.value);
-                        return activeW.some((wId, idx) => wId === id && idx !== wolfIndex);
-                    } else {
-                        const activeW = s.wolves.slice(0, normalWolfCount.value);
-                        return activeW.includes(id);
-                    }
-                };
-
-                const isTargetInvalidForSeer = (id) => {
-                    if (state.activeRoles.knight && state.knightUsed && id === state.initialRoleSetup.knight) return true;
-                    if (state.dueledGoodTarget !== 0 && id === state.dueledGoodTarget) return true;
-                    return false;
-                };
-
                 const hunterSignal = computed(() => {
                     const hunterId = state.initialRoleSetup.hunter;
                     if (!hunterId) return { canShoot: false, isDead: false, reason: "", notSet: true };
@@ -2824,7 +3116,6 @@
 
                     return { canShoot: true, isDead: false, reason: "若今晚出局，可發動技能" };
                 });
-
                 const ahSignal = computed(() => {
                     const ahId = state.initialRoleSetup.awakenedHunter;
                     if (!ahId) return { isDead: false, notSet: true };
@@ -2832,163 +3123,122 @@
                     if (p && !p.alive && state.day > 1) return { isDead: true, notSet: false };
                     return { isDead: false, notSet: false };
                 });
-                
                 const canDittoWolfKingKill = computed(() => {
                     if (!state.isDittoWolfKingMode) return false;
                     const dittoId = state.initialRoleSetup[state.dittoWolfKingRole];
                     const otherWolvesAlive = state.players.some(p => {
                         if (!p.alive || p.id === dittoId) return false;
+const r = GameLogic.getPlayerSetupInfo(p.id).role;
+                        return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '石像鬼', '狼兄', '狼弟'].includes(r);
+                    });
+                    return !otherWolvesAlive;
+                });
+
+                    const isWolfTeamDeadExcludingGargoyle = computed(() => {
+                    const gargoyleId = state.initialRoleSetup.gargoyle;
+                    const dittoId = state.isDittoWolfKingMode ? state.initialRoleSetup[state.dittoWolfKingRole] : null;
+                    const otherWolvesAlive = state.players.some(p => {
+                        if (!p.alive || p.id === gargoyleId) return false;
+                        if (p.id === dittoId) return true;
                         const r = GameLogic.getPlayerSetupInfo(p.id).role;
                         return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '機械狼', '狼兄', '狼弟'].includes(r);
                     });
                     return !otherWolvesAlive;
                 });
-                
+
+                // 👇👇 請補上這一段缺失的機械狼帶刀判定 👇👇
                 const isWolfTeamDeadExcludingMech = computed(() => {
-                    const mechId = state.initialRoleSetup.mechWolf;
+                    const mechWolfId = state.initialRoleSetup.mechWolf;
                     const dittoId = state.isDittoWolfKingMode ? state.initialRoleSetup[state.dittoWolfKingRole] : null;
                     const otherWolvesAlive = state.players.some(p => {
-                        if (!p.alive || p.id === mechId) return false;
+                        if (!p.alive || p.id === mechWolfId) return false;
                         if (p.id === dittoId) return true;
                         const r = GameLogic.getPlayerSetupInfo(p.id).role;
-                        return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '狼兄', '狼弟'].includes(r);
+                        return ['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '石像鬼', '狼兄', '狼弟'].includes(r);
                     });
                     return !otherWolvesAlive;
-                });
-                
-                const canMechWolfKill = computed(() => {
-                    return isWolfTeamDeadExcludingMech.value;
                 });
 
                 const isDittoWolfKingDead = computed(() => {
                     if (!state.isDittoWolfKingMode) return true;
-                    const dittoId = state.initialRoleSetup[state.dittoWolfKingRole];
-                    const p = state.players.find(x => x.id === dittoId);
-                    return p && !p.alive;
+                    return GameLogic.isRoleDead(state.dittoWolfKingRole);
                 });
 
-                const startGame = () => {
-                    const activeGods = godRoles.value.filter(r => state.activeRoles[r.id]);
-                    let isDitto = false;
-                    if (activeGods.length === 5) {
-                        isDitto = true;
-                    }
-
-                    let spWolfCount = 0;
-                    if (state.activeRoles.nightmare) spWolfCount++;
-                    if (state.activeRoles.blackWolf) spWolfCount++;
-                    if (state.activeRoles.wolfBeauty) spWolfCount++;
-                    if (state.activeRoles.awakenedWolfBeauty) spWolfCount++;
-                    if (state.activeRoles.evilKnight) spWolfCount++;
-                    if (state.activeRoles.mechWolf) spWolfCount++;
-                    if (state.activeRoles.wolfBrothers) spWolfCount += 2; 
-                    if (isDitto) spWolfCount++;
-
-                    const maxW = state.playerCount <= 10 ? 3 : 4;
-                    
-                    if (spWolfCount > maxW) {
-                        alert(`【特殊狼人超過數量】\n${state.playerCount} 人局狼陣營總數不可超過 ${maxW} 名！\n您目前的特殊狼人（含百變狼王）已達 ${spWolfCount} 名，請減少配置。`);
-                        return;
-                    }
-
-                    if (isDitto) {
-                        state.isDittoWolfKingMode = true;
-                        const randomGod = activeGods[Math.floor(Math.random() * activeGods.length)];
-                        state.dittoWolfKingRole = randomGod.id;
-                        alert(`【百變狼王模式已啟動】\n系統偵測到 5 張神牌，隨機抽取「${randomGod.name}」成為百變狼王！\n（該角色底牌為狼人，與狼隊不互認，且擁有專屬變異技能）`);
-                    } else {
-                        state.isDittoWolfKingMode = false;
-                        state.dittoWolfKingRole = null;
-                    }
-
-                    GameLogic.initPlayers();
-                    state.history = [];
-                    state.screen = 'game';
-                    state.day = 1;
-                    state.awbUsed = false;
-                    state.knightUsed = false;
-                    state.ekUsed = false;
-                    state.mechWolfState = { hasLearned: false, learnedRole: null, poisonUsed: false, shieldBroken: false, wolfKillUsed: false };
-                    state.wolfBrotherRevengeUsed = false;
-                    state.dueledGoodTarget = 0;
-                    state.winReasonPrinted = false;
-                    
-                    state.nightRecords.bearCharmTarget = 0;
-                    state.nightRecords.lastBearCharmTarget = 0;
-                    state.nightRecords.wolfBrotherRevengeTarget = 0;
-                    
-                    state.magicianUsedSwaps = [];
-                    state.giftedState = { hasGift: false, id: 0, item: '', isUsed: false };
-
-                    GameLogic.startNight();
+                const setGuardTarget = (id) => {
+                    if (state.nightRecords.lastGuardTarget === id && state.day > 1) return;
+                    state.nightRecords.guardTarget = id;
                 };
 
-                const setWitchAction = (action) => {
-                    if (action === 'heal') {
-                        if (actualWolfKillForWitch.value === 0 || !state.witchPotions.heal || isWitchSelfSaveRestricted.value) return;
-                        if (state.nightRecords.witchAction === 'heal') {
-                            state.nightRecords.witchAction = 'none';
-                        } else {
-                            state.nightRecords.witchAction = 'heal';
-                            state.nightRecords.witchPoison = 0;
-                        }
-                    } else if (action === 'none') {
-                        if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'witch' && state.day === 1 && actualWolfKillForWitch.value !== 0) return;
-                        state.nightRecords.witchAction = 'none';
-                        state.nightRecords.witchPoison = 0;
-                    }
+                const confirmCharmReveal = () => {
+                    state.morningData.daytimeCharmDeaths = [];
+                    GameLogic.popShooter();
                 };
 
-                const setPoisonTarget = (id) => {
-                    if (!state.witchPotions.poison) return;
-                    if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'witch' && state.day === 1) return;
-                    
-                    if (state.nightRecords.witchPoison === id) {
-                        state.nightRecords.witchPoison = 0;
-                        if (state.nightRecords.witchAction === 'poison') state.nightRecords.witchAction = 'none';
-                    } else {
-                        state.nightRecords.witchPoison = id;
-                        state.nightRecords.witchAction = 'poison';
-                    }
-                };
-
-                const setKnightDuelTarget = (id) => {
-                    if (!isTargetInvalidForSeer(id)) {
-                        state.morningData.knightDuelTarget = id;
-                        state.morningData.voteTarget = 0;
-                        state.morningData.explodeTarget = 0;
-                    }
-                };
-
-                const triggerGameOver = () => {
-                    GameLogic.checkAndPrintDaySummary();
-                    state.gameOverResult = state.pendingGameOver.faction.replace('🎉 ', '').replace('🐺 ', ''); 
-                    state.history.push(`<br><span style="color:#fff; font-size:16px; font-weight:bold;">=== 遊戲結束 ===</span>`);
-                    state.history.push(`🏁 ${state.pendingGameOver.faction}`); 
-                    state.screen = 'gameover'; 
+                const confirmShootReveal = () => {
+                    state.morningData.lastShotTarget = 0;
+                    state.morningData.lastShooterRole = '';
+                    GameLogic.popShooter();
                 };
 
                 return {
-                    ROLE_DICT, state, alivePlayers, explodableWolves, normalWolfCount, godRoles, specialWolfRoles, wolfMenuRoles, specialVillagerRoles, bearGrowl,
-                    isWitchSelfSaveRestricted, isRoleDead, formatLog, toggleRole, getPhaseHeaderClass, canDittoWolfKingKill, isDittoWolfKingDead, canMechWolfKill, isWolfTeamDeadExcludingMech, actualWolfKillForWitch,
-                    startGame, getPlayerSetupInfo: (id) => GameLogic.getPlayerSetupInfo(id), getRoleClass: (id) => GameLogic.getRoleClass(id), isPlayerTaken, isWolfTarget, isStrictWolfTeam, isTargetInvalidForSeer, hunterSignal, ahSignal, getMediumCheckResult: (id) => GameLogic.getMediumCheckResult(id), getActualTarget, toggleMagicianSwap,
-                    setGuardTarget: (id) => { if (state.nightRecords.lastGuardTarget !== id || state.day === 1) state.nightRecords.guardTarget = id; },
-                    setPoisonTarget, setWitchAction, setKnightDuelTarget, setSeerTarget, setMediumTarget, triggerGameOver,
-                    checkFeared: (roles) => GameLogic.checkFeared(roles),
-                    nextPhase: () => GameLogic.nextPhase(),
-                    prevPhase: () => GameLogic.prevPhase(),
-                    confirmShoot: () => GameLogic.confirmShoot(),
-                    confirmAhShoot: () => GameLogic.confirmAhShoot(),
-                    confirmShootReveal: () => { state.morningData.lastShotTarget = 0; GameLogic.popShooter(); },
-                    confirmVote: () => GameLogic.confirmVote(),
-                    confirmExplode: () => GameLogic.confirmExplode(),
-                    confirmDuel: () => GameLogic.confirmDuel(),
-                    confirmKnightReveal: () => GameLogic.confirmKnightReveal(),
-                    confirmCharmReveal: () => { state.morningData.daytimeCharmDeaths = []; GameLogic.popShooter(); },
-                    reloadPage: () => window.location.reload()
+                    state, 
+                    normalWolfCount,
+                    alivePlayers, 
+                    explodableWolves, 
+                    isWitchSelfSaveRestricted, 
+                    bearGrowl, 
+                    hunterSignal, 
+                    ahSignal,
+                    canDittoWolfKingKill, 
+                    isWolfTeamDeadExcludingMech, 
+                    isWolfTeamDeadExcludingGargoyle, 
+                    isDittoWolfKingDead, 
+                    actualWolfKillForWitch,
+                    getPlayerSetupInfo: GameLogic.getPlayerSetupInfo, 
+                    getRoleClass: GameLogic.getRoleClass,
+                    getMediumCheckResult: GameLogic.getMediumCheckResult, 
+                    checkFeared: GameLogic.checkFeared,
+                    isWolfTarget: GameLogic.isWolfTarget, 
+                    isTargetInvalidForSeer, 
+                    getPhaseHeaderClass, 
+                    getActualTarget,
+                    setWitchAction, 
+                    setPoisonTarget, 
+                    setKnightDuelTarget, 
+                    triggerGameOver,
+                    prevPhase: GameLogic.prevPhase, 
+                    nextPhase: GameLogic.nextPhase,
+                    confirmShoot: GameLogic.confirmShoot, 
+                    confirmAhShoot: GameLogic.confirmAhShoot,
+                    confirmVote: GameLogic.confirmVote, 
+                    confirmExplode: GameLogic.confirmExplode,
+                    confirmDuel: GameLogic.confirmDuel, 
+                    confirmKnightReveal: GameLogic.confirmKnightReveal,
+                    toggleMagicianSwap, 
+                    setSeerTarget, 
+                    setMediumTarget, 
+                    setGuardTarget,
+                    confirmCharmReveal, 
+                    confirmShootReveal, 
+                    isRoleDead: GameLogic.isRoleDead, 
+                    isPlayerTaken
                 };
             }
-        }).mount('#app');
+        };
+
+        // ================= 啟動 Vue 應用 =================
+        const app = createApp({
+            components: {
+                'setup-screen': SetupScreen,
+                'game-over-screen': GameOverScreen,
+                'game-screen': GameScreen
+            },
+            setup() {
+                return { state };
+            }
+        });
+
+        app.mount('#app');
     </script>
 </body>
 </html>
