@@ -933,6 +933,53 @@
                 </div>
             </div>
 
+            <!-- 🏹 獵魔人階段 -->
+            <div v-show="state.currentPhase === 'demonHunter'" class="action-row">
+                <h3 :class="getPhaseHeaderClass('demonHunter', 'color-god')">🏹 獵魔人請睜眼</h3>
+                
+                <div v-if="state.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：獵魔人是幾號？</p>
+                    <select v-model="state.initialRoleSetup.demonHunter">
+                        <option :value="0">請選擇</option>
+                        <template v-for="p in state.players" :key="p.id">
+                            <option :value="p.id" v-if="!isPlayerTaken(p.id, 'demonHunter')">{{ p.id }} 號</option>
+                        </template>
+                    </select>
+                </div>
+
+                <div v-if="isRoleDead('demonHunter')" class="witch-alert-active" style="border-color: #555; background: #333;">
+                    <h1 style="margin:0; color:white; font-size: 18px;">🪦 獵魔人已經死亡</h1>
+                </div>
+                <div v-else-if="checkFeared(['獵魔人'])">
+                    <div class="witch-alert-active" style="color: white;">⚠️ 被夢魘恐懼無法使用技能</div>
+                    <div class="player-grid-container">
+                        <div class="player-grid-btn zero-btn selected">被恐懼無法狩獵</div>
+                    </div>
+                </div>
+                <div v-else>
+                    <div v-if="state.day === 1">
+                        <p style="color: #aaa;">(第一晚僅確認身分，不需行動)</p>
+                    </div>
+                    <div v-else>
+                        <p>請選擇今晚要狩獵的玩家 <span style="font-size:12px;color:#aaa;">(不可選自己)</span>：</p>
+                        <div class="player-grid-container">
+                            <div :class="['player-grid-btn zero-btn', { selected: state.nightRecords.demonHunterTarget === 0 }]" @click="state.nightRecords.demonHunterTarget = 0">不狩獵</div>
+                            <template v-for="p in alivePlayers" :key="p.id">
+                                <div v-show="p.id !== state.initialRoleSetup.demonHunter"
+                                     :class="['player-grid-btn', getPlayerSetupInfo(p.id).class, { selected: state.nightRecords.demonHunterTarget === p.id }]"
+                                     @click="state.nightRecords.demonHunterTarget = p.id">
+                                    <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;" v-if="getPlayerSetupInfo(p.id).role !== '未定'">{{ getPlayerSetupInfo(p.id).role }}</span></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button class="btn-prev" @click="prevPhase" >⬅️ 上一階段</button>
+                    <button @click="nextPhase">確認 請閉眼 ➡️</button>
+                </div>
+            </div>
+
             <!-- 🔫 獵人階段 -->
             <div v-show="state.currentPhase === 'hunter'" class="action-row">
                 <h3 :class="getPhaseHeaderClass('hunter', 'color-god')">🔫 獵人請睜眼</h3>
@@ -1493,6 +1540,7 @@
             gargoyle:           { id: 'gargoyle', name: '石像鬼', emoji: '🗿', type: 'wolf', selectable: true, executeOrder: 22 },
             dreamer:            { id: 'dreamer', name: '攝夢人', emoji: '💤', type: 'god', selectable: true, executeOrder: 25 },
             witch:              { id: 'witch', name: '女巫', emoji: '🧙‍♀️', type: 'god', selectable: true, executeOrder: 40 },
+            demonHunter:        { id: 'demonHunter', name: '獵魔人', emoji: '🏹', type: 'god', selectable: true, executeOrder: 45 },
             hunter:             { id: 'hunter', name: '獵人', emoji: '🔫', type: 'god', selectable: true, executeOrder: 60 },
             awakenedHunter:     { id: 'awakenedHunter', name: '覺醒獵人', emoji: '🔫✨', type: 'god', selectable: true, executeOrder: 70 },
             bear:               { id: 'bear', name: '熊', emoji: '🐻', type: 'god', selectable: true, executeOrder: 80 },
@@ -1522,15 +1570,15 @@
             phaseQueue: [],
             playerCount: 12,
             players: [],
-            activeRoles: { magician: false, blackMerchant: false, witch: true, guard: false, bear: false, dreamer: false, knight: false, gravekeeper: false, seer: true, shadow: false, medium: false, hunter: true, awakenedHunter: false, nightmare: false, blackWolf: false, wolfBeauty: false, awakenedWolfBeauty: false, evilKnight: false, gargoyle: false, mechWolf: false, wolfBrothers: false, wolf: true },
+            activeRoles: { magician: false, blackMerchant: false, witch: true, demonHunter: false, guard: false, bear: false, dreamer: false, knight: false, gravekeeper: false, seer: true, shadow: false, medium: false, hunter: true, awakenedHunter: false, nightmare: false, blackWolf: false, wolfBeauty: false, awakenedWolfBeauty: false, evilKnight: false, gargoyle: false, mechWolf: false, wolfBrothers: false, wolf: true },
             witchPotions: { heal: true, poison: true },
-            initialRoleSetup: { magician: 0, blackMerchant: 0, wolves: [], witch: 0, guard: 0, bear: 0, dreamer: 0, knight: 0, gravekeeper: 0, seer: 0, shadow: 0, medium: 0, hunter: 0, awakenedHunter: 0, nightmare: 0, blackWolf: 0, wolfBeauty: 0, awakenedWolfBeauty: 0, evilKnight: 0, gargoyle: 0, mechWolf: 0, wolfBrother: 0, wolfYoungerBrother: 0 },
+            initialRoleSetup: { magician: 0, blackMerchant: 0, wolves: [], witch: 0, demonHunter: 0, guard: 0, bear: 0, dreamer: 0, knight: 0, gravekeeper: 0, seer: 0, shadow: 0, medium: 0, hunter: 0, awakenedHunter: 0, nightmare: 0, blackWolf: 0, wolfBeauty: 0, awakenedWolfBeauty: 0, evilKnight: 0, gargoyle: 0, mechWolf: 0, wolfBrother: 0, wolfYoungerBrother: 0 },
             nightRecords: { 
                 magicianSwaps: [], 
                 blackMerchantTarget: 0, 
                 blackMerchantItem: '', 
                 giftedPlayerTarget: 0,
-                nightmareTarget: 0, guardTarget: 0, lastGuardTarget: 0, gargoyleTarget: 0, dreamTarget: 0, lastDreamTarget: 0, charmTarget: 0, awbCharmTarget: 0, lastAwbCharmTarget: 0, bearCharmTarget: 0, lastBearCharmTarget: 0, seerTarget: 0, shadowTarget: 0, mediumTarget: 0, wolfKill: 0, witchAction: 'none', witchPoison: 0, mechWolfLearnTarget: 0, mechWolfActionTarget: 0, lastMechWolfActionTarget: 0, wolfBrotherRevengeTarget: 0 
+                nightmareTarget: 0, guardTarget: 0, lastGuardTarget: 0, gargoyleTarget: 0, dreamTarget: 0, lastDreamTarget: 0, charmTarget: 0, awbCharmTarget: 0, lastAwbCharmTarget: 0, bearCharmTarget: 0, lastBearCharmTarget: 0, seerTarget: 0, shadowTarget: 0, mediumTarget: 0, wolfKill: 0,     witchAction: 'none', witchPoison: 0, demonHunterTarget: 0, mechWolfLearnTarget: 0, mechWolfActionTarget: 0, lastMechWolfActionTarget: 0, wolfBrotherRevengeTarget: 0 
             },
             
             isDittoWolfKingMode: false,
@@ -1643,6 +1691,7 @@
                 else if (s.gravekeeper === id) { resolvedRole = '守墓人'; resolvedClass = 'color-god'; }
                 else if (s.seer === id) { resolvedRole = '預言家'; resolvedClass = 'color-god'; }
                 else if (s.witch === id) { resolvedRole = '女巫'; resolvedClass = 'color-god'; }
+                else if (s.demonHunter === id) { resolvedRole = '獵魔人'; resolvedClass = 'color-god'; }
                 else if (s.hunter === id) { resolvedRole = '獵人'; resolvedClass = 'color-god'; }
                 else if (s.awakenedHunter === id) { resolvedRole = '覺醒獵人'; resolvedClass = 'color-god'; }
                 else if (s.shadow === id) { resolvedRole = '燈影'; resolvedClass = 'color-villager'; }
@@ -1759,6 +1808,7 @@
                 state.nightRecords.wolfKill = 0;
                 state.nightRecords.witchAction = 'none';
                 state.nightRecords.witchPoison = 0;
+                state.nightRecords.demonHunterTarget = 0;
                 
                 if (!state.mechWolfState.hasLearned) state.nightRecords.mechWolfLearnTarget = 0;
                 state.nightRecords.mechWolfActionTarget = 0;
@@ -1832,6 +1882,7 @@
                     state.nightRecords.witchAction = 'none';
                     state.nightRecords.witchPoison = 0;
                 }
+                if (state.currentPhase === 'demonHunter' && GameLogic.checkFeared(['獵魔人'])) state.nightRecords.demonHunterTarget = 0;
             },
 
             nextPhase() {
@@ -1840,7 +1891,7 @@
                     
                     if (phase === 'magician' && state.initialRoleSetup.magician === 0) return alert('請設定「魔術師」的號碼！');
                     if (phase === 'blackMerchant' && state.initialRoleSetup.blackMerchant === 0) return alert('請設定「黑市商人」的號碼！');
-                    
+                    if (phase === 'demonHunter' && state.initialRoleSetup.demonHunter === 0) return alert('請設定「獵魔人」的號碼！');
                     if (phase === 'magician' && state.nightRecords.magicianSwaps.length === 1) return alert('魔術師必須選擇 0 名或 2 名玩家！');
                     if (phase === 'blackMerchant' && state.nightRecords.blackMerchantTarget !== 0 && !state.nightRecords.blackMerchantItem) return alert('請選擇要贈送的物品！');
 
@@ -1984,7 +2035,10 @@
                 } else if (cause === 'ek_reflect') {
                     GameLogic.addHistory(`💥 ${id}號 因對惡靈騎士使用技能，遭到反傷死亡`);
                 } else if (cause === 'merchant_wolf') {
-                    // 黑商送狼反噬 (戰報已在其他地方記錄)
+                    } else if (cause === 'demon_hunt_success') {
+                    GameLogic.addHistory(`💥 ${id}號 被獵魔人狩獵死亡`);
+                } else if (cause === 'demon_hunt_fail') {
+                    GameLogic.addHistory(`💥 ${id}號(獵魔人) 狩獵好人遭到反噬死亡`);
                 }
 
                 let sealed = GameLogic.isSkillSealed(role, cause);
@@ -2378,6 +2432,20 @@
                         GameLogic.addHistory(`🛡️ ${state.initialRoleSetup.mechWolf}號 的防毒盾成功擋下了毒藥 (${p.id}號)！防毒盾碎裂。`);
                         return false;
                     }
+                if (GameLogic.getPlayerSetupInfo(p.id).role === '獵魔人') {
+                        if (p.source === 'witch') {
+                            GameLogic.addHistory(`🛡️ ${p.id}號(獵魔人) 免疫了女巫的毒藥`);
+                            return false;
+                        }
+                        if (p.source === 'gift') {
+                            let giftedRole = GameLogic.getPlayerSetupInfo(state.giftedState.id).role;
+                            if (!['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '石像鬼', '機械狼', '狼兄', '狼弟'].includes(giftedRole)) {
+                                GameLogic.addHistory(`🛡️ ${p.id}號(獵魔人) 免疫了幸運兒(好人)的毒藥`);
+                                return false;
+                            }
+                        }
+                    }
+
                     return true;
                 });
 
@@ -2386,7 +2454,11 @@
                 });
 
                 if (actualDreamTarget !== 0 && actualDreamTarget === state.nightRecords.lastDreamTarget) {
-                    deaths.push({ id: actualDreamTarget, cause: 'dream_death' });
+ if (GameLogic.getPlayerSetupInfo(actualDreamTarget).role === '獵魔人') {
+                        GameLogic.addHistory(`🛡️ ${actualDreamTarget}號(獵魔人) 免疫了攝夢人的雙夢傷害`);
+                    } else {
+                        deaths.push({ id: actualDreamTarget, cause: 'dream_death' });
+                    }
                 }
 
                 let dreamerId = state.initialRoleSetup.dreamer;
@@ -2455,6 +2527,19 @@
                     }
                 }
 
+                if (state.day > 1 && state.activeRoles.demonHunter && state.nightRecords.demonHunterTarget !== 0) {
+                    let dhId = state.initialRoleSetup.demonHunter;
+                    let dhTargetOrig = state.nightRecords.demonHunterTarget;
+                    let dhTarget = getActualTarget(dhTargetOrig);
+
+                    if (GameLogic.isWolfTarget(dhTarget)) {
+                        deaths.push({ id: dhTarget, cause: 'demon_hunt_success' });
+                        GameLogic.addHistory(`🏹 ${dhId}號(獵魔人) 成功狩獵了狼人 ${logTarget(dhTargetOrig)}`);
+                    } else {
+                        deaths.push({ id: dhId, cause: 'demon_hunt_fail' });
+                        GameLogic.addHistory(`🏹 ${dhId}號(獵魔人) 狩獵失誤，目標 ${logTarget(dhTargetOrig)} 是好人，遭到反噬！`);
+                    }
+                }
                 let uniqueDeaths = {};
                 deaths.forEach(d => {
                     if (!uniqueDeaths[d.id]) {
@@ -2543,10 +2628,19 @@
                 const shooter = state.currentShooter;
                 
                 if (target !== 0) {
-                    GameLogic.addHistory(`🔫 ${shooter.id}號 開槍帶走了 ${target}號`);
-                    state.morningResultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 <span class="${GameLogic.getRoleClass(target)}">${GameLogic.getPlayerSetupInfo(target).role}(${target}號)</span></span>`;
-                    state.finalEventHtml = `💥 ${shooter.role} 開槍帶走了 <span class="${GameLogic.getRoleClass(target)}">${GameLogic.getPlayerSetupInfo(target).role}(${target}號)</span>`;
-                    GameLogic.executeDeath(target, 'shot');
+                    let isNightDeath = !['vote', 'explode', 'duel_wolf', 'duel_knight', 'ah_shot_day'].includes(shooter.cause);
+                    let targetInfo = GameLogic.getPlayerSetupInfo(target);
+
+                    if (targetInfo.role === '獵魔人' && isNightDeath) {
+                        GameLogic.addHistory(`🔫 ${shooter.id}號 開槍帶走 ${target}號，但 ${target}號(獵魔人) 免疫了夜槍傷害`);
+                        state.morningResultHtml += `<br><span>💥 ${shooter.role} 開槍，但 <span class="color-god">獵魔人(${target}號)</span> 免疫了傷害</span>`;
+                        state.finalEventHtml = `💥 ${shooter.role} 開槍，但 <span class="color-god">獵魔人(${target}號)</span> 免疫了傷害`;
+                    } else {
+                        GameLogic.addHistory(`🔫 ${shooter.id}號 開槍帶走了 ${target}號`);
+                        state.morningResultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 <span class="${GameLogic.getRoleClass(target)}">${targetInfo.role}(${target}號)</span></span>`;
+                        state.finalEventHtml = `💥 ${shooter.role} 開槍帶走了 <span class="${GameLogic.getRoleClass(target)}">${targetInfo.role}(${target}號)</span>`;
+                        GameLogic.executeDeath(target, 'shot');
+                    }
                     
                     state.morningData.lastShotTarget = target;
                     state.morningData.lastShooterRole = shooter.role;
@@ -2593,11 +2687,20 @@
                 } else {
                     let target = GameLogic.findClosestWolf(shooter.id, dir);
                     if (target) {
-                        GameLogic.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍，擊中了 ${target}號`);
-                        state.morningResultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 <span class="${GameLogic.getRoleClass(target)}">${GameLogic.getPlayerSetupInfo(target).role}(${target}號)</span></span>`;
-                        state.finalEventHtml = `💥 覺醒獵人 開槍擊殺了 <span class="${GameLogic.getRoleClass(target)}">${GameLogic.getPlayerSetupInfo(target).role}(${target}號)</span>`;
-                        let outCause = (shooter.cause === 'vote' || shooter.cause === 'explode' || shooter.cause === 'duel_wolf') ? 'ah_shot_day' : 'ah_shot';
-                        GameLogic.executeDeath(target, outCause);
+                        let isNightDeath = !['vote', 'explode', 'duel_wolf', 'duel_knight', 'ah_shot_day'].includes(shooter.cause);
+                        let targetInfo = GameLogic.getPlayerSetupInfo(target);
+
+                        if (targetInfo.role === '獵魔人' && isNightDeath) {
+                            GameLogic.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍擊中 ${target}號，但 ${target}號(獵魔人) 免疫了夜槍傷害`);
+                            state.morningResultHtml += `<br><span>💥 覺醒獵人 開槍，但 <span class="color-god">獵魔人(${target}號)</span> 免疫了傷害</span>`;
+                            state.finalEventHtml = `💥 覺醒獵人 開槍，但 <span class="color-god">獵魔人(${target}號)</span> 免疫了傷害`;
+                        } else {
+                            GameLogic.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍，擊中了 ${target}號`);
+                            state.morningResultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 <span class="${GameLogic.getRoleClass(target)}">${targetInfo.role}(${target}號)</span></span>`;
+                            state.finalEventHtml = `💥 覺醒獵人 開槍擊殺了 <span class="${GameLogic.getRoleClass(target)}">${targetInfo.role}(${target}號)</span>`;
+                            let outCause = isNightDeath ? 'ah_shot' : 'ah_shot_day';
+                            GameLogic.executeDeath(target, outCause);
+                        }
 
                         state.morningData.ahDirection = null;
                         state.morningData.lastShotTarget = target;
@@ -2705,8 +2808,8 @@
 
                 const aliveGods = alive.filter(p => {
                     if (p.id === dittoId) return false;
-                    return ['魔術師', '黑市商人', '女巫', '守衛', '預言家', '獵人', '覺醒獵人', '熊', '攝夢人', '騎士', '守墓人', '通靈師'].includes(p.role);
-                }).length;
+                    return ['魔術師', '黑市商人', '女巫', '守衛', '獵魔人', '預言家', '獵人', '覺醒獵人', '熊', '攝夢人', '騎士', '守墓人', '通靈師'].includes(p.role);
+            }).length;
                 
                 const aliveVillagers = alive.filter(p => {
                     if (p.id === dittoId) return false;
@@ -2740,6 +2843,7 @@
             if (roleKey !== 'gravekeeper' && s.gravekeeper === id) return true;
             if (roleKey !== 'seer' && s.seer === id) return true;
             if (roleKey !== 'witch' && s.witch === id) return true;
+            if (roleKey !== 'demonHunter' && s.demonHunter === id) return true;
             if (roleKey !== 'hunter' && s.hunter === id) return true;
             if (roleKey !== 'awakenedHunter' && s.awakenedHunter === id) return true;
             if (roleKey !== 'shadow' && s.shadow === id) return true;
