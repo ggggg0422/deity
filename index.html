@@ -1347,7 +1347,18 @@
                 </div>
 
                 <div v-else>
-                    <div v-if="state.morningStep === 'vote'" class="action-row">
+                    
+                    <!-- 昨晚死亡揭曉畫面 (進入白天的第一個畫面) -->
+                    <div v-if="state.morningStep === 'morning_reveal'" class="action-row">
+                        <h3 style="color: #ff9800;">🌅 昨晚傷亡結果</h3>
+                        <div class="result-box" style="margin-top: 15px; margin-bottom: 15px; font-size: 18px;" v-html="state.morningResultHtml"></div>
+                        <div class="nav-buttons">
+                            <button class="btn-prev" @click="prevPhase">⬅️ 重新回朔</button>
+                            <button @click="acknowledgeMorningReveal" style="margin: 20px auto 0 auto;">確認進入下一步 ➡️</button>
+                        </div>
+                    </div>
+                    
+                    <div v-else-if="state.morningStep === 'vote'" class="action-row">
                         <div class="result-box" v-html="state.morningResultHtml"></div>
 
                         <!-- 熊的咆哮宣告 -->
@@ -1626,7 +1637,7 @@
         };
 
         const actualWolfKillForWitch = computed(() => getActualTarget(state.nightRecords.wolfKill));
-               
+                
         const isWitchSelfSaveRestricted = computed(() => {
             if (state.isDittoWolfKingMode && state.dittoWolfKingRole === 'witch' && state.day === 1) return false;
             return state.playerCount >= 10 && actualWolfKillForWitch.value !== 0 && actualWolfKillForWitch.value === state.initialRoleSetup.witch;
@@ -2038,7 +2049,7 @@
                     } else if (cause === 'demon_hunt_success') {
                     GameLogic.addHistory(`💥 ${id}號 被獵魔人狩獵死亡`);
                 } else if (cause === 'demon_hunt_fail') {
-                    GameLogic.addHistory(`💥 ${id}號(獵魔人) 狩獵好人遭到反噬死亡`);
+                    GameLogic.addHistory(`💥 ${id}號 狩獵好人遭到反噬死亡`);
                 }
 
                 let sealed = GameLogic.isSkillSealed(role, cause);
@@ -2434,13 +2445,13 @@
                     }
                 if (GameLogic.getPlayerSetupInfo(p.id).role === '獵魔人') {
                         if (p.source === 'witch') {
-                            GameLogic.addHistory(`🛡️ ${p.id}號(獵魔人) 免疫了女巫的毒藥`);
+                            GameLogic.addHistory(`🛡️ ${p.id}號 免疫了女巫的毒藥`);
                             return false;
                         }
                         if (p.source === 'gift') {
                             let giftedRole = GameLogic.getPlayerSetupInfo(state.giftedState.id).role;
                             if (!['狼人', '夢魘', '黑狼王', '狼美人', '覺醒狼美人', '惡靈騎士', '石像鬼', '機械狼', '狼兄', '狼弟'].includes(giftedRole)) {
-                                GameLogic.addHistory(`🛡️ ${p.id}號(獵魔人) 免疫了幸運兒(好人)的毒藥`);
+                                GameLogic.addHistory(`🛡️ ${p.id}號 免疫了幸運兒(好人)的毒藥`);
                                 return false;
                             }
                         }
@@ -2454,8 +2465,8 @@
                 });
 
                 if (actualDreamTarget !== 0 && actualDreamTarget === state.nightRecords.lastDreamTarget) {
- if (GameLogic.getPlayerSetupInfo(actualDreamTarget).role === '獵魔人') {
-                        GameLogic.addHistory(`🛡️ ${actualDreamTarget}號(獵魔人) 免疫了攝夢人的雙夢傷害`);
+                    if (GameLogic.getPlayerSetupInfo(actualDreamTarget).role === '獵魔人') {
+                        GameLogic.addHistory(`🛡️ ${actualDreamTarget}號 免疫了攝夢人的雙夢傷害`);
                     } else {
                         deaths.push({ id: actualDreamTarget, cause: 'dream_death' });
                     }
@@ -2534,10 +2545,10 @@
 
                     if (GameLogic.isWolfTarget(dhTarget)) {
                         deaths.push({ id: dhTarget, cause: 'demon_hunt_success' });
-                        GameLogic.addHistory(`🏹 ${dhId}號(獵魔人) 成功狩獵了狼人 ${logTarget(dhTargetOrig)}`);
+                        GameLogic.addHistory(`🏹 ${dhId}號 成功狩獵了狼人 ${logTarget(dhTargetOrig)}`);
                     } else {
                         deaths.push({ id: dhId, cause: 'demon_hunt_fail' });
-                        GameLogic.addHistory(`🏹 ${dhId}號(獵魔人) 狩獵失誤，目標 ${logTarget(dhTargetOrig)} 是好人，遭到反噬！`);
+                        GameLogic.addHistory(`🏹 ${dhId}號 狩獵失誤，目標 ${logTarget(dhTargetOrig)} 是好人，遭到反噬！`);
                     }
                 }
                 let uniqueDeaths = {};
@@ -2576,7 +2587,6 @@
                     state.pendingGameOver = nightWin;
                     GameLogic.addHistory(`🏁 遊戲結束：${nightWin.faction}`);
                     state.winReasonPrinted = true;
-                    GameLogic.popShooter(); 
                     return; 
                 }
 
@@ -2612,7 +2622,7 @@
                     lastExiledTarget: state.lastExiledTarget,
                     lastDayExploded: state.lastDayExploded,
 
-                    morningStep: 'vote',
+                    morningStep: 'morning_reveal', // <-- 變更為在此步驟停留
                     morningResultHtml: state.morningResultHtml,
                     finalEventHtml: state.finalEventHtml,
                     morningData: state.morningData,
@@ -2620,7 +2630,7 @@
                     isVotingDone: false
                 }));
 
-                GameLogic.popShooter();
+                state.morningStep = 'morning_reveal'; // <-- 取代原本的 GameLogic.popShooter()
             },
 
             confirmShoot() {
@@ -2631,8 +2641,8 @@
                     let isNightDeath = !['vote', 'explode', 'duel_wolf', 'duel_knight', 'ah_shot_day'].includes(shooter.cause);
                     let targetInfo = GameLogic.getPlayerSetupInfo(target);
 
-                    if (targetInfo.role === '獵魔人' && isNightDeath) {
-                        GameLogic.addHistory(`🔫 ${shooter.id}號 開槍帶走 ${target}號，但 ${target}號(獵魔人) 免疫了夜槍傷害`);
+                    if (targetInfo.role === '獵魔人' && isNightDeath && shooter.role !== '黑狼王') {
+                        GameLogic.addHistory(`🔫 ${shooter.id}號 開槍帶走 ${target}號，但 ${target}號 免疫了夜槍傷害`);
                         state.morningResultHtml += `<br><span>💥 ${shooter.role} 開槍，但 <span class="color-god">獵魔人(${target}號)</span> 免疫了傷害</span>`;
                         state.finalEventHtml = `💥 ${shooter.role} 開槍，但 <span class="color-god">獵魔人(${target}號)</span> 免疫了傷害`;
                     } else {
@@ -2690,8 +2700,8 @@
                         let isNightDeath = !['vote', 'explode', 'duel_wolf', 'duel_knight', 'ah_shot_day'].includes(shooter.cause);
                         let targetInfo = GameLogic.getPlayerSetupInfo(target);
 
-                        if (targetInfo.role === '獵魔人' && isNightDeath) {
-                            GameLogic.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍擊中 ${target}號，但 ${target}號(獵魔人) 免疫了夜槍傷害`);
+                        if (targetInfo.role === '獵魔人' && isNightDeath && shooter.role !== '黑狼王') {
+                            GameLogic.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍擊中 ${target}號，但 ${target}號 免疫了夜槍傷害`);
                             state.morningResultHtml += `<br><span>💥 覺醒獵人 開槍，但 <span class="color-god">獵魔人(${target}號)</span> 免疫了傷害</span>`;
                             state.finalEventHtml = `💥 覺醒獵人 開槍，但 <span class="color-god">獵魔人(${target}號)</span> 免疫了傷害`;
                         } else {
@@ -3324,6 +3334,7 @@ const r = GameLogic.getPlayerSetupInfo(p.id).role;
                     setGuardTarget,
                     confirmCharmReveal, 
                     confirmShootReveal, 
+                    acknowledgeMorningReveal: () => GameLogic.popShooter(),
                     isRoleDead: GameLogic.isRoleDead, 
                     isPlayerTaken
                 };
