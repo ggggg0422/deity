@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>狼人殺上帝專用小幫手 (惡靈騎士完美結算版)</title>
+    <title>狼人殺上帝專用小幫手 </title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
 /* =========================================
@@ -403,7 +403,8 @@
                     }
 
                     // 護盾與替死檢查
-                    if (p.role === ROLES.AWAKENED_WOLF_BEAUTY && !nightState.awbUsed && nightState.records.awbCharmTarget !== 0 && cause !== CAUSES.DUEL_WOLF) {
+                    if (p.role === ROLES.AWAKENED_WOLF_BEAUTY && !nightState.awbUsed && nightState.records.awbCharmTarget !== 0 && ![CAUSES.DUEL_WOLF, CAUSES.AH_SHOT].includes(cause)) {
+
                         const charmId = nightState.records.awbCharmTarget;
                         const charmP = Helpers.getPlayer(charmId);
                         if (charmP && charmP.alive && !pendingDeadIds.has(charmId)) {
@@ -418,7 +419,8 @@
                     finalEvents.push({ id, cause, sourceId });
 
                     // 連鎖反應 (魅惑、夢死)
-                    if (p.role === ROLES.WOLF_BEAUTY && nightState.records.charmTarget !== 0 && !Helpers.checkFeared([ROLES.WOLF_BEAUTY]) && cause !== CAUSES.DUEL_WOLF) {
+                    if (p.role === ROLES.WOLF_BEAUTY && nightState.records.charmTarget !== 0 && !Helpers.checkFeared([ROLES.WOLF_BEAUTY]) && ![CAUSES.DUEL_WOLF, CAUSES.AH_SHOT].includes(cause)) {
+
                         if (context === 'day') charmLog.push({ sourceRole: ROLES.WOLF_BEAUTY, source: p.id, target: nightState.records.charmTarget, type: CAUSES.CHARM });
                         triggerDeath(nightState.records.charmTarget, CAUSES.CHARM, p.id);
                     }
@@ -439,10 +441,9 @@
 
                     if (isHunterType) {
                         sealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK].includes(cause) || isFearedByNightmare;
-                    } else if (p.role === ROLES.BLACK_WOLF || (p.role === ROLES.MECH_WOLF && nightState.mechWolfState.learnedRole === ROLES.HUNTER)) {
-                        sealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.AH_SHOT, CAUSES.AH_SHOT_DAY, CAUSES.EXPLODE, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK, CAUSES.DUEL_WOLF].includes(cause) || isFearedByNightmare;
-                    }
-
+} else if (p.role === ROLES.BLACK_WOLF || (p.role === ROLES.MECH_WOLF && nightState.mechWolfState.learnedRole === ROLES.HUNTER)) {
+    sealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.AH_SHOT, CAUSES.EXPLODE, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK, CAUSES.DUEL_WOLF].includes(cause) || isFearedByNightmare;
+}
                     if (!sealed) {
                         if (p.role === ROLES.HUNTER) gunQueue.push({ id: p.id, role: ROLES.HUNTER, cause: cause });
                         else if (p.role === ROLES.BLACK_WOLF) gunQueue.push({ id: p.id, role: ROLES.BLACK_WOLF, cause: cause });
@@ -787,7 +788,7 @@
                             <div v-if="Helpers.isDead('wolfBeauty')" class="witch-alert-active" style="border-color: #555; background: #333;"><h2 style="margin:0; color:white; font-size:18px;">🪦 {{ ROLES.WOLF_BEAUTY }}已經死亡</h2></div>
                             <div v-else class="player-grid-container">
                                 <div :class="['player-grid-btn zero-btn', { 'danger-selected': nightState.records.charmTarget === 0 }]" @click="nightState.records.charmTarget = 0">不魅惑</div>
-                                <div v-for="p in alivePlayers" :key="'wb'+p.id" :class="['player-grid-btn', p.class, { 'danger-selected': nightState.records.charmTarget === p.id }]" @click="nightState.records.charmTarget = p.id"><span class="num">{{ p.id }}</span></div>
+<div v-for="p in alivePlayers" :key="'wb'+p.id" :class="['player-grid-btn', p.class, { 'danger-selected': nightState.records.charmTarget === p.id }]" @click="nightState.records.charmTarget = p.id"><span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;">{{ p.role }}</span></span></div>
                             </div>
                         </div>
                         <div v-if="setupState.activeRoles.awakenedWolfBeauty" style="margin-top: 15px; border-top: 1px dashed #555; padding-top: 15px;">
@@ -796,7 +797,7 @@
                             <div v-else-if="nightState.awbUsed" class="witch-alert-active" style="border-color: #555; background: #333;"><h2 style="margin:0; color:white; font-size:18px;">✨ 技能已用畢</h2></div>
                             <div v-else class="player-grid-container">
                                 <div :class="['player-grid-btn zero-btn', { 'danger-selected': nightState.records.awbCharmTarget === 0 }]" @click="nightState.records.awbCharmTarget = 0">不魅惑</div>
-                                <div v-for="p in alivePlayers" :key="'awb'+p.id" :class="['player-grid-btn', p.class, { 'danger-selected': nightState.records.awbCharmTarget === p.id, disabled: p.id === nightState.records.lastAwbCharmTarget && gameState.day > 1 }]" @click="(p.id !== nightState.records.lastAwbCharmTarget || gameState.day === 1) && (nightState.records.awbCharmTarget = p.id)"><span class="num">{{ p.id }}</span></div>
+<div v-for="p in alivePlayers" :key="'awb'+p.id" :class="['player-grid-btn', p.class, { 'danger-selected': nightState.records.awbCharmTarget === p.id, disabled: p.id === nightState.records.lastAwbCharmTarget && gameState.day > 1 }]" @click="(p.id !== nightState.records.lastAwbCharmTarget || gameState.day === 1) && (nightState.records.awbCharmTarget = p.id)"><span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;">{{ p.role }}</span></span></div>
                             </div>
                         </div>
                     </div>
@@ -1134,30 +1135,33 @@
                     morningState.explodeTarget = 0; morningState.voteTarget = 0; morningState.knightDuelTarget = 0; morningState.isVotingDone = true; popShooter();
                 };
                 
-                const confirmShoot = () => {
-                    const target = morningState.shootTarget;
-                    const shooter = morningState.currentShooter;
-                    
-                    if (target !== 0) {
-                        const targetInfo = Helpers.getPlayer(target);
-                        let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
-                        
-                        if (targetInfo.role === ROLES.DEMON_HUNTER && isNightDeath && shooter.role !== ROLES.BLACK_WOLF) {
-                            Helpers.addHistory(`🔫 ${shooter.id}號 開槍帶走 ${Helpers.formatPlayerText(target)}，但 <span class="color-god">${ROLES.DEMON_HUNTER}</span> 免疫了夜槍傷害`);
-                            morningState.resultHtml += `<br><span>💥 ${shooter.role} 開槍，但 ${Helpers.formatPlayerText(target)} 免疫了傷害</span>`;
-                        } else {
-                            Helpers.addHistory(`🔫 ${shooter.id}號 開槍帶走了 ${Helpers.formatPlayerText(target)}`);
-                            morningState.resultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 ${Helpers.formatPlayerText(target)}</span>`;
-                            triggerDayDeath(targetInfo, CAUSES.SHOT);
-                        }
-                        morningState.lastShotTarget = target; morningState.lastShooterRole = shooter.role; morningState.step = STEPS.SHOOT_REVEAL;
-                    } else {
-                        Helpers.addHistory(`🔫 ${shooter.id}號 選擇壓槍`);
-                        morningState.resultHtml += `<br><span style="color:#aaa;">💥 ${shooter.role} 選擇壓槍</span>`;
-                        popShooter();
-                    }
-                    morningState.shootTarget = 0;
-                };
+    const confirmShoot = () => {
+    const target = morningState.shootTarget;
+    const shooter = morningState.currentShooter;
+    
+    if (target !== 0) {
+        const targetInfo = Helpers.getPlayer(target);
+        let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
+        
+        if (targetInfo.role === ROLES.DEMON_HUNTER && isNightDeath && shooter.role !== ROLES.BLACK_WOLF) {
+            // 修改這裡
+            Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 開槍帶走 ${Helpers.formatPlayerText(target)}，但 <span class="color-god">${ROLES.DEMON_HUNTER}</span> 免疫了夜槍傷害`);
+            morningState.resultHtml += `<br><span>💥 ${shooter.role} 開槍，但 ${Helpers.formatPlayerText(target)} 免疫了傷害</span>`;
+        } else {
+            // 修改這裡
+            Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 開槍帶走了 ${Helpers.formatPlayerText(target)}`);
+            morningState.resultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 ${Helpers.formatPlayerText(target)}</span>`;
+            triggerDayDeath(targetInfo, CAUSES.SHOT);
+        }
+        morningState.lastShotTarget = target; morningState.lastShooterRole = shooter.role; morningState.step = STEPS.SHOOT_REVEAL;
+    } else {
+        // 修改這裡
+        Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 選擇壓槍`);
+        morningState.resultHtml += `<br><span style="color:#aaa;">💥 ${shooter.role} 選擇壓槍</span>`;
+        popShooter();
+    }
+    morningState.shootTarget = 0;
+};
 
                 const findClosestWolf = (startId, dir) => {
                     let n = setupState.playerCount; let curr = startId;
@@ -1170,33 +1174,37 @@
                     return null;
                 };
 
-                const confirmAhShoot = () => {
-                    let dir = morningState.ahDirection; let shooter = morningState.currentShooter;
-                    if (dir === 0) {
-                        Helpers.addHistory(`🔫 ${shooter.id}號 選擇壓槍`);
-                        morningState.resultHtml += `<br><span style="color:#aaa;">💥 覺醒獵人 選擇壓槍</span>`;
-                        morningState.ahDirection = null; popShooter();
-                    } else {
-                        let target = findClosestWolf(shooter.id, dir);
-                        if (target) {
-                            let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
-                            let targetInfo = Helpers.getPlayer(target);
-                            if (targetInfo.role === ROLES.DEMON_HUNTER && isNightDeath && shooter.role !== ROLES.BLACK_WOLF) {
-                                Helpers.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍擊中 ${Helpers.formatPlayerText(target)}，但 <span class="color-god">${ROLES.DEMON_HUNTER}</span> 免疫了夜槍傷害`);
-                                morningState.resultHtml += `<br><span>💥 覺醒獵人 開槍，但 ${Helpers.formatPlayerText(target)} 免疫了傷害</span>`;
-                            } else {
-                                Helpers.addHistory(`🔫 ${shooter.id}號 向${dir>0?'遞增':'遞減'}方向開槍，擊中了 ${Helpers.formatPlayerText(target)}`);
-                                morningState.resultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 ${Helpers.formatPlayerText(target)}</span>`;
-                                triggerDayDeath(targetInfo, isNightDeath ? CAUSES.AH_SHOT : CAUSES.AH_SHOT_DAY);
-                            }
-                            morningState.ahDirection = null; morningState.lastShotTarget = target; morningState.lastShooterRole = shooter.role; morningState.step = STEPS.SHOOT_REVEAL;
-                        } else {
-                            Helpers.addHistory(`🔫 ${shooter.id}號 開槍，但場上已無狼人`);
-                            morningState.resultHtml += `<br><span style="color:#aaa;">💥 覺醒獵人 開槍，但場上已無狼人</span>`;
-                            morningState.ahDirection = null; popShooter();
-                        }
-                    }
-                };
+const confirmAhShoot = () => {
+    let dir = morningState.ahDirection; let shooter = morningState.currentShooter;
+    if (dir === 0) {
+        // 修改這裡
+        Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 選擇壓槍`);
+        morningState.resultHtml += `<br><span style="color:#aaa;">💥 覺醒獵人 選擇壓槍</span>`;
+        morningState.ahDirection = null; popShooter();
+    } else {
+        let target = findClosestWolf(shooter.id, dir);
+        if (target) {
+            let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
+            let targetInfo = Helpers.getPlayer(target);
+            if (targetInfo.role === ROLES.DEMON_HUNTER && isNightDeath && shooter.role !== ROLES.BLACK_WOLF) {
+                // 修改這裡
+                Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 向${dir>0?'遞增':'遞減'}方向開槍擊中 ${Helpers.formatPlayerText(target)}，但 <span class="color-god">${ROLES.DEMON_HUNTER}</span> 免疫了夜槍傷害`);
+                morningState.resultHtml += `<br><span>💥 覺醒獵人 開槍，但 ${Helpers.formatPlayerText(target)} 免疫了傷害</span>`;
+            } else {
+                // 修改這裡
+                Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 向${dir>0?'遞增':'遞減'}方向開槍，擊中了 ${Helpers.formatPlayerText(target)}`);
+                morningState.resultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 ${Helpers.formatPlayerText(target)}</span>`;
+                triggerDayDeath(targetInfo, isNightDeath ? CAUSES.AH_SHOT : CAUSES.AH_SHOT_DAY);
+            }
+            morningState.ahDirection = null; morningState.lastShotTarget = target; morningState.lastShooterRole = shooter.role; morningState.step = STEPS.SHOOT_REVEAL;
+        } else {
+            // 修改這裡
+            Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 開槍，但場上已無狼人`);
+            morningState.resultHtml += `<br><span style="color:#aaa;">💥 覺醒獵人 開槍，但場上已無狼人</span>`;
+            morningState.ahDirection = null; popShooter();
+        }
+    }
+};
 
                 return { setupState, gameState, nightState, morningState, alivePlayers, explodableWolves, confirmVote, confirmExplode, popShooter, confirmShoot, confirmAhShoot, Helpers, setKnightDuelTarget, confirmDuel, confirmKnightReveal, ROLES, CLASSES, STEPS };
             },
