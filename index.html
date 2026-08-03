@@ -434,10 +434,13 @@
                     let sealed = false;
                     let isHunterType = p.role === ROLES.HUNTER || (nightState.giftedState.hasGift && !nightState.giftedState.isUsed && nightState.giftedState.id === p.id && nightState.giftedState.item === ITEMS.GUN);
                     
+                    // 👉 修復：精準比對夢魘目標 ID 是否為當前死亡的玩家
+                    const isFearedByNightmare = context.includes('night') && nightState.records.nightmareTarget !== 0 && Helpers.getActualTarget(nightState.records.nightmareTarget) === p.id;
+
                     if (isHunterType) {
-                        sealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK].includes(cause) || (context.includes('night') && cause === CAUSES.WOLF && Helpers.checkFeared([ROLES.HUNTER, p.role]));
+                        sealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK].includes(cause) || isFearedByNightmare;
                     } else if (p.role === ROLES.BLACK_WOLF || (p.role === ROLES.MECH_WOLF && nightState.mechWolfState.learnedRole === ROLES.HUNTER)) {
-                        sealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.AH_SHOT, CAUSES.AH_SHOT_DAY, CAUSES.EXPLODE, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK, CAUSES.DUEL_WOLF].includes(cause) || (context.includes('night') && cause === CAUSES.WOLF && Helpers.checkFeared([ROLES.BLACK_WOLF, ROLES.MECH_WOLF]));
+                        sealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.AH_SHOT, CAUSES.AH_SHOT_DAY, CAUSES.EXPLODE, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK, CAUSES.DUEL_WOLF].includes(cause) || isFearedByNightmare;
                     }
 
                     if (!sealed) {
@@ -899,7 +902,8 @@
                     <h3 :class="CLASSES.GOD">🔫✨ {{ ROLES.AWAKENED_HUNTER }}請睜眼</h3>
                     <div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.AWAKENED_HUNTER }}是幾號？</p><select v-model="setupState.initialRoleSetup.awakenedHunter"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'awakenedHunter')">{{ p.id }} 號</option></template></select></div>
                     <div v-if="Helpers.isDead('awakenedHunter')" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.AWAKENED_HUNTER }}已經死亡</h1></div>
-                    <div v-else-if="isFeared"><div class="witch-alert-active" style="color: white;">⚠️ 被夢魘恐懼無法行動</div><div class="witch-alert-active" style="border-color: var(--btn-danger); background: rgba(255, 77, 77, 0.2);"><h1 style="margin:0; color:white;">👎 不能開槍</h1><p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(技能遭封印)</p></div></div>
+                    <!-- 👉 修改：覺醒獵人被恐懼時，UI依舊顯示可以開槍 -->
+                    <div v-else-if="isFeared"><div class="witch-alert-active" style="color: white;">⚠️ 被夢魘恐懼</div><p>上帝請給予手勢：</p><div class="witch-alert-active" style="border-color: var(--btn-success); background: rgba(76, 175, 80, 0.2);"><h1 style="margin:0; color:white;">👍 可以開槍</h1><p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(覺醒獵人無視恐懼)</p></div></div>
                     <div v-else><p>上帝請給予手勢：</p><div class="witch-alert-active" style="border-color: var(--btn-success); background: rgba(76, 175, 80, 0.2);"><h1 style="margin:0; color:white;">👍 可以開槍</h1></div></div>
                     <div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div>
                 </div>
