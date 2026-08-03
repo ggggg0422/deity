@@ -274,7 +274,10 @@
                     if (p) { p.class = CLASSES.WOLF; p.isDitto = true; }
                 }
             },
-            checkPendingWin: () => {
+                checkPendingWin: () => {
+                // 鎖定：第一晚配置尚未完成，禁止提前觸發結算！
+                if (gameState.day === 1) return null; 
+                
                 let intents = SettlementEngine.evaluateNightDeaths();
                 let resolution = SettlementEngine.resolveDeaths(intents, 'dryRun_night');
                 const alive = gameState.players.filter(p => p.alive && !resolution.pendingDeadIds.has(p.id));
@@ -544,7 +547,9 @@
                         <p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ title }}是幾號？</p>
                         <select v-model="setupState.initialRoleSetup[roleId]">
                             <option :value="0">請選擇</option>
-                            <template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, roleId)">{{ p.id }} 號</option></template>
+                            <template v-for="p in gameState.players" :key="p.id">
+                                <option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, roleId)">{{ p.id }} 號</option>
+                            </template>
                         </select>
                     </div>
                     <div v-if="roleId && Helpers.isDead(roleId)" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ title }}已經死亡</h1></div>
@@ -568,6 +573,7 @@
         const PhaseShadow = defineComponent({ emits: ['prev', 'next'], components: { 'phase-grid': PhaseGrid }, setup() { const isTargetWolf = computed(() => Helpers.isWolf(Helpers.getActualTarget(nightState.records.shadowTarget), 'check')); return { setupState, gameState, nightState, Helpers, isTargetWolf, ROLES, CLASSES }; }, template: `<phase-grid :title="ROLES.SHADOW" emoji="🏮" :colorClass="CLASSES.VILLAGER" recordKey="shadowTarget" :checkFearedRoles="[ROLES.SHADOW]" roleId="shadow" :disableCondition="id => id === setupState.initialRoleSetup.shadow" @prev="$emit('prev')" @next="$emit('next')"><template #extra><div v-if="nightState.records.shadowTarget !== 0" :class="['witch-alert-active', { 'bg-danger': !isTargetWolf }]" style="margin-top: 15px; background: #222; border-color: #555;"><span style="color:#aaa;">查驗結果：</span><span v-if="!isTargetWolf" :class="CLASSES.WOLF" style="font-size:22px;">🐺 查殺</span><span v-else :class="CLASSES.GOOD" style="font-size:22px;">💧 金水</span></div></template></phase-grid>` });
         const PhaseMedium = defineComponent({ emits: ['prev', 'next'], components: { 'phase-grid': PhaseGrid }, setup() { return { setupState, gameState, nightState, Helpers, ROLES, CLASSES }; }, template: `<phase-grid :title="ROLES.MEDIUM" emoji="🔮" :colorClass="CLASSES.GOD" recordKey="mediumTarget" :checkFearedRoles="[ROLES.MEDIUM]" roleId="medium" :disableCondition="id => id === setupState.initialRoleSetup.medium" @prev="$emit('prev')" @next="$emit('next')"><template #extra><div v-if="nightState.records.mediumTarget !== 0" class="witch-alert-active" style="margin-top: 15px; background: #222; border-color: #555;"><span style="color:#aaa;">查驗結果：</span><span style="font-size:22px;" :class="Helpers.getRoleColorClass(Helpers.getMediumCheckResult(Helpers.getActualTarget(nightState.records.mediumTarget)))">{{ Helpers.getMediumCheckResult(Helpers.getActualTarget(nightState.records.mediumTarget)) }}</span></div></template></phase-grid>` });
         const PhaseDreamer = defineComponent({ emits: ['prev', 'next'], components: { 'phase-grid': PhaseGrid }, setup() { return { setupState, gameState, nightState, Helpers, ROLES, CLASSES }; }, template: `<phase-grid :title="ROLES.DREAMER" emoji="💤" :colorClass="CLASSES.GOD" recordKey="dreamTarget" :checkFearedRoles="[ROLES.DREAMER]" roleId="dreamer" :disableCondition="id => id === setupState.initialRoleSetup.dreamer" :hideZeroBtn="true" @prev="$emit('prev')" @next="$emit('next')"><template #pre-grid><div v-if="gameState.day > 1" style="margin-bottom: 10px; font-size: 15px;"><span style="color:#aaa;">昨晚夢遊：</span><span v-if="nightState.records.lastDreamTarget !== 0" v-html="Helpers.formatPlayerText(nightState.records.lastDreamTarget)"></span><span v-else style="color:#aaa;">無</span></div></template></phase-grid>` });
+        
         const PhaseDemonHunter = defineComponent({
             emits: ['prev', 'next'],
             components: { 'phase-grid': PhaseGrid },
@@ -752,15 +758,17 @@
                     </div>
 
                     <div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
-                        <div v-if="setupState.activeRoles.evilKnight" style="margin-bottom: 8px;"><p style="margin: 0; color: #aaa;">{{ ROLES.EVIL_KNIGHT }}：<select v-model="setupState.initialRoleSetup.evilKnight"><option :value="0">請選擇</option><option v-for="p in gameState.players" :key="p.id" :value="p.id" v-show="!Helpers.isPlayerTaken(p.id, 'evilKnight')">{{p.id}}號</option></select></p></div>
-                        <div v-if="setupState.activeRoles.blackWolf" style="margin-bottom: 8px;"><p style="margin: 0; color: #aaa;">{{ ROLES.BLACK_WOLF }}：<select v-model="setupState.initialRoleSetup.blackWolf"><option :value="0">請選擇</option><option v-for="p in gameState.players" :key="p.id" :value="p.id" v-show="!Helpers.isPlayerTaken(p.id, 'blackWolf')">{{p.id}}號</option></select></p></div>
-                        <div v-if="setupState.activeRoles.wolfBeauty" style="margin-bottom: 8px;"><p style="margin: 0; color: #aaa;">{{ ROLES.WOLF_BEAUTY }}：<select v-model="setupState.initialRoleSetup.wolfBeauty"><option :value="0">請選擇</option><option v-for="p in gameState.players" :key="p.id" :value="p.id" v-show="!Helpers.isPlayerTaken(p.id, 'wolfBeauty')">{{p.id}}號</option></select></p></div>
-                        <div v-if="setupState.activeRoles.awakenedWolfBeauty" style="margin-bottom: 8px;"><p style="margin: 0; color: #aaa;">{{ ROLES.AWAKENED_WOLF_BEAUTY }}：<select v-model="setupState.initialRoleSetup.awakenedWolfBeauty"><option :value="0">請選擇</option><option v-for="p in gameState.players" :key="p.id" :value="p.id" v-show="!Helpers.isPlayerTaken(p.id, 'awakenedWolfBeauty')">{{p.id}}號</option></select></p></div>
+                        <div v-if="setupState.activeRoles.evilKnight" style="margin-bottom: 8px;"><p style="margin: 0; color: #aaa;">{{ ROLES.EVIL_KNIGHT }}：<select v-model="setupState.initialRoleSetup.evilKnight"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'evilKnight')">{{p.id}}號</option></template></select></p></div>
+                        <div v-if="setupState.activeRoles.blackWolf" style="margin-bottom: 8px;"><p style="margin: 0; color: #aaa;">{{ ROLES.BLACK_WOLF }}：<select v-model="setupState.initialRoleSetup.blackWolf"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'blackWolf')">{{p.id}}號</option></template></select></p></div>
+                        <div v-if="setupState.activeRoles.wolfBeauty" style="margin-bottom: 8px;"><p style="margin: 0; color: #aaa;">{{ ROLES.WOLF_BEAUTY }}：<select v-model="setupState.initialRoleSetup.wolfBeauty"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'wolfBeauty')">{{p.id}}號</option></template></select></p></div>
+                        <div v-if="setupState.activeRoles.awakenedWolfBeauty" style="margin-bottom: 8px;"><p style="margin: 0; color: #aaa;">{{ ROLES.AWAKENED_WOLF_BEAUTY }}：<select v-model="setupState.initialRoleSetup.awakenedWolfBeauty"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'awakenedWolfBeauty')">{{p.id}}號</option></template></select></p></div>
                         <p style="margin: 10px 0 5px 0; color: #aaa;">普通狼人 ({{ normalW }}名) <span style="font-size: 12px; color: #888;" v-if="setupState.isDittoWolfKingMode">※已扣除百變名額</span>：</p>
                         <div v-for="i in normalW" :key="'w'+i" style="margin-bottom: 8px;">
                             <select v-model="setupState.initialRoleSetup.wolves[i-1]">
                                 <option :value="0">請選擇</option>
-                                <option v-for="p in gameState.players" :key="p.id" :value="p.id" v-show="!Helpers.isPlayerTaken(p.id, 'wolf', i-1)">{{p.id}}號</option>
+                                <template v-for="p in gameState.players" :key="p.id">
+                                    <option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'wolf', i-1)">{{p.id}}號</option>
+                                </template>
                             </select>
                         </div>
                     </div>
@@ -901,7 +909,7 @@
         const PhaseBear = defineComponent({ emits: ['prev', 'next'], setup(props, { emit }) { const onNext = () => { if (gameState.day === 1 && setupState.initialRoleSetup.bear === 0) return alert(`請設定「${ROLES.BEAR}」的號碼！`); emit('next'); }; const alivePlayers = computed(() => gameState.players.filter(p => p.alive)); return { setupState, gameState, nightState, Helpers, alivePlayers, onNext, ROLES, CLASSES }; }, template: `<div class="action-row"><h3 :class="[setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'bear' ? CLASSES.WOLF : CLASSES.GOD]">🐻 {{ ROLES.BEAR }}請睜眼</h3><div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.BEAR }}是幾號？</p><select v-model="setupState.initialRoleSetup.bear"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'bear')">{{ p.id }} 號</option></template></select></div><div v-if="Helpers.isDead('bear')" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.BEAR }}已經死亡</h1></div><div v-else-if="setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'bear'" style="margin-top: 15px; border-top: 1px dashed #555; padding-top: 15px;"><p style="color: #ff9800; font-weight: bold;">🎭 百變狼王({{ ROLES.BEAR }})請選擇魅惑目標：</p><div v-if="Helpers.checkFeared([ROLES.BEAR])" class="witch-alert-active" style="border-color: #555; background: #333; padding: 10px; margin-top: 10px;"><h2 style="margin:0; color:white; font-size:18px;">⚠️ 被夢魘恐懼無法使用魅惑</h2></div><div v-else class="player-grid-container"><div :class="['player-grid-btn zero-btn', { 'danger-selected': nightState.records.bearCharmTarget === 0 }]" @click="nightState.records.bearCharmTarget = 0">不魅惑</div><div v-for="p in alivePlayers" :key="p.id" :class="['player-grid-btn', p.class, { 'danger-selected': nightState.records.bearCharmTarget === p.id }]" @click="nightState.records.bearCharmTarget = p.id"><span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;">{{ p.role }}</span></span></div></div></div><div v-else><p style="color:#aaa;">(確認相鄰玩家陣營狀態，白天公佈結果)</p></div><div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div></div>` });
         const PhaseKnight = defineComponent({ emits: ['prev', 'next'], setup(props, { emit }) { const onNext = () => { if (gameState.day === 1 && setupState.initialRoleSetup.knight === 0) return alert(`請設定「${ROLES.KNIGHT}」的號碼！`); emit('next'); }; return { setupState, gameState, nightState, Helpers, onNext, ROLES, CLASSES }; }, template: `<div class="action-row"><h3 :class="CLASSES.GOD">⚔️ {{ ROLES.KNIGHT }}請睜眼</h3><div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.KNIGHT }}是幾號？</p><select v-model="setupState.initialRoleSetup.knight"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'knight')">{{ p.id }} 號</option></template></select></div><div v-if="Helpers.isDead('knight')" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.KNIGHT }}已經死亡</h1></div><div v-else><p style="color:#aaa;">(第一晚僅確認身分，白天可發動決鬥)</p></div><div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div></div>`});
         const PhaseGravekeeper = defineComponent({ emits: ['prev', 'next'], setup(props, { emit }) { const onNext = () => { if (gameState.day === 1 && setupState.initialRoleSetup.gravekeeper === 0) return alert('請設定號碼！'); emit('next'); }; return { setupState, gameState, nightState, Helpers, onNext, ROLES, CLASSES }; }, template: `<div class="action-row"><h3 :class="CLASSES.GOD">🪦 {{ ROLES.GRAVEKEEPER }}請睜眼</h3><div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.GRAVEKEEPER }}是幾號？</p><select v-model="setupState.initialRoleSetup.gravekeeper"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'gravekeeper')">{{ p.id }} 號</option></template></select></div><div v-if="Helpers.isDead('gravekeeper')" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.GRAVEKEEPER }}已經死亡</h1></div><div v-else-if="gameState.day > 1"><div v-if="!gameState.lastExiledRole" class="witch-alert-active" style="border-color: var(--btn-danger); background: #333;"><h1 style="margin:0; color:white;">❌ 昨日沒有人被放逐</h1></div><div v-else class="witch-alert-active" style="border-color: var(--color-good); background: #222;"><h1 style="margin:0; color:white;">昨日放逐玩家為：<span :class="[ROLES.WOLF, ROLES.BLACK_WOLF, ROLES.WOLF_BEAUTY, ROLES.NIGHTMARE, ROLES.GARGOYLE, ROLES.MECH_WOLF, ROLES.WOLF_BROTHER, ROLES.WOLF_YOUNGER, ROLES.EVIL_KNIGHT, ROLES.AWAKENED_WOLF_BEAUTY, ROLES.DITTO_WOLF_KING].includes(gameState.lastExiledRole) ? CLASSES.WOLF : CLASSES.GOOD">{{ [ROLES.WOLF, ROLES.BLACK_WOLF, ROLES.WOLF_BEAUTY, ROLES.NIGHTMARE, ROLES.GARGOYLE, ROLES.MECH_WOLF, ROLES.WOLF_BROTHER, ROLES.WOLF_YOUNGER, ROLES.EVIL_KNIGHT, ROLES.AWAKENED_WOLF_BEAUTY, ROLES.DITTO_WOLF_KING].includes(gameState.lastExiledRole) ? '🐺 狼陣營' : '💧 好人陣營' }}</span></h1></div></div><div v-else><p style="color: #aaa;">(第一晚僅確認身分，不需行動)</p></div><div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div></div>`});
-        const PhaseWolfBrothers = defineComponent({ emits: ['prev', 'next'], setup(props, { emit }) { const onNext = () => { if (gameState.day === 1) { if (!setupState.initialRoleSetup.wolfBrother) return alert(`請設定「${ROLES.WOLF_BROTHER}」！`); if (!setupState.initialRoleSetup.wolfYoungerBrother) return alert(`請設定「${ROLES.WOLF_YOUNGER}」！`); } emit('next'); }; return { setupState, gameState, nightState, Helpers, onNext, ROLES, CLASSES }; }, template: `<div class="action-row"><h3 :class="CLASSES.WOLF">🧑‍🤝‍🧑 狼兄狼弟請睜眼</h3><div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">{{ ROLES.WOLF_BROTHER }}：<select v-model="setupState.initialRoleSetup.wolfBrother"><option :value="0">請選擇</option><option v-for="p in gameState.players" :key="p.id" :value="p.id" v-show="!Helpers.isPlayerTaken(p.id, 'wolfBrother')">{{p.id}}號</option></select></p><p style="margin: 0 0 5px 0; color: #aaa;">{{ ROLES.WOLF_YOUNGER }}：<select v-model="setupState.initialRoleSetup.wolfYoungerBrother"><option :value="0">請選擇</option><option v-for="p in gameState.players" :key="p.id" :value="p.id" v-show="!Helpers.isPlayerTaken(p.id, 'wolfYoungerBrother')">{{p.id}}號</option></select></p></div><p>上帝請讓 {{ ROLES.WOLF_BROTHER }} 與 {{ ROLES.WOLF_YOUNGER }} 互相確認身分。</p><div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div></div>`});
+        const PhaseWolfBrothers = defineComponent({ emits: ['prev', 'next'], setup(props, { emit }) { const onNext = () => { if (gameState.day === 1) { if (!setupState.initialRoleSetup.wolfBrother) return alert(`請設定「${ROLES.WOLF_BROTHER}」！`); if (!setupState.initialRoleSetup.wolfYoungerBrother) return alert(`請設定「${ROLES.WOLF_YOUNGER}」！`); } emit('next'); }; return { setupState, gameState, nightState, Helpers, onNext, ROLES, CLASSES }; }, template: `<div class="action-row"><h3 :class="CLASSES.WOLF">🧑‍🤝‍🧑 狼兄狼弟請睜眼</h3><div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">{{ ROLES.WOLF_BROTHER }}：<select v-model="setupState.initialRoleSetup.wolfBrother"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'wolfBrother')">{{p.id}}號</option></template></select></p><p style="margin: 0 0 5px 0; color: #aaa;">{{ ROLES.WOLF_YOUNGER }}：<select v-model="setupState.initialRoleSetup.wolfYoungerBrother"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'wolfYoungerBrother')">{{p.id}}號</option></template></select></p></div><p>上帝請讓 {{ ROLES.WOLF_BROTHER }} 與 {{ ROLES.WOLF_YOUNGER }} 互相確認身分。</p><div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div></div>`});
 
         const PhaseGifted = defineComponent({
             emits: ['prev', 'next'],
@@ -1354,7 +1362,6 @@
                         
                         const maxW = setupState.playerCount <= 10 ? 3 : 4;
                         
-                        // 【防呆修正】如果超過最大狼數，強制中斷並跳出明確提示
                         if (spWolfCount > maxW) {
                             const errorMsg = `【配置錯誤：特殊狼人過多】\n\n${setupState.playerCount} 人局的狼陣營總數不可超過 ${maxW} 名！\n您目前的特殊狼人（含百變狼王）已達 ${spWolfCount} 名，請減少狼人配置。`;
                             alert(errorMsg);
@@ -1394,7 +1401,6 @@
                         activePhases.sort((a, b) => a.executeOrder - b.executeOrder);
                         nightState.phaseQueue = activePhases.map(r => r.id);
                         
-                        // 【防呆修正】確保 Queue 有成功建立
                         if (nightState.phaseQueue.length === 0) {
                             alert("啟動錯誤：生成的夜晚流程為空，請檢查配置。");
                             return;
@@ -1405,7 +1411,6 @@
                         nightState.records = { wolfKill: 0, witchAction: ACTIONS.NONE, witchPoison: 0, seerTarget: 0, guardTarget: 0, lastGuardTarget: 0, nightmareTarget: 0, lastNightmareTarget: 0, gargoyleTarget: 0, shadowTarget: 0, charmTarget: 0, awbCharmTarget: 0, lastAwbCharmTarget: 0, magicianSwaps: [], blackMerchantTarget: 0, blackMerchantItem: '', giftedActionTarget: 0, dreamTarget: 0, lastDreamTarget: 0, demonHunterTarget: 0, mediumTarget: 0, wolfBrotherRevengeTarget: 0, mechWolfActionTarget: 0, mechWolfLearnTarget: 0, bearCharmTarget: 0, lastBearCharmTarget: 0 };
                         Helpers.addHistory(`<br><span style="color:#fff; font-weight:bold;">=== 第${gameState.day}天 夜晚 ===</span>`);
                         
-                        // 所有狀態配置完畢，切換畫面
                         gameState.screen = SCREENS.GAME;
                     } catch (err) {
                         console.error("啟動遊戲發生錯誤：", err);
@@ -1530,6 +1535,11 @@
                         }
                     }
 
+                    // 👉 新增：獵魔人的夜間行動紀錄
+                    if (setupState.activeRoles.demonHunter && nightState.records.demonHunterTarget) {
+                        Helpers.addHistory(`<span class="color-god">🏹 ${ROLES.DEMON_HUNTER}</span> 選擇狩獵了 ${Helpers.formatPlayerText(nightState.records.demonHunterTarget)}`);
+                    }
+
                     if (nightState.records.nightmareTarget) Helpers.addHistory(`<span class="color-wolf">👻 ${ROLES.NIGHTMARE}</span> 恐懼了 ${Helpers.formatPlayerText(nightState.records.nightmareTarget)}`);
                     if (nightState.records.guardTarget) Helpers.addHistory(`<span class="color-god">🛡️ ${ROLES.GUARD}</span> 守護了 ${Helpers.formatPlayerText(nightState.records.guardTarget)}`);
                     if (nightState.records.dreamTarget) {
@@ -1542,6 +1552,15 @@
                         Helpers.addHistory(`<span class="color-wolf">🐺👦 ${ROLES.WOLF_YOUNGER}</span> 復仇擊殺了 ${Helpers.formatPlayerText(nightState.records.wolfBrotherRevengeTarget)}`);
                         nightState.wolfBrotherRevengeUsed = true;
                     }
+                    
+                    // 👉 新增：狼美人、覺醒狼美人的夜間魅惑紀錄
+                    if (setupState.activeRoles.wolfBeauty && nightState.records.charmTarget) {
+                        Helpers.addHistory(`<span class="color-wolf">💃 ${ROLES.WOLF_BEAUTY}</span> 魅惑了 ${Helpers.formatPlayerText(nightState.records.charmTarget)}`);
+                    }
+                    if (setupState.activeRoles.awakenedWolfBeauty && nightState.records.awbCharmTarget) {
+                        Helpers.addHistory(`<span class="color-wolf">💃✨ ${ROLES.AWAKENED_WOLF_BEAUTY}</span> 魅惑了 ${Helpers.formatPlayerText(nightState.records.awbCharmTarget)}`);
+                    }
+
                     if (setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'bear' && nightState.records.bearCharmTarget) Helpers.addHistory(`🎭 ${setupState.initialRoleSetup.bear}號 魅惑了 ${Helpers.formatPlayerText(nightState.records.bearCharmTarget)}`);
                     if (nightState.records.witchAction === ACTIONS.HEAL) { Helpers.addHistory(`<span class="color-god">🧙‍♀️ ${ROLES.WITCH}</span> 使用了解藥`); nightState.potions.heal = false; }
                     if (nightState.records.witchAction === ACTIONS.POISON) { Helpers.addHistory(`<span class="color-god">🧪 ${ROLES.WITCH}</span> 毒殺了 ${Helpers.formatPlayerText(nightState.records.witchPoison)}`); nightState.potions.poison = false; }
