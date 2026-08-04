@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>狼人殺上帝專用小幫手 </title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
 /* =========================================
             共用及版面樣式
@@ -292,9 +293,13 @@
                 const gods = alive.filter(p => !p.isDitto && [ROLES.MAGICIAN, ROLES.BLACK_MERCHANT, ROLES.WITCH, ROLES.SEER, ROLES.HUNTER, ROLES.AWAKENED_HUNTER, ROLES.GUARD, ROLES.KNIGHT, ROLES.DREAMER, ROLES.DEMON_HUNTER, ROLES.BEAR, ROLES.GRAVEKEEPER, ROLES.MEDIUM].includes(p.role)).length;
                 const villagers = alive.filter(p => !p.isDitto && [ROLES.VILLAGER, ROLES.SHADOW].includes(p.role)).length;
                 
-                if (wolves === 0) return { faction: "<span style='color: var(--color-good); font-weight: bold;'>🎉 好人陣營獲勝！</span>" };
+                // 狼刀在先：優先判斷好人陣營是否死光（屠神或屠民）
                 if (gods === 0) return { faction: "<span style='color: var(--color-wolf); font-weight: bold;'>🐺 狼人陣營獲勝！</span>", reason: "(屠神)" };
                 if (villagers === 0) return { faction: "<span style='color: var(--color-wolf); font-weight: bold;'>🐺 狼人陣營獲勝！</span>", reason: "(屠民)" };
+                
+                // 如果好人還沒死光，才判斷狼人是否死光
+                if (wolves === 0) return { faction: "<span style='color: var(--color-good); font-weight: bold;'>🎉 好人陣營獲勝！</span>" };
+                
                 return null;
             }
         };
@@ -441,9 +446,9 @@
 
                     if (isHunterType) {
                         sealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK].includes(cause) || isFearedByNightmare;
-} else if (p.role === ROLES.BLACK_WOLF || (p.role === ROLES.MECH_WOLF && nightState.mechWolfState.learnedRole === ROLES.HUNTER)) {
-    sealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.AH_SHOT, CAUSES.EXPLODE, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK, CAUSES.DUEL_WOLF].includes(cause) || isFearedByNightmare;
-}
+                    } else if (p.role === ROLES.BLACK_WOLF || (p.role === ROLES.MECH_WOLF && nightState.mechWolfState.learnedRole === ROLES.HUNTER)) {
+                        sealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.AH_SHOT, CAUSES.EXPLODE, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK, CAUSES.DUEL_WOLF].includes(cause) || isFearedByNightmare;
+                    }
                     if (!sealed) {
                         if (p.role === ROLES.HUNTER) gunQueue.push({ id: p.id, role: ROLES.HUNTER, cause: cause });
                         else if (p.role === ROLES.BLACK_WOLF) gunQueue.push({ id: p.id, role: ROLES.BLACK_WOLF, cause: cause });
@@ -466,21 +471,19 @@
                     if (p) p.alive = false;
 
                     if (ev.cause === CAUSES.AWB_SUB) {
-                        Helpers.addHistory(`✨ <span class="color-wolf">${ROLES.AWAKENED_WOLF_BEAUTY}</span> 觸發替死，${Helpers.formatPlayerText(ev.id)} 代替死亡！`);
+                        Helpers.addHistory(`✨ ${Helpers.formatPlayerText(ev.sourceId)} 觸發替死，${Helpers.formatPlayerText(ev.id)} 代替死亡！`);
                     } else if (ev.cause === CAUSES.CHARM) {
-                        const sourceP = Helpers.getPlayer(ev.sourceId);
-                        const roleName = sourceP.role === ROLES.BEAR ? `百變狼王(${ROLES.BEAR})` : sourceP.role;
-                        Helpers.addHistory(`💔 <span class="color-wolf">${roleName}</span> 死亡，觸發魅惑連帶帶走 ${Helpers.formatPlayerText(ev.id)}`);
+                        Helpers.addHistory(`💔 ${Helpers.formatPlayerText(ev.sourceId)} 死亡，觸發魅惑連帶帶走 ${Helpers.formatPlayerText(ev.id)}`);
                     } else if (ev.cause === CAUSES.DREAM_LINK) {
-                        Helpers.addHistory(`💔 <span class="color-god">${ROLES.DREAMER}</span> 死亡，夢遊目標 ${Helpers.formatPlayerText(ev.id)} 同生共死`);
+                        Helpers.addHistory(`💔 ${Helpers.formatPlayerText(ev.sourceId)} 死亡，夢遊目標 ${Helpers.formatPlayerText(ev.id)} 同生共死`);
                     } else if (ev.cause === CAUSES.DEMON_HUNT_SUCCESS) {
-                        Helpers.addHistory(`<span class="color-god">🏹 ${ROLES.DEMON_HUNTER}</span> 成功狩獵了 <span class="color-wolf">狼陣營</span> ${Helpers.formatPlayerText(ev.id)}`);
+                        Helpers.addHistory(`🏹 ${Helpers.formatPlayerText(setupState.initialRoleSetup.demonHunter)} 成功狩獵了 ${Helpers.formatPlayerText(ev.id)}`);
                     } else if (ev.cause === CAUSES.DEMON_HUNT_FAIL) {
-                        Helpers.addHistory(`<span class="color-god">🏹 ${ROLES.DEMON_HUNTER}</span> 狩獵失誤遭到反噬！`);
+                        Helpers.addHistory(`🏹 ${Helpers.formatPlayerText(setupState.initialRoleSetup.demonHunter)} 狩獵失誤遭到反噬！`);
                     } else if (ev.cause === CAUSES.BLACK_MERCHANT_BACKLASH) {
-                        Helpers.addHistory(`💔 <span class="color-god">${ROLES.BLACK_MERCHANT}</span> 交易給狼陣營，遭到反噬死亡`);
+                        Helpers.addHistory(`💔 ${Helpers.formatPlayerText(setupState.initialRoleSetup.blackMerchant)} 交易給狼陣營，遭到反噬死亡`);
                     } else if (ev.cause === CAUSES.EK_REFLECTION) {
-                        Helpers.addHistory(`💔 <span class="color-wolf">${ROLES.EVIL_KNIGHT}</span> 發動反傷技能，反噬了 ${Helpers.formatPlayerText(ev.id)}`);
+                        Helpers.addHistory(`💔 ${Helpers.formatPlayerText(setupState.initialRoleSetup.evilKnight)} 發動反傷技能，反噬了 ${Helpers.formatPlayerText(ev.id)}`);
                     }
                 });
             }
@@ -1143,11 +1146,10 @@
         const targetInfo = Helpers.getPlayer(target);
         let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
         
-        if (targetInfo.role === ROLES.DEMON_HUNTER && isNightDeath && shooter.role !== ROLES.BLACK_WOLF) {
-            // 修改這裡
-            Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 開槍帶走 ${Helpers.formatPlayerText(target)}，但 <span class="color-god">${ROLES.DEMON_HUNTER}</span> 免疫了夜槍傷害`);
+if (targetInfo.role === ROLES.DEMON_HUNTER && isNightDeath && shooter.role !== ROLES.BLACK_WOLF) {
+            Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 開槍帶走 ${Helpers.formatPlayerText(target)}，但 ${Helpers.formatPlayerText(target)} 免疫了夜槍傷害`);
             morningState.resultHtml += `<br><span>💥 ${shooter.role} 開槍，但 ${Helpers.formatPlayerText(target)} 免疫了傷害</span>`;
-        } else {
+        }else {
             // 修改這裡
             Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 開槍帶走了 ${Helpers.formatPlayerText(target)}`);
             morningState.resultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 ${Helpers.formatPlayerText(target)}</span>`;
@@ -1187,10 +1189,9 @@ const confirmAhShoot = () => {
             let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
             let targetInfo = Helpers.getPlayer(target);
             if (targetInfo.role === ROLES.DEMON_HUNTER && isNightDeath && shooter.role !== ROLES.BLACK_WOLF) {
-                // 修改這裡
-                Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 向${dir>0?'遞增':'遞減'}方向開槍擊中 ${Helpers.formatPlayerText(target)}，但 <span class="color-god">${ROLES.DEMON_HUNTER}</span> 免疫了夜槍傷害`);
+                Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 向${dir>0?'遞增':'遞減'}方向開槍擊中 ${Helpers.formatPlayerText(target)}，但 ${Helpers.formatPlayerText(target)} 免疫了夜槍傷害`);
                 morningState.resultHtml += `<br><span>💥 覺醒獵人 開槍，但 ${Helpers.formatPlayerText(target)} 免疫了傷害</span>`;
-            } else {
+            }else {
                 // 修改這裡
                 Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 向${dir>0?'遞增':'遞減'}方向開槍，擊中了 ${Helpers.formatPlayerText(target)}`);
                 morningState.resultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 ${Helpers.formatPlayerText(target)}</span>`;
@@ -1489,14 +1490,14 @@ const confirmAhShoot = () => {
                         nightState.mechWolfState.learnedRole = p ? p.role : ROLES.UNKNOWN;
                     }
 
-                    if (nightState.records.magicianSwaps.length === 2) Helpers.addHistory(`<span class="color-god">🎩 ${ROLES.MAGICIAN}</span> 交換了 ${Helpers.formatPlayerText(nightState.records.magicianSwaps[0])} 與 ${Helpers.formatPlayerText(nightState.records.magicianSwaps[1])}`);
+if (nightState.records.magicianSwaps.length === 2) Helpers.addHistory(`🎩 ${Helpers.formatPlayerText(setupState.initialRoleSetup.magician)} 交換了 ${Helpers.formatPlayerText(nightState.records.magicianSwaps[0])} 與 ${Helpers.formatPlayerText(nightState.records.magicianSwaps[1])}`);
                     
                     if (nightState.records.blackMerchantTarget) {
                         let t = Helpers.getActualTarget(nightState.records.blackMerchantTarget);
                         if (Helpers.isWolf(t)) {
-                            Helpers.addHistory(`<span class="color-god">💰 ${ROLES.BLACK_MERCHANT}</span> 嘗試送禮給 ${Helpers.formatPlayerText(t)}，但對方是狼陣營，交易失敗！`);
+                            Helpers.addHistory(`💰 ${Helpers.formatPlayerText(setupState.initialRoleSetup.blackMerchant)} 嘗試送禮給 ${Helpers.formatPlayerText(t)}，但對方是狼陣營，交易失敗！`);
                         } else {
-                            Helpers.addHistory(`<span class="color-god">💰 ${ROLES.BLACK_MERCHANT}</span> 送給了 ${Helpers.formatPlayerText(nightState.records.blackMerchantTarget)}`);
+                            Helpers.addHistory(`💰 ${Helpers.formatPlayerText(setupState.initialRoleSetup.blackMerchant)} 送給了 ${Helpers.formatPlayerText(nightState.records.blackMerchantTarget)}`);
                             nightState.giftedState = { hasGift: true, id: nightState.records.blackMerchantTarget, item: nightState.records.blackMerchantItem, isUsed: false };
                         }
                     }
@@ -1505,31 +1506,31 @@ const confirmAhShoot = () => {
                         let t = Helpers.getActualTarget(nightState.records.giftedActionTarget);
                         if (nightState.giftedState.item === ITEMS.VERIFY) {
                             let isWolf = Helpers.isWolf(t, 'check');
-                            Helpers.addHistory(`🎁 幸運兒 使用放大鏡查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${isWolf ? '🐺 查殺' : '💧 金水'}`);
+                            Helpers.addHistory(`🎁 幸運兒 ${Helpers.formatPlayerText(nightState.giftedState.id)} 使用放大鏡查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${isWolf ? '🐺 查殺' : '💧 金水'}`);
                         } else if (nightState.giftedState.item === ITEMS.POISON) {
-                            Helpers.addHistory(`🎁 幸運兒 使用毒藥毒殺了 ${Helpers.formatPlayerText(t)}`);
+                            Helpers.addHistory(`🎁 幸運兒 ${Helpers.formatPlayerText(nightState.giftedState.id)} 使用毒藥毒殺了 ${Helpers.formatPlayerText(t)}`);
                         }
                         nightState.giftedState.isUsed = true;
                     }
 
                     if (setupState.activeRoles.seer && nightState.records.seerTarget !== 0) {
                         let t = Helpers.getActualTarget(nightState.records.seerTarget);
-                        if (setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'seer') Helpers.addHistory(`<span class="color-wolf">👁️ 預言家(百變)</span> 查驗了 ${Helpers.formatPlayerText(t)} (真實身分: ${Helpers.getPlayer(t)?.role})`);
-                        else Helpers.addHistory(`<span class="color-god">👁️ ${ROLES.SEER}</span> 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${Helpers.isWolf(t, 'check') ? '🐺 查殺' : '💧 金水'}`);
+                        if (setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'seer') Helpers.addHistory(`👁️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.seer)} 查驗了 ${Helpers.formatPlayerText(t)} (真實身分: ${Helpers.getPlayer(t)?.role})`);
+                        else Helpers.addHistory(`👁️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.seer)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${Helpers.isWolf(t, 'check') ? '🐺 查殺' : '💧 金水'}`);
                     }
                     if (setupState.activeRoles.gargoyle && nightState.records.gargoyleTarget !== 0) {
                         let t = Helpers.getActualTarget(nightState.records.gargoyleTarget);
                         let res = Helpers.getMediumCheckResult(t);
-                        Helpers.addHistory(`<span class="color-wolf">🗿 ${ROLES.GARGOYLE}</span> 查驗了 ${Helpers.formatPlayerText(t)}，結果為 <span class="${Helpers.getRoleColorClass(res)}">${res}</span>`);
+                        Helpers.addHistory(`🗿 ${Helpers.formatPlayerText(setupState.initialRoleSetup.gargoyle)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 <span class="${Helpers.getRoleColorClass(res)}">${res}</span>`);
                     }
                     if (setupState.activeRoles.medium && nightState.records.mediumTarget !== 0) {
                         let t = Helpers.getActualTarget(nightState.records.mediumTarget);
                         let res = Helpers.getMediumCheckResult(t);
-                        Helpers.addHistory(`<span class="color-god">🔮 ${ROLES.MEDIUM}</span> 查驗了 ${Helpers.formatPlayerText(t)}，結果為 <span class="${Helpers.getRoleColorClass(res)}">${res}</span>`);
+                        Helpers.addHistory(`🔮 ${Helpers.formatPlayerText(setupState.initialRoleSetup.medium)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 <span class="${Helpers.getRoleColorClass(res)}">${res}</span>`);
                     }
                     if (setupState.activeRoles.shadow && nightState.records.shadowTarget !== 0) {
                         let t = Helpers.getActualTarget(nightState.records.shadowTarget);
-                        Helpers.addHistory(`<span class="color-villager">🏮 ${ROLES.SHADOW}</span> 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${Helpers.isWolf(t, 'check') ? '💧 金水' : '🐺 查殺'}`);
+                        Helpers.addHistory(`🏮 ${Helpers.formatPlayerText(setupState.initialRoleSetup.shadow)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${Helpers.isWolf(t, 'check') ? '💧 金水' : '🐺 查殺'}`);
                     }
                     if (setupState.activeRoles.mechWolf && nightState.mechWolfState.hasLearned && nightState.records.mechWolfActionTarget !== 0) {
                         let t = Helpers.getActualTarget(nightState.records.mechWolfActionTarget);
@@ -1538,44 +1539,42 @@ const confirmAhShoot = () => {
                             if (nightState.mechWolfState.learnedRole === ROLES.SEER) res = Helpers.isWolf(t, 'check') ? '🐺 查殺' : '💧 金水';
                             else if (nightState.mechWolfState.learnedRole === ROLES.SHADOW) res = !Helpers.isWolf(t, 'check') ? '🐺 查殺' : '💧 金水';
                             else res = `<span class="${Helpers.getRoleColorClass(Helpers.getMediumCheckResult(t))}">${Helpers.getMediumCheckResult(t)}</span>`;
-                            Helpers.addHistory(`<span class="color-wolf">🤖 ${ROLES.MECH_WOLF}</span> 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${res}`);
+                            Helpers.addHistory(`🤖 ${Helpers.formatPlayerText(setupState.initialRoleSetup.mechWolf)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${res}`);
                         } else if (nightState.mechWolfState.learnedRole === ROLES.WOLF && !Helpers.checkFeared([ROLES.MECH_WOLF])) {
-                            Helpers.addHistory(`<span class="color-wolf">🤖 ${ROLES.MECH_WOLF}</span> 擊殺了 ${Helpers.formatPlayerText(t)}`);
+                            Helpers.addHistory(`🤖 ${Helpers.formatPlayerText(setupState.initialRoleSetup.mechWolf)} 擊殺了 ${Helpers.formatPlayerText(t)}`);
                         } else if (nightState.mechWolfState.learnedRole === ROLES.WITCH && !nightState.mechWolfState.poisonUsed && !Helpers.checkFeared([ROLES.MECH_WOLF])) {
-                            Helpers.addHistory(`<span class="color-wolf">🤖 ${ROLES.MECH_WOLF}</span> 毒殺了 ${Helpers.formatPlayerText(t)}`);
+                            Helpers.addHistory(`🤖 ${Helpers.formatPlayerText(setupState.initialRoleSetup.mechWolf)} 毒殺了 ${Helpers.formatPlayerText(t)}`);
                             nightState.mechWolfState.poisonUsed = true;
                         }
                     }
 
-                    // 👉 新增：獵魔人的夜間行動紀錄
                     if (setupState.activeRoles.demonHunter && nightState.records.demonHunterTarget) {
-                        Helpers.addHistory(`<span class="color-god">🏹 ${ROLES.DEMON_HUNTER}</span> 選擇狩獵了 ${Helpers.formatPlayerText(nightState.records.demonHunterTarget)}`);
+                        Helpers.addHistory(`🏹 ${Helpers.formatPlayerText(setupState.initialRoleSetup.demonHunter)} 選擇狩獵了 ${Helpers.formatPlayerText(nightState.records.demonHunterTarget)}`);
                     }
 
-                    if (nightState.records.nightmareTarget) Helpers.addHistory(`<span class="color-wolf">👻 ${ROLES.NIGHTMARE}</span> 恐懼了 ${Helpers.formatPlayerText(nightState.records.nightmareTarget)}`);
-                    if (nightState.records.guardTarget) Helpers.addHistory(`<span class="color-god">🛡️ ${ROLES.GUARD}</span> 守護了 ${Helpers.formatPlayerText(nightState.records.guardTarget)}`);
+                    if (nightState.records.nightmareTarget) Helpers.addHistory(`👻 ${Helpers.formatPlayerText(setupState.initialRoleSetup.nightmare)} 恐懼了 ${Helpers.formatPlayerText(nightState.records.nightmareTarget)}`);
+                    if (nightState.records.guardTarget) Helpers.addHistory(`🛡️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.guard)} 守護了 ${Helpers.formatPlayerText(nightState.records.guardTarget)}`);
                     if (nightState.records.dreamTarget) {
                         const isDoubleDream = nightState.records.lastDreamTarget !== 0 && Helpers.getActualTarget(nightState.records.dreamTarget) === Helpers.getActualTarget(nightState.records.lastDreamTarget);
-                        Helpers.addHistory(`<span class="color-god">💤 ${ROLES.DREAMER}</span> 夢遊了 ${Helpers.formatPlayerText(nightState.records.dreamTarget)}${isDoubleDream ? ' <span style="color:#ff4d4d; font-size: 14px;">(第二夢直接封印技能夢死)</span>' : ''}`);
+                        Helpers.addHistory(`💤 ${Helpers.formatPlayerText(setupState.initialRoleSetup.dreamer)} 夢遊了 ${Helpers.formatPlayerText(nightState.records.dreamTarget)}${isDoubleDream ? ' <span style="color:#ff4d4d; font-size: 14px;">(第二夢直接封印技能夢死)</span>' : ''}`);
                     }
                     
                     if (nightState.records.wolfKill) Helpers.addHistory(`<span class="color-wolf">🐺 狼陣營</span> 擊殺了 ${Helpers.formatPlayerText(nightState.records.wolfKill)}`);
                     if (nightState.records.wolfBrotherRevengeTarget) { 
-                        Helpers.addHistory(`<span class="color-wolf">🐺👦 ${ROLES.WOLF_YOUNGER}</span> 復仇擊殺了 ${Helpers.formatPlayerText(nightState.records.wolfBrotherRevengeTarget)}`);
+                        Helpers.addHistory(`🐺👦 ${Helpers.formatPlayerText(setupState.initialRoleSetup.wolfYoungerBrother)} 復仇擊殺了 ${Helpers.formatPlayerText(nightState.records.wolfBrotherRevengeTarget)}`);
                         nightState.wolfBrotherRevengeUsed = true;
                     }
                     
-                    // 👉 新增：狼美人、覺醒狼美人的夜間魅惑紀錄
                     if (setupState.activeRoles.wolfBeauty && nightState.records.charmTarget) {
-                        Helpers.addHistory(`<span class="color-wolf">💃 ${ROLES.WOLF_BEAUTY}</span> 魅惑了 ${Helpers.formatPlayerText(nightState.records.charmTarget)}`);
+                        Helpers.addHistory(`💃 ${Helpers.formatPlayerText(setupState.initialRoleSetup.wolfBeauty)} 魅惑了 ${Helpers.formatPlayerText(nightState.records.charmTarget)}`);
                     }
                     if (setupState.activeRoles.awakenedWolfBeauty && nightState.records.awbCharmTarget) {
-                        Helpers.addHistory(`<span class="color-wolf">💃✨ ${ROLES.AWAKENED_WOLF_BEAUTY}</span> 魅惑了 ${Helpers.formatPlayerText(nightState.records.awbCharmTarget)}`);
+                        Helpers.addHistory(`💃✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWolfBeauty)} 魅惑了 ${Helpers.formatPlayerText(nightState.records.awbCharmTarget)}`);
                     }
 
-                    if (setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'bear' && nightState.records.bearCharmTarget) Helpers.addHistory(`🎭 ${setupState.initialRoleSetup.bear}號 魅惑了 ${Helpers.formatPlayerText(nightState.records.bearCharmTarget)}`);
-                    if (nightState.records.witchAction === ACTIONS.HEAL) { Helpers.addHistory(`<span class="color-god">🧙‍♀️ ${ROLES.WITCH}</span> 使用了解藥`); nightState.potions.heal = false; }
-                    if (nightState.records.witchAction === ACTIONS.POISON) { Helpers.addHistory(`<span class="color-god">🧪 ${ROLES.WITCH}</span> 毒殺了 ${Helpers.formatPlayerText(nightState.records.witchPoison)}`); nightState.potions.poison = false; }
+                    if (setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'bear' && nightState.records.bearCharmTarget) Helpers.addHistory(`🎭 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bear)} 魅惑了 ${Helpers.formatPlayerText(nightState.records.bearCharmTarget)}`);
+                    if (nightState.records.witchAction === ACTIONS.HEAL) { Helpers.addHistory(`🧙‍♀️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 使用了解藥`); nightState.potions.heal = false; }
+                    if (nightState.records.witchAction === ACTIONS.POISON) { Helpers.addHistory(`🧪 ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 毒殺了 ${Helpers.formatPlayerText(nightState.records.witchPoison)}`); nightState.potions.poison = false; }
 
                     // 🌟 透過 SettlementEngine 結算夜晚死亡
                     let intents = SettlementEngine.evaluateNightDeaths();
@@ -1601,12 +1600,12 @@ const confirmAhShoot = () => {
                         const bearIdx = aliveIds.indexOf(bearId);
 
                         if (bearIdx !== -1) { 
-                            if (Helpers.checkFeared([ROLES.BEAR])) {
+if (Helpers.checkFeared([ROLES.BEAR])) {
                                 morningState.resultHtml += `
                                     <div style="margin-top: 15px; padding: 10px; border-radius: 8px; border: 2px dashed #555; background: #222;">
                                         <h3 style="margin: 0; color: #ccc;">⚠️ 熊爺被恐懼，無法咆哮</h3>
                                     </div>`;
-                                Helpers.addHistory(`🐻 熊爺判定：被夢魘恐懼，技能失效`);
+                                Helpers.addHistory(`🐻 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bear)} 判定：被夢魘恐懼，技能失效`);
                             } else if (aliveIds.length >= 3) {
                                 const leftId = aliveIds[(bearIdx - 1 + aliveIds.length) % aliveIds.length];
                                 const rightId = aliveIds[(bearIdx + 1) % aliveIds.length];
@@ -1620,7 +1619,7 @@ const confirmAhShoot = () => {
                                         </h3>
                                         <p style="margin: 5px 0 0 0; font-size: 13px; color: #aaa;">(相鄰存活：${leftId}號、${rightId}號)</p>
                                     </div>`;
-                                Helpers.addHistory(`🐻 熊爺判定：相鄰活人為 ${leftId}號與 ${rightId}號，結果：${isGrowling ? '咆哮' : '沒叫'}`);
+                                Helpers.addHistory(`🐻 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bear)} 判定：相鄰活人為 ${Helpers.formatPlayerText(leftId)} 與 ${Helpers.formatPlayerText(rightId)}，結果：${isGrowling ? '咆哮' : '沒叫'}`);
                             }
                         }
                     }
@@ -1700,11 +1699,63 @@ const confirmAhShoot = () => {
             }
         };
 
-        const GameOverScreen = {
-            template: `<div class="game-over-panel"><div class="game-over-title">遊戲結束</div><h2 style="border:none;" v-html="gameState.pendingGameOver.faction"></h2><div class="log-box"><div v-for="(log, idx) in gameState.history" :key="idx" style="margin-bottom: 4px;" v-html="log"></div></div><button @click="reload" style="margin-top: 20px; background-color: var(--btn-primary);">重新開始</button></div>`,
-            setup() { return { gameState, reload: () => window.location.reload() }; }
-        };
+          const GameOverScreen = {
+            template: `
+                <div class="game-over-panel">
+                    <div class="game-over-title">遊戲結束</div>
+                    <h2 style="border:none;" v-html="gameState.pendingGameOver.faction"></h2>
+                    
+                    <!-- 加上 id="capture-log-box" 讓 html2canvas 精準抓取目標 -->
+                    <div class="log-box" id="capture-log-box">
+                        <div v-for="(log, idx) in gameState.history" :key="idx" style="margin-bottom: 4px;" v-html="log"></div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+                        <button @click="captureLog" style="background-color: var(--btn-success);">📸 截圖戰報</button>
+                        <button @click="reload" style="background-color: var(--btn-primary);">重新開始</button>
+                    </div>
+                </div>
+            `,
+            setup() { 
+                const captureLog = async () => {
+                    const target = document.getElementById('capture-log-box');
+                    if (!target) return;
+                    
+                    // 【資深優化】暫時解除高度限制，確保長條戰報能被「完整」截取
+                    const originalMaxHeight = target.style.maxHeight;
+                    const originalOverflow = target.style.overflowY;
+                    target.style.maxHeight = 'none';
+                    target.style.overflowY = 'visible';
 
+                    try {
+                        const canvas = await html2canvas(target, {
+                            backgroundColor: '#111', // 設定與介面相符的深色背景
+                            scale: 2 // 放大 2 倍解析度，確保丟到 LINE 放大看依然清晰
+                        });
+                        
+                        // 轉換為圖片並觸發下載
+                        const link = document.createElement('a');
+                        // 修正這裡的樣板字串寫法！
+                        link.download = `狼人殺戰報_第${gameState.day}天.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    } catch (error) {
+                        console.error("截圖失敗: ", error);
+                        alert("戰報截圖失敗，請稍後再試！");
+                    } finally {
+                        // 截圖完成後，神不知鬼不覺地將捲軸與高度限制加回去
+                        target.style.maxHeight = originalMaxHeight;
+                        target.style.overflowY = originalOverflow;
+                    }
+                };
+
+                return { 
+                    gameState, 
+                    captureLog,
+                    reload: () => window.location.reload() 
+                }; 
+            }
+        };
         const app = createApp({ 
             components: { 'setup-screen': SetupScreen, 'game-screen': GameScreen, 'game-over-screen': GameOverScreen }, 
             setup() { return { gameState, SCREENS }; } 
