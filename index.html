@@ -124,7 +124,7 @@
         const SCREENS = { SETUP: 'setup', GAME: 'game', GAMEOVER: 'gameover' };
         const STEPS = {
             MORNING_REVEAL: 'morning_reveal', CHARM_REVEAL: 'charm_reveal', AH_SHOOT: 'ah_shoot',
-            SHOOT: 'shoot', VOTE: 'vote', SHOOT_REVEAL: 'shoot_reveal', KNIGHT_REVEAL: 'knight_reveal'
+            SHOOT: 'shoot', VOTE: 'vote', SHOOT_REVEAL: 'shoot_reveal', KNIGHT_REVEAL: 'knight_reveal', VOTE_REVEAL: 'vote_reveal'
         };
         const ITEMS = { VERIFY: 'verify', POISON: 'poison', GUN: 'gun' };
 
@@ -1307,7 +1307,7 @@ const PhaseDemonEmperor = defineComponent({
                             <template v-else-if="nightState.mechWolfState.learnedRole === ROLES.WITCH"><p v-if="!nightState.mechWolfState.poisonUsed" :style="'color:var(--'+CLASSES.GOD+'); font-weight:bold;'">🧪 毒殺 (僅限毒藥)</p><div v-else class="witch-alert-active" style="border-color: #555; background: #333; margin-bottom: 15px;"><h2 style="margin:0; color:#ccc; font-size:16px;">🧪 毒藥已使用</h2></div></template>
                             <template v-else-if="[ROLES.MEDIUM, ROLES.SEER, ROLES.AWAKENED_SEER, ROLES.SHADOW].includes(nightState.mechWolfState.learnedRole)"><p :style="'color:var(--'+CLASSES.GOD+'); font-weight:bold;'">🔮 查驗</p></template>
                             <template v-else-if="nightState.mechWolfState.learnedRole === ROLES.GUARD"><p :style="'color:var(--'+CLASSES.GOD+'); font-weight:bold;'">🛡️ 保護</p></template>
-                            <template v-else><div class="witch-alert-active" style="border-color: #555; background: #333; margin-bottom: 15px;"><h2 style="margin:0; color:#ccc; font-size:16px;">此身分無夜間主動技能</h2></div></template>
+                            <template v-else><div class="witch-alert-active" style="border-color: #555; background: #333; margin-bottom: 15px;"><h2 style="margin:0; color:#ccc; font-size:16px;">此身分無夜間主ড়ান্ত技能</h2></div></template>
                         </div>
                     </template>
                     <template #extra>
@@ -1486,7 +1486,8 @@ const PhaseDemonEmperor = defineComponent({
                             morningState.voteTarget = 0;
                             morningState.isVotingDone = true;
                             gameState.idiotRevealed = true;
-                            popShooter();
+                            morningState.resultHtml = `<h2 style="margin:0; color:var(--btn-success);">${target.id}號玩家沒有死亡</h2><p style="color:#aaa; margin:5px 0 0 0;">(白癡翻牌免死)</p>`;
+                            morningState.step = STEPS.VOTE_REVEAL;
                             return;
                         }
 
@@ -1498,7 +1499,8 @@ const PhaseDemonEmperor = defineComponent({
                             morningState.voteTarget = 0;
                             morningState.isVotingDone = true;
                             gameState.bloodMoonLastStand = true;
-                            popShooter();
+                            morningState.resultHtml = `<h2 style="margin:0; color:var(--btn-success);">${target.id}號玩家沒有死亡</h2><p style="color:#aaa; margin:5px 0 0 0;">(血月使徒血脈存活)</p>`;
+                            morningState.step = STEPS.VOTE_REVEAL;
                             return;
                         }
 
@@ -1506,18 +1508,22 @@ const PhaseDemonEmperor = defineComponent({
                         if (res.finalEvents.length === 0 && gameState.activeYangIds.includes(target.id)) {
                             gameState.lastExiledRole = null;
                             Helpers.addHistory(`🗳️ 白天投票放逐了 ${Helpers.formatPlayerText(morningState.voteTarget)}，但其受到 [純陽] 庇護，免除了放逐死亡！`);
+                            morningState.resultHtml = `<h2 style="margin:0; color:var(--btn-success);">${target.id}號玩家沒有死亡</h2><p style="color:#aaa; margin:5px 0 0 0;">(受純陽庇護)</p>`;
                         } else {
                             gameState.lastExiledRole = target.isDitto ? ROLES.DITTO_WOLF_KING : target.role;
                             Helpers.addHistory(`🗳️ 白天投票放逐了 ${Helpers.formatPlayerText(morningState.voteTarget)}`);
                             SettlementEngine.applyDeaths(res);
                             morningState.shootQueue.push(...res.gunQueue);
                             morningState.daytimeCharmDeaths.push(...res.charmLog);
+                            morningState.resultHtml = `<h2 style="margin:0; color:var(--btn-danger);">${target.id}號玩家被放逐死亡</h2>`;
                         }
                     } else {
                         gameState.lastExiledRole = null;
                         Helpers.addHistory(`🗳️ 白天投票結果為 無人出局`);
+                        morningState.resultHtml = `<h2 style="margin:0; color:#aaa;">無人出局</h2>`;
                     }
-                    morningState.isVotingDone = true; popShooter();
+                    morningState.isVotingDone = true;
+                    morningState.step = STEPS.VOTE_REVEAL;
                 };
 
                 const confirmExplode = () => {
@@ -1691,6 +1697,15 @@ const PhaseDemonEmperor = defineComponent({
                         </div>
                     </div>
 
+                    <div v-else-if="morningState.step === STEPS.VOTE_REVEAL" class="action-row">
+                        <h3 style="color: #ff9800;">🗳️ 放逐結果結算</h3>
+                        <div class="witch-alert-active" style="background: rgba(255, 255, 255, 0.05); border-color: #555; text-align: center; margin-bottom: 10px; padding: 20px;" v-html="morningState.resultHtml">
+                        </div>
+                        <div class="nav-buttons">
+                            <button @click="popShooter" style="width: 100%;">確認進入下一步 ➡️</button>
+                        </div>
+                    </div>
+
                     <div v-else-if="morningState.step === STEPS.VOTE" class="action-row">
                         <div class="result-box" v-html="morningState.resultHtml"></div>
                         <h3 style="margin-top: 20px; color: #fff;">🗳️ 白天投票環節</h3>
@@ -1700,7 +1715,7 @@ const PhaseDemonEmperor = defineComponent({
                         </div>
                         <div class="nav-buttons">
                             <button class="btn-prev" @click="$emit('prev-to-night')">⬅️ 回到黑夜</button>
-                            <button @click="confirmVote">確認放逐並天黑 ➡️</button>
+                            <button @click="confirmVote">確認放逐 ➡️</button>
                         </div>
 
                         <div v-if="explodableWolves.length > 0" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #555;">
