@@ -631,78 +631,95 @@
         const PhaseMedium = defineComponent({ emits: ['prev', 'next'], components: { 'phase-grid': PhaseGrid }, setup() { return { setupState, gameState, nightState, Helpers, ROLES, CLASSES }; }, template: `<phase-grid :title="ROLES.MEDIUM" emoji="🔮" :colorClass="CLASSES.GOD" recordKey="mediumTarget" :checkFearedRoles="[ROLES.MEDIUM]" roleId="medium" :disableCondition="id => id === setupState.initialRoleSetup.medium" @prev="$emit('prev')" @next="$emit('next')"><template #extra><div v-if="nightState.records.mediumTarget !== 0" class="witch-alert-active" style="margin-top: 15px; background: #222; border-color: #555;"><span style="color:#aaa;">查驗結果：</span><span style="font-size:22px;" :class="Helpers.getRoleColorClass(Helpers.getMediumCheckResult(Helpers.getActualTarget(nightState.records.mediumTarget)))">{{ Helpers.getMediumCheckResult(Helpers.getActualTarget(nightState.records.mediumTarget)) }}</span></div></template></phase-grid>` });
         const PhaseDreamer = defineComponent({ emits: ['prev', 'next'], components: { 'phase-grid': PhaseGrid }, setup() { return { setupState, gameState, nightState, Helpers, ROLES, CLASSES }; }, template: `<phase-grid :title="ROLES.DREAMER" emoji="💤" :colorClass="CLASSES.GOD" recordKey="dreamTarget" :checkFearedRoles="[ROLES.DREAMER]" roleId="dreamer" :disableCondition="id => id === setupState.initialRoleSetup.dreamer" :hideZeroBtn="true" @prev="$emit('prev')" @next="$emit('next')"><template #pre-grid><div v-if="gameState.day > 1" style="margin-bottom: 10px; font-size: 15px;"><span style="color:#aaa;">昨晚夢遊：</span><span v-if="nightState.records.lastDreamTarget !== 0" v-html="Helpers.formatPlayerText(nightState.records.lastDreamTarget)"></span><span v-else style="color:#aaa;">無</span></div></template></phase-grid>` });
         
-        const PhaseDemonEmperor = defineComponent({
-            emits: ['prev', 'next'],
-            setup(props, { emit }) {
-                const alivePlayers = computed(() => gameState.players.filter(p => p.alive));
-                const onNext = () => {
-                    if (gameState.day === 1 && setupState.initialRoleSetup.demonEmperor === 0) return alert(`請設定「${ROLES.DEMON_EMPEROR}」號碼！`);
-                    if (nightState.records.demonEmperorSkill && nightState.records.demonEmperorTarget === 0) return alert(`請選擇技能施放目標！`);
-                    emit('next');
-                };
-                const setSkill = (s) => {
-                    if (nightState.records.lastDemonEmperorSkill === s) return;
-                    if (nightState.records.demonEmperorSkill === s) {
-                        nightState.records.demonEmperorSkill = '';
-                        nightState.records.demonEmperorTarget = 0;
-                    } else {
-                        nightState.records.demonEmperorSkill = s;
-                        if (nightState.records.demonEmperorTarget === 0) nightState.records.demonEmperorTarget = setupState.initialRoleSetup.demonEmperor;
-                    }
-                };
-                return { setupState, gameState, nightState, Helpers, alivePlayers, onNext, setSkill, ROLES, CLASSES };
-            },
-            template: `
-                <div class="action-row">
-                    <h3 :class="CLASSES.WOLF">👿 {{ ROLES.DEMON_EMPEROR }}請睜眼</h3>
-                    <div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
-                        <p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.DEMON_EMPEROR }}是幾號？</p>
-                        <select v-model="setupState.initialRoleSetup.demonEmperor">
-                            <option :value="0">請選擇</option>
-                            <template v-for="p in gameState.players" :key="p.id">
-                                <option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'demonEmperor')">{{ p.id }} 號</option>
-                            </template>
-                        </select>
-                    </div>
-                    
-                    <div v-if="gameState.day === 1" class="witch-alert-active" style="border-color: var(--color-wolf); background: #333; margin-bottom: 15px;">
-                        <h3 style="margin:0 0 5px 0; color: #c879ff;">上帝提示：場上小狼為</h3>
-                        <div style="color: white; font-size: 18px; font-weight: bold;">
-                            <span v-for="(wId, i) in setupState.initialRoleSetup.wolves.filter(id=>id!==0)" :key="wId">{{ i > 0 ? '、' : '' }}{{wId}} 號</span>
-                            <span v-if="setupState.initialRoleSetup.wolves.filter(id=>id!==0).length === 0">無</span>
-                        </div>
-                    </div>
-
-                    <div v-if="Helpers.isDead('demonEmperor')" class="witch-alert-active" style="border-color: #555; background: #333;">
-                        <h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.DEMON_EMPEROR }}已經死亡</h1>
-                    </div>
-                    <div v-else-if="Helpers.checkFeared([ROLES.DEMON_EMPEROR])">
-                        <div class="witch-alert-active" style="color: white;">⚠️ 技能遭封印 / 被恐懼無法行動</div>
-                    </div>
-                    <div v-else>
-                        <p style="color: #ff9800; font-weight: bold;">請選擇發動技能 (不能連兩晚相同)：</p>
-                        <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
-                            <div :class="['witch-action-btn', { 'active-heal': nightState.records.demonEmperorSkill === 'YANG', 'disabled': nightState.records.lastDemonEmperorSkill === 'YANG' }]" @click="setSkill('YANG')" style="margin:0; width:45%;">☀️ [純陽]<br><span style="font-size:12px;">(免疫白天死亡)</span></div>
-                            <div :class="['witch-action-btn', { 'active-poison': nightState.records.demonEmperorSkill === 'YIN', 'disabled': nightState.records.lastDemonEmperorSkill === 'YIN' }]" @click="setSkill('YIN')" style="margin:0; width:45%;">🌙 [至陰]<br><span style="font-size:12px;">(免疫夜晚死亡)</span></div>
-                        </div>
-                        
-                        <div v-if="nightState.records.demonEmperorSkill">
-                            <p style="color: var(--color-wolf); font-weight: bold;">請選擇目標：</p>
-                            <div class="player-grid-container">
-                                <div v-for="p in alivePlayers" :key="p.id" :class="['player-grid-btn', p.class, { selected: nightState.records.demonEmperorTarget === p.id }]" @click="nightState.records.demonEmperorTarget = p.id">
-                                    <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;">{{ p.role }}</span></span>
-                                </div>
-                            </div>
-                        </div>
-                        <div v-else class="witch-alert-active" style="border-color: #555; background: #333; margin-top: 15px;">
-                            <h2 style="margin:0; color:#ccc; font-size:16px;">(不發動技能)</h2>
-                        </div>
-                    </div>
-                    <div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div>
-                </div>
-            `
+const PhaseDemonEmperor = defineComponent({
+    emits: ['prev', 'next'],
+    setup(props, { emit }) {
+        const alivePlayers = computed(() => gameState.players.filter(p => p.alive));
+        
+        // 核心邏輯：精準聚合所有與小狼一同睜眼的狼陣營玩家
+        const visibleWolves = computed(() => {
+            const s = setupState.initialRoleSetup;
+            let list = [...s.wolves];
+            if (s.blackWolf) list.push(s.blackWolf);
+            if (s.wolfBeauty) list.push(s.wolfBeauty);
+            if (s.awakenedWolfBeauty) list.push(s.awakenedWolfBeauty);
+            if (s.evilKnight) list.push(s.evilKnight);
+            if (s.bloodMoon) list.push(s.bloodMoon);
+            if (setupState.activeRoles.wolfBrothers && s.wolfBrother) list.push(s.wolfBrother);
+            
+            // 過濾掉未設定的空號碼(0)，去除重複項，並依照號碼遞增排序確保閱讀體驗
+            return [...new Set(list.filter(id => id !== 0))].sort((a, b) => a - b);
         });
 
+        const onNext = () => {
+            if (gameState.day === 1 && setupState.initialRoleSetup.demonEmperor === 0) return alert(`請設定「${ROLES.DEMON_EMPEROR}」號碼！`);
+            if (nightState.records.demonEmperorSkill && nightState.records.demonEmperorTarget === 0) return alert(`請選擇技能施放目標！`);
+            emit('next');
+        };
+        
+        const setSkill = (s) => {
+            if (nightState.records.lastDemonEmperorSkill === s) return;
+            if (nightState.records.demonEmperorSkill === s) {
+                nightState.records.demonEmperorSkill = '';
+                nightState.records.demonEmperorTarget = 0;
+            } else {
+                nightState.records.demonEmperorSkill = s;
+                if (nightState.records.demonEmperorTarget === 0) nightState.records.demonEmperorTarget = setupState.initialRoleSetup.demonEmperor;
+            }
+        };
+        
+        return { setupState, gameState, nightState, Helpers, alivePlayers, visibleWolves, onNext, setSkill, ROLES, CLASSES };
+    },
+    template: `
+        <div class="action-row">
+            <h3 :class="CLASSES.WOLF">👿 {{ ROLES.DEMON_EMPEROR }}請睜眼</h3>
+            <div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.DEMON_EMPEROR }}是幾號？</p>
+                <select v-model="setupState.initialRoleSetup.demonEmperor">
+                    <option :value="0">請選擇</option>
+                    <template v-for="p in gameState.players" :key="p.id">
+                        <option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'demonEmperor')">{{ p.id }} 號</option>
+                    </template>
+                </select>
+            </div>
+            
+            <div v-if="gameState.day === 1" class="witch-alert-active" style="border-color: var(--color-wolf); background: #333; margin-bottom: 15px;">
+                <h3 style="margin:0 0 5px 0; color: #c879ff;">上帝提示：狼隊友（含特殊狼）為</h3>
+                <div style="color: white; font-size: 18px; font-weight: bold;">
+                    <span v-for="(wId, i) in visibleWolves" :key="wId">{{ i > 0 ? '、' : '' }}{{wId}} 號</span>
+                    <span v-if="visibleWolves.length === 0">無</span>
+                </div>
+            </div>
+
+            <div v-if="Helpers.isDead('demonEmperor')" class="witch-alert-active" style="border-color: #555; background: #333;">
+                <h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.DEMON_EMPEROR }}已經死亡</h1>
+            </div>
+            <div v-else-if="Helpers.checkFeared([ROLES.DEMON_EMPEROR])">
+                <div class="witch-alert-active" style="color: white;">⚠️ 技能遭封印 / 被恐懼無法行動</div>
+            </div>
+            <div v-else>
+                <p style="color: #ff9800; font-weight: bold;">請選擇發動技能 (不能連兩晚相同)：</p>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+                    <div :class="['witch-action-btn', { 'active-heal': nightState.records.demonEmperorSkill === 'YANG', 'disabled': nightState.records.lastDemonEmperorSkill === 'YANG' }]" @click="setSkill('YANG')" style="margin:0; width:45%;">☀️ [純陽]<br><span style="font-size:12px;">(免疫白天死亡)</span></div>
+                    <div :class="['witch-action-btn', { 'active-poison': nightState.records.demonEmperorSkill === 'YIN', 'disabled': nightState.records.lastDemonEmperorSkill === 'YIN' }]" @click="setSkill('YIN')" style="margin:0; width:45%;">🌙 [至陰]<br><span style="font-size:12px;">(免疫夜晚死亡)</span></div>
+                </div>
+                
+                <div v-if="nightState.records.demonEmperorSkill">
+                    <p style="color: var(--color-wolf); font-weight: bold;">請選擇目標：</p>
+                    <div class="player-grid-container">
+                        <div v-for="p in alivePlayers" :key="p.id" :class="['player-grid-btn', p.class, { selected: nightState.records.demonEmperorTarget === p.id }]" @click="nightState.records.demonEmperorTarget = p.id">
+                            <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;">{{ p.role }}</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div v-else class="witch-alert-active" style="border-color: #555; background: #333; margin-top: 15px;">
+                    <h2 style="margin:0; color:#ccc; font-size:16px;">(不發動技能)</h2>
+                </div>
+            </div>
+            <div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div>
+        </div>
+    `
+});
         const PhaseSage = defineComponent({
             emits: ['prev', 'next'],
             setup(props, { emit }) {
