@@ -1914,7 +1914,7 @@ if (Helpers.checkFeared([ROLES.BEAR])) {
             }
         };
 
-          const GameOverScreen = {
+const GameOverScreen = {
             template: `
                 <div class="game-over-panel">
                     <div class="game-over-title">遊戲結束</div>
@@ -1925,48 +1925,107 @@ if (Helpers.checkFeared([ROLES.BEAR])) {
                     </div>
                     
                     <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
-                        <button @click="captureLog" style="background-color: var(--btn-success);">📸 截圖戰報</button>
+                        <button @click="captureLog" style="background-color: var(--btn-success);" :disabled="isCapturing">
+                            {{ isCapturing ? '📸 處理中...' : '📸 截圖戰報' }}
+                        </button>
                         <button @click="reload" style="background-color: var(--btn-primary);">重新開始</button>
                     </div>
                 </div>
             `,
-            setup() { 
+            setup() {
+                const { ref } = Vue;
+                const isCapturing = ref(false);
+
+                const fallbackDownload = (blob, fileName) => {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                };
+
                 const captureLog = async () => {
+                    if (isCapturing.value) return;
+                    
                     const target = document.getElementById('capture-log-box');
                     if (!target) return;
                     
+                    isCapturing.value = true;
                     const originalMaxHeight = target.style.maxHeight;
                     const originalOverflow = target.style.overflowY;
+                    
+                    // 展開容器以顯示完整內容
                     target.style.maxHeight = 'none';
                     target.style.overflowY = 'visible';
 
+                    // 關鍵修正：給予行動版瀏覽器足夠的時間進行 DOM 重繪
+                    await new Promise(resolve => setTimeout(resolve, 200));
+
                     try {
+                        // 動態調整縮放，防止 iOS Safari Canvas 記憶體限制導致全黑或崩潰
+                        const dpr = window.devicePixelRatio || 1;
+                        const scaleValue = dpr >= 2 ? 1.5 : 2;
+
                         const canvas = await html2canvas(target, {
                             backgroundColor: '#111', 
-                            scale: 2
+                            scale: scaleValue,
+                            useCORS: true,
+                            logging: false,
+                            height: target.scrollHeight,
+                            windowHeight: target.scrollHeight
                         });
                         
-                        const link = document.createElement('a');
-                        link.download = `狼人殺戰報_第${gameState.day}天.png`;
-                        link.href = canvas.toDataURL('image/png');
-                        link.click();
+                        const fileName = `狼人殺戰報_第${gameState.day}天.png`;
+                        
+                        // 使用 Blob 替代 Base64 處理大檔案傳輸
+                        canvas.toBlob(async (blob) => {
+                            if (!blob) throw new Error("Canvas 轉換 Blob 失敗");
+
+                            const file = new File([blob], fileName, { type: 'image/png' });
+
+                            // 優先呼叫行動端原生分享/儲存介面
+                            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                                try {
+                                    await navigator.share({
+                                        files: [file],
+                                        title: '狼人殺戰報',
+                                        text: `第 ${gameState.day} 天遊戲戰報`
+                                    });
+                                } catch (shareErr) {
+                                    // 捕捉使用者取消分享或異常，降級為直接下載
+                                    if (shareErr.name !== 'AbortError') {
+                                        fallbackDownload(blob, fileName);
+                                    }
+                                }
+                            } else {
+                                // 桌機端或不支援 Share API 之環境
+                                fallbackDownload(blob, fileName);
+                            }
+                        }, 'image/png');
+
                     } catch (error) {
-                        console.error("截圖失敗: ", error);
-                        alert("戰報截圖失敗，請稍後再試！");
+                        console.error("截圖發生例外狀況: ", error);
+                        alert("戰報截圖失敗，請確保裝置記憶體充足。");
                     } finally {
+                        // 復原 DOM 原始狀態
                         target.style.maxHeight = originalMaxHeight;
                         target.style.overflowY = originalOverflow;
+                        isCapturing.value = false;
                     }
                 };
 
                 return { 
                     gameState, 
                     captureLog,
+                    isCapturing,
                     reload: () => window.location.reload() 
                 }; 
             }
         };
-        const app = createApp({ 
+            const app = createApp({ 
             components: { 'setup-screen': SetupScreen, 'game-screen': GameScreen, 'game-over-screen': GameOverScreen }, 
             setup() { return { gameState, SCREENS }; } 
         });
