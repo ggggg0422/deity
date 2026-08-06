@@ -1400,6 +1400,24 @@ const PhaseDemonEmperor = defineComponent({
                 const alivePlayers = computed(() => gameState.players.filter(p => p.alive));
                 const explodableWolves = computed(() => alivePlayers.value.filter(p => [ROLES.WOLF, ROLES.BLACK_WOLF, ROLES.BLOOD_MOON].includes(p.role)));
 
+                // 核心邏輯：即時計算狼人綁票條件 (狼人數 >= 好人數)
+                const canKidnapWin = computed(() => {
+                    const alive = alivePlayers.value;
+                    const wolfCount = alive.filter(p => Helpers.isWolf(p.id)).length;
+                    const goodCount = alive.length - wolfCount;
+                    return wolfCount > 0 && wolfCount >= goodCount;
+                });
+
+                // 行動：觸發綁票獲勝
+                const confirmKidnapWin = () => {
+                    Helpers.addHistory(`🏴 狼人綁票：存活狼人數與好人數持平(或超越)，好人失去放逐能力。`);
+                    gameState.pendingGameOver = { 
+                        faction: "<span style='color: var(--color-wolf); font-weight: bold;'>🐺 狼人陣營獲勝！</span>", 
+                        reason: "(狼人綁票/平票)" 
+                    };
+                    emit('game-over');
+                };
+
                 const popShooter = () => {
                     const win = Helpers.checkWinCondition();
                     if (win) { gameState.pendingGameOver = win; emit('game-over'); return; }
@@ -1619,7 +1637,7 @@ const PhaseDemonEmperor = defineComponent({
                     }
                 };
 
-                return { setupState, gameState, nightState, morningState, alivePlayers, explodableWolves, confirmVote, confirmExplode, popShooter, confirmShoot, confirmAhShoot, Helpers, setKnightDuelTarget, confirmDuel, confirmKnightReveal, ROLES, CLASSES, STEPS };
+                return { setupState, gameState, nightState, morningState, alivePlayers, explodableWolves, canKidnapWin, confirmKidnapWin, confirmVote, confirmExplode, popShooter, confirmShoot, confirmAhShoot, Helpers, setKnightDuelTarget, confirmDuel, confirmKnightReveal, ROLES, CLASSES, STEPS };
             },
             template: `
                 <div>
@@ -1716,6 +1734,15 @@ const PhaseDemonEmperor = defineComponent({
                         <div class="nav-buttons">
                             <button class="btn-prev" @click="$emit('prev-to-night')">⬅️ 回到黑夜</button>
                             <button @click="confirmVote">確認放逐 ➡️</button>
+                        </div>
+
+                        <!-- 🐺 狼人綁票判定 UI -->
+                        <div v-if="canKidnapWin" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--color-wolf);">
+                            <h3 style="color: var(--color-wolf); margin-top: 0;">🏴 狼人綁票獲勝</h3>
+                            <p style="font-size: 13px; color: #aaa; margin-top:-5px;">(實戰中狼人數量與好人數量持平，已達成平票/綁票條件，好人無法透過放逐取勝)</p>
+                            <div class="nav-buttons">
+                                <button @click="confirmKidnapWin" style="background-color: var(--btn-danger); width: 100%;">宣告狼人綁票獲勝 ➡️</button>
+                            </div>
                         </div>
 
                         <div v-if="explodableWolves.length > 0" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #555;">
