@@ -431,7 +431,7 @@
                 let charmLog = [];
                 
                 const triggerDeath = (id, cause, sourceId = null) => {
-                    // 🌟 處理陰陽免疫庇護
+                    // 🌟 處理陰陽死亡與庇護
                     if (cause !== CAUSES.YIN_YANG_DEATH) {
                         if (context.includes('night') && gameState.activeYinIds.includes(id)) return;
                         if (context.includes('day') && gameState.activeYangIds.includes(id)) return;
@@ -556,7 +556,7 @@
             mechWolf: { id: 'mechWolf', name: ROLES.MECH_WOLF, emoji: '🤖', type: FACTIONS.WOLF, selectable: true, executeOrder: 29, componentName: 'phase-mech-wolf' },
             scentPhantom: { id: 'scentPhantom', name: ROLES.SCENT_PHANTOM, emoji: '🥀', type: FACTIONS.WOLF, selectable: true, executeOrder: 29.5, componentName: 'phase-scent-phantom' },
             wolf: { id: 'wolf', name: ROLES.WOLF, emoji: '🐺', type: FACTIONS.WOLF, selectable: false, executeOrder: 30, componentName: 'phase-wolf' },
-            bigBadWolf: { id: 'bigBadWolf', name: ROLES.BIG_BAD_WOLF, emoji: '🐺', type: FACTIONS.WOLF, selectable: true, executeOrder: 30.5, componentName: 'phase-big-bad-wolf' },
+            bigBadWolf: { id: 'bigBadWolf', name: ROLES.BIG_BAD_WOLF, emoji: '⚪️', type: FACTIONS.WOLF, selectable: true, executeOrder: 30.5, componentName: 'phase-big-bad-wolf' },
             demonEmperor: { id: 'demonEmperor', name: ROLES.DEMON_EMPEROR, emoji: '👿', type: FACTIONS.WOLF, selectable: true, executeOrder: 32, componentName: 'phase-demon-emperor' },
             sage: { id: 'sage', name: ROLES.SAGE, emoji: '☯️', type: FACTIONS.GOD, selectable: true, executeOrder: 33, componentName: 'phase-sage' },
             giftedPhase: { id: 'giftedPhase', name: '幸運兒', emoji: '🎁', type: FACTIONS.GOD, selectable: false, executeOrder: 35, componentName: 'phase-gifted' },
@@ -763,7 +763,7 @@
             },
             template: `
                 <div class="action-row">
-                    <h3 :class="CLASSES.WOLF">🐺 {{ ROLES.BIG_BAD_WOLF }}請睜眼</h3>
+                    <h3 :class="CLASSES.WOLF">⚪️ {{ ROLES.BIG_BAD_WOLF }}請睜眼</h3>
                     <div v-if="gameState.day === 1">
                         <p style="color:#aaa;">(第一晚大灰狼已與狼隊一同睜眼確認身分，本階段不需行動)</p>
                     </div>
@@ -2288,9 +2288,9 @@ if (setupState.activeRoles.demonHunter && nightState.records.demonHunterTarget) 
 
                     if (nightState.records.bigBadWolfActivated && nightState.records.bigBadWolfTarget !== 0) {
     if (nightState.records.divinerTarget !== 0) {
-        Helpers.addHistory(`🐺 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bigBadWolf)} 受占卜師標記限制，只能擊殺 ${Helpers.formatPlayerText(nightState.records.bigBadWolfTarget)}`);
+        Helpers.addHistory(`⚪️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.bigBadWolf)} 受占卜師標記限制，只能擊殺 ${Helpers.formatPlayerText(nightState.records.bigBadWolfTarget)}`);
     } else {
-        Helpers.addHistory(`🐺 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bigBadWolf)} 發動技能擊殺了 ${Helpers.formatPlayerText(nightState.records.bigBadWolfTarget)}`);
+        Helpers.addHistory(`⚪️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.bigBadWolf)} 發動技能擊殺了 ${Helpers.formatPlayerText(nightState.records.bigBadWolfTarget)}`);
     }
     nightState.bigBadWolfUsed = true;
 }
@@ -2429,7 +2429,7 @@ if (Helpers.checkFeared([ROLES.BEAR])) {
     
     const activePhases = Object.values(RoleStrategies).filter(r => {
         if (r.id === 'dittoWolfKing') return setupState.isDittoWolfKingMode && gameState.day > 1;
-        if (r.id === 'halfBlood') return false; // 新增：混血兒第二晚之後不再進序列[cite: 1]
+        if (r.id === 'halfBlood') return false; // 新增：混血兒第二晚之後不再進序列
         if (r.id === 'wolf') return true; 
         if (r.id === 'wolfBrotherPhase') return setupState.activeRoles.wolfBrothers && gameState.day === 1;
         if (r.id === 'wolfYoungerBrotherPhase') return setupState.activeRoles.wolfBrothers && gameState.day > 1 && Helpers.isDead('wolfBrother') && !nightState.wolfBrotherRevengeUsed && !Helpers.isDead('wolfYoungerBrother');
