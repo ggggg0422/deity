@@ -674,9 +674,6 @@
                             </div>
                         </div>
                     </div>
-                    <div v-else>
-                        <p style="color: #aaa;">(混血兒只有第一晚睜眼，請直接跳過)</p>
-                    </div>
                     <div class="nav-buttons">
                         <button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button>
                         <button @click="onNext">確認 請閉眼 ➡️</button>
@@ -2432,6 +2429,7 @@ if (Helpers.checkFeared([ROLES.BEAR])) {
     
     const activePhases = Object.values(RoleStrategies).filter(r => {
         if (r.id === 'dittoWolfKing') return setupState.isDittoWolfKingMode && gameState.day > 1;
+        if (r.id === 'halfBlood') return false; // 新增：混血兒第二晚之後不再進序列[cite: 1]
         if (r.id === 'wolf') return true; 
         if (r.id === 'wolfBrotherPhase') return setupState.activeRoles.wolfBrothers && gameState.day === 1;
         if (r.id === 'wolfYoungerBrotherPhase') return setupState.activeRoles.wolfBrothers && gameState.day > 1 && Helpers.isDead('wolfBrother') && !nightState.wolfBrotherRevengeUsed && !Helpers.isDead('wolfYoungerBrother');
