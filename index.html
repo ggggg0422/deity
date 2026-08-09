@@ -183,8 +183,21 @@
         // =========================================
         // 工具函式 (Helpers)
         // =========================================
-        const Helpers = {
-            addHistory: (msg) => gameState.history.push(msg),
+            const Helpers = {
+            isNightLogging: false,
+            addHistory: (msg) => {
+                // 若判定為夜晚補發事件，則將戰報插入到白天分隔線之前
+                if (Helpers.isNightLogging) {
+                    const marker = `=== 第${gameState.day}天 白天 ===`;
+                    for (let i = gameState.history.length - 1; i >= 0; i--) {
+                        if (gameState.history[i].includes(marker)) {
+                            gameState.history.splice(i, 0, msg);
+                            return;
+                        }
+                    }
+                }
+                gameState.history.push(msg);
+            },
             getPlayer: (id) => gameState.players.find(p => p.id === id),
             isWolf: (id, context = '') => {
                 const p = Helpers.getPlayer(id);
@@ -1842,7 +1855,7 @@ const PhaseWolverine = defineComponent({
                     morningState.explodeTarget = 0; morningState.voteTarget = 0; morningState.knightDuelTarget = 0; morningState.isVotingDone = true; popShooter();
                 };
                 
-                const confirmShoot = () => {
+const confirmShoot = () => {
                     const target = morningState.shootTarget;
                     const shooter = morningState.currentShooter;
                     
@@ -1850,10 +1863,14 @@ const PhaseWolverine = defineComponent({
                         gameState.awkGuns--;
                     }
                     
+                    let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
+                    
                     if (target !== 0) {
                         const targetInfo = Helpers.getPlayer(target);
-                        let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
                         
+                        // 啟動夜間戰報寫入模式
+                        if (isNightDeath) Helpers.isNightLogging = true;
+
                         let resolution = SettlementEngine.resolveDeaths([{id: targetInfo.id, cause: CAUSES.SHOT}], isNightDeath ? 'night' : 'day');
                         
                         if (resolution.finalEvents.length === 0 && (gameState.activeYangIds.includes(targetInfo.id) || gameState.activeYinIds.includes(targetInfo.id))) {
@@ -1872,27 +1889,40 @@ const PhaseWolverine = defineComponent({
                             morningState.shootQueue.push(...resolution.gunQueue);
                             morningState.daytimeCharmDeaths.push(...resolution.charmLog);
                         }
+                        
+                        // 關閉夜間戰報寫入模式
+                        if (isNightDeath) Helpers.isNightLogging = false;
+
                         morningState.lastShotTarget = target; morningState.lastShooterRole = shooter.role; morningState.step = STEPS.SHOOT_REVEAL;
                     } else {
+                        if (isNightDeath) Helpers.isNightLogging = true;
                         Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 選擇壓槍`);
+                        if (isNightDeath) Helpers.isNightLogging = false;
+                        
                         morningState.resultHtml += `<br><span style="color:#aaa;">💥 ${shooter.role} 選擇壓槍</span>`;
                         popShooter();
                     }
                     morningState.shootTarget = 0;
                 };
 
-                const confirmAhShoot = () => {
+const confirmAhShoot = () => {
                     let dir = morningState.ahDirection; let shooter = morningState.currentShooter;
+                    let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
+
                     if (dir === 0) {
+                        if (isNightDeath) Helpers.isNightLogging = true;
                         Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 選擇壓槍`);
+                        if (isNightDeath) Helpers.isNightLogging = false;
+
                         morningState.resultHtml += `<br><span style="color:#aaa;">💥 覺醒獵人 選擇壓槍</span>`;
                         morningState.ahDirection = null; popShooter();
                     } else {
                         let target = findClosestWolf(shooter.id, dir);
                         if (target) {
-                            let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
                             let targetInfo = Helpers.getPlayer(target);
                             
+                            if (isNightDeath) Helpers.isNightLogging = true;
+
                             let resolution = SettlementEngine.resolveDeaths([{id: targetInfo.id, cause: isNightDeath ? CAUSES.AH_SHOT : CAUSES.AH_SHOT_DAY}], isNightDeath ? 'night' : 'day');
 
                             if (resolution.finalEvents.length === 0 && (gameState.activeYangIds.includes(targetInfo.id) || gameState.activeYinIds.includes(targetInfo.id))) {
@@ -1911,9 +1941,15 @@ const PhaseWolverine = defineComponent({
                                 morningState.shootQueue.push(...resolution.gunQueue);
                                 morningState.daytimeCharmDeaths.push(...resolution.charmLog);
                             }
+
+                            if (isNightDeath) Helpers.isNightLogging = false;
+
                             morningState.ahDirection = null; morningState.lastShotTarget = target; morningState.lastShooterRole = shooter.role; morningState.step = STEPS.SHOOT_REVEAL;
                         } else {
+                            if (isNightDeath) Helpers.isNightLogging = true;
                             Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 開槍，但場上已無狼人`);
+                            if (isNightDeath) Helpers.isNightLogging = false;
+                            
                             morningState.resultHtml += `<br><span style="color:#aaa;">💥 覺醒獵人 開槍，但場上已無狼人</span>`;
                             morningState.ahDirection = null; popShooter();
                         }
