@@ -667,16 +667,21 @@
             `
         });
 
-        const PhaseWolverine = defineComponent({
+const PhaseWolverine = defineComponent({
             emits: ['prev', 'next'],
             setup(props, { emit }) {
                 const visibleWolves = computed(() => {
                     const s = setupState.initialRoleSetup;
                     let list = [...s.wolves];
-                    const sp = ['blackWolf', 'awakenedWolfKing', 'wolfBeauty', 'awakenedWolfBeauty', 'evilKnight', 'bloodMoon', 'bigBadWolf', 'demonEmperor', 'nightmare', 'gargoyle', 'mechWolf', 'scentPhantom', 'wolverine'];
+                    
+                    // 排除 'wolverine' 本身，僅遍歷其他特殊狼隊友[cite: 1]
+                    const sp = ['blackWolf', 'awakenedWolfKing', 'wolfBeauty', 'awakenedWolfBeauty', 'evilKnight', 'bloodMoon', 'bigBadWolf', 'demonEmperor', 'nightmare', 'gargoyle', 'mechWolf', 'scentPhantom'];
                     sp.forEach(k => { if (setupState.activeRoles[k] && s[k]) list.push(s[k]); });
                     if (setupState.activeRoles.wolfBrothers && s.wolfBrother) list.push(s.wolfBrother);
-                    return [...new Set(list.filter(id => id !== 0))].sort((a, b) => a - b);
+                    
+                    // 二次過濾：排除空值(0)以及金鋼狼自身的 ID (防呆機制)[cite: 1]
+                    const wolverineId = s.wolverine;
+                    return [...new Set(list.filter(id => id !== 0 && id !== wolverineId))].sort((a, b) => a - b);
                 });
                 const onNext = () => {
                     if (gameState.day === 1 && setupState.initialRoleSetup.wolverine === 0) return alert(`請設定「${ROLES.WOLVERINE}」的號碼！`);
@@ -1670,6 +1675,7 @@
         });
 
         // =========================================
+// =========================================
         // 白天結算模組 (Morning Phase)
         // =========================================
         const MorningPhase = defineComponent({
@@ -1856,6 +1862,9 @@
                         } else if (targetInfo.role === ROLES.DEMON_HUNTER && isNightDeath && shooter.role !== ROLES.BLACK_WOLF && !shooter.awkGun) {
                             Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 開槍帶走 ${Helpers.formatPlayerText(target)}，但 ${Helpers.formatPlayerText(target)} 免疫了夜槍傷害`);
                             morningState.resultHtml += `<br><span>💥 ${shooter.role} 開槍，但 ${Helpers.formatPlayerText(target)} 免疫了傷害</span>`;
+                        } else if (targetInfo.role === ROLES.WOLVERINE && isNightDeath) {
+                            Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 開槍，${Helpers.formatPlayerText(target)} 沒有死亡`);
+                            morningState.resultHtml += `<br><span>💥 ${shooter.role} 開槍 ${Helpers.formatPlayerText(target)} 沒有死亡</span>`;
                         } else {
                             Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 開槍帶走了 ${Helpers.formatPlayerText(target)}`);
                             morningState.resultHtml += `<br><span>💥 ${shooter.role} 開槍帶走了 ${Helpers.formatPlayerText(target)}</span>`;
@@ -1870,17 +1879,6 @@
                         popShooter();
                     }
                     morningState.shootTarget = 0;
-                };
-
-                const findClosestWolf = (startId, dir) => {
-                    let n = setupState.playerCount; let curr = startId;
-                    for (let i = 0; i < n; i++) {
-                        curr += dir;
-                        if (curr > n) curr = 1; if (curr < 1) curr = n;
-                        let p = gameState.players.find(x => x.id === curr);
-                        if (p && p.alive && Helpers.isWolf(p.id)) return p.id;
-                    }
-                    return null;
                 };
 
                 const confirmAhShoot = () => {
@@ -1903,6 +1901,9 @@
                             } else if (targetInfo.role === ROLES.DEMON_HUNTER && isNightDeath && shooter.role !== ROLES.BLACK_WOLF) {
                                 Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 向${dir>0?'遞增':'遞減'}方向開槍擊中 ${Helpers.formatPlayerText(target)}，但 ${Helpers.formatPlayerText(target)} 免疫了夜槍傷害`);
                                 morningState.resultHtml += `<br><span>💥 覺醒獵人 開槍，但 ${Helpers.formatPlayerText(target)} 免疫了傷害</span>`;
+                            } else if (targetInfo.role === ROLES.WOLVERINE && isNightDeath) {
+                                Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 向${dir>0?'遞增':'遞減'}方向開槍，${Helpers.formatPlayerText(target)} 沒有死亡`);
+                                morningState.resultHtml += `<br><span>💥 覺醒獵人 開槍 ${Helpers.formatPlayerText(target)} 沒有死亡</span>`;
                             } else {
                                 Helpers.addHistory(`🔫 ${Helpers.formatPlayerText(shooter.id)} 向${dir>0?'遞增':'遞減'}方向開槍，擊中了 ${Helpers.formatPlayerText(target)}`);
                                 morningState.resultHtml += `<br><span>💥 覺醒獵人 開槍擊殺了 ${Helpers.formatPlayerText(target)}</span>`;
@@ -1935,7 +1936,7 @@
                     <div v-else-if="morningState.step === STEPS.SHOOT_REVEAL" class="action-row">
                         <h3 style="color: #ff9800;">🔫 開槍結果</h3>
                         <div class="witch-alert-active" style="background: rgba(255, 77, 77, 0.1); border-color: var(--btn-danger); text-align: center; margin-bottom: 10px; padding: 15px;">
-                            <h2 style="margin:0; color:white;" v-html="Helpers.formatPlayerText(morningState.lastShotTarget) + ' 被開槍帶走'"></h2>
+                            <h2 style="margin:0; color:white;" v-html="Helpers.formatPlayerText(morningState.lastShotTarget) + (Helpers.getPlayer(morningState.lastShotTarget)?.alive ? ' 沒有死亡' : ' 被開槍帶走')"></h2>
                             <p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(開槍者：{{ morningState.lastShooterRole }})</p>
                         </div>
                         <div class="nav-buttons">
@@ -2410,19 +2411,26 @@ const GameScreen = {
                         Helpers.addHistory(`🎭 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bear)} 魅惑了 ${Helpers.formatPlayerText(nightState.records.bearCharmTarget)}`);
                     }
                     
-                    // 🧙‍♀️ 女巫藥水結算 (包含有藥卻不使用的判斷)
-                    if (setupState.activeRoles.witch && !Helpers.isDead('witch') && !Helpers.checkFeared([ROLES.WITCH])) {
-                        if (nightState.records.witchAction === ACTIONS.HEAL) {
-                            Helpers.addHistory(`🧙‍♀️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 使用了解藥`);
-                            nightState.potions.heal = false;
-                        } else if (nightState.records.witchAction === ACTIONS.POISON) {
-                            Helpers.addHistory(`🧪 ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 毒殺了 ${Helpers.formatPlayerText(nightState.records.witchPoison)}`);
-                            nightState.potions.poison = false;
-                        } else if (nightState.potions.heal || nightState.potions.poison) {
-                            Helpers.addHistory(`🧙‍♀️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 選擇不使用藥水`);
-                        }
-                    }
-                    
+// 🧙‍♀️ 女巫藥水結算 (包含有藥卻不使用的判斷)
+if (setupState.activeRoles.witch && !Helpers.isDead('witch') && !Helpers.checkFeared([ROLES.WITCH])) {
+    if (nightState.records.witchAction === ACTIONS.HEAL) {
+        Helpers.addHistory(`🧙‍♀️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 使用了解藥`);
+        nightState.potions.heal = false;
+    } else if (nightState.records.witchAction === ACTIONS.POISON) {
+        // 取得中毒目標物件以進行身分判定[cite: 1]
+        const poisonTarget = Helpers.getPlayer(nightState.records.witchPoison);
+        
+        // 針對金鋼狼進行特判，並修改標準毒殺字眼[cite: 1]
+        if (poisonTarget && poisonTarget.role === ROLES.WOLVERINE) {
+            Helpers.addHistory(`🧪 ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 毒了 ${Helpers.formatPlayerText(nightState.records.witchPoison)}沒有死亡`);
+        } else {
+            Helpers.addHistory(`🧪 ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 毒了 ${Helpers.formatPlayerText(nightState.records.witchPoison)}`);
+        }
+        nightState.potions.poison = false;
+    } else if (nightState.potions.heal || nightState.potions.poison) {
+        Helpers.addHistory(`🧙‍♀️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 選擇不使用藥水`);
+    }
+}                    
                     // 🌟 透過 SettlementEngine 結算夜晚死亡
                     let intents = SettlementEngine.evaluateNightDeaths();
                     let resolution = SettlementEngine.resolveDeaths(intents, 'night');
@@ -2519,7 +2527,7 @@ const GameScreen = {
 
                 const saveVoteBackup = () => { votePhaseBackup = { players: JSON.parse(JSON.stringify(gameState.players)), history: [...gameState.history], awbUsed: nightState.awbUsed, knightUsed: nightState.knightUsed, ekUsed: nightState.ekUsed, scentPhantomUsed: nightState.scentPhantomUsed, records: JSON.parse(JSON.stringify(nightState.records)), potions: JSON.parse(JSON.stringify(nightState.potions)), mechWolfState: JSON.parse(JSON.stringify(nightState.mechWolfState)), giftedState: JSON.parse(JSON.stringify(nightState.giftedState)), lastExiledRole: gameState.lastExiledRole, bloodMoonSealed: gameState.bloodMoonSealed, bloodMoonLastStand: gameState.bloodMoonLastStand, idiotRevealed: gameState.idiotRevealed }; };
 
-                const startNextNight = () => {
+const startNextNight = () => {
                     const dayEndAliveIds = gameState.players.filter(p => p.alive).map(p => p.id);
                     const dayDiedIds = morningState.dayStartAliveIds.filter(id => !dayEndAliveIds.includes(id));
                     if (dayDiedIds.length === 0) Helpers.addHistory(`🌇 白天結算：無人死亡`);
@@ -2529,7 +2537,7 @@ const GameScreen = {
                     
                     const activePhases = Object.values(RoleStrategies).filter(r => {
                         if (r.id === 'dittoWolfKing') return setupState.isDittoWolfKingMode && gameState.day > 1;
-                        if (r.id === 'halfBlood') return false; 
+                        if (r.id === 'halfBlood' || r.id === 'wolverine') return false; 
                         if (r.id === 'wolf') return true; 
                         if (r.id === 'wolfBrotherPhase') return setupState.activeRoles.wolfBrothers && gameState.day === 1;
                         if (r.id === 'wolfYoungerBrotherPhase') return setupState.activeRoles.wolfBrothers && gameState.day > 1 && Helpers.isDead('wolfBrother') && !nightState.wolfBrotherRevengeUsed && !Helpers.isDead('wolfYoungerBrother');
