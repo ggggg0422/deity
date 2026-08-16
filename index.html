@@ -227,11 +227,26 @@
                 }
                 return [ROLES.WOLF, ROLES.BLACK_WOLF, ROLES.WOLF_BEAUTY, ROLES.AWAKENED_WOLF_BEAUTY, ROLES.EVIL_KNIGHT, ROLES.NIGHTMARE, ROLES.GARGOYLE, ROLES.MECH_WOLF, ROLES.WOLF_BROTHER, ROLES.WOLF_YOUNGER, ROLES.BLOOD_MOON, ROLES.SCENT_PHANTOM, ROLES.DEMON_EMPEROR, ROLES.BIG_BAD_WOLF, ROLES.AWAKENED_WOLF_KING, ROLES.WOLVERINE, ROLES.AWAKENED_GARGOYLE].includes(p.role);
             },
-            isDead: (roleKey) => {
-                const id = setupState.initialRoleSetup[roleKey];
-                const p = Helpers.getPlayer(id);
-                return p && !p.alive;
-            },
+isDead: (roleKey) => {
+            const id = setupState.initialRoleSetup[roleKey];
+            const p = Helpers.getPlayer(id);
+            return p && !p.alive;
+        },
+        // [新增] 判斷該角色是否為轉化者且已滿足帶刀條件
+        isTransformedAndCanKill: (roleId) => {
+            if (!nightState.records || nightState.records.awakenedGargoyleTarget === 0) return false;
+            const agTarget = nightState.records.awakenedGargoyleTarget;
+            
+            // 驗證當前階段是否為轉化者的原始身分
+            if (setupState.initialRoleSetup[roleId] !== agTarget) return false;
+            
+            const p = Helpers.getPlayer(agTarget);
+            if (!p || !p.alive) return false; // 死亡狀態失去技能與帶刀能力
+            
+            // 確認場上已無其他狼人存活，正式獲得帶刀權限
+            const aliveWolves = gameState.players.filter(x => x.alive && Helpers.isWolf(x.id) && x.id !== agTarget);
+            return aliveWolves.length === 0;
+        },
             getActualTarget: (id) => {
                 if (id === 0) return 0;
                 const swaps = nightState.records.magicianSwaps;
@@ -347,10 +362,25 @@
                 const alive = gameState.players.filter(p => p.alive);
                 return Helpers._evaluateWin(alive);
             },
-            _evaluateWin: (alive) => {
+_evaluateWin: (alive) => {
+                // 取得當前覺醒石像鬼的轉化目標 (若無則為 0)
+                const transformedId = (nightState.records && nightState.records.awakenedGargoyleTarget) ? nightState.records.awakenedGargoyleTarget : 0;
+
                 const wolves = alive.filter(p => Helpers.isWolf(p.id)).length;
-                const gods = alive.filter(p => !p.isDitto && [ROLES.MAGICIAN, ROLES.BLACK_MERCHANT, ROLES.WITCH, ROLES.AWAKENED_WITCH, ROLES.SEER, ROLES.AWAKENED_SEER, ROLES.HUNTER, ROLES.AWAKENED_HUNTER, ROLES.GUARD, ROLES.KNIGHT, ROLES.DREAMER, ROLES.DEMON_HUNTER, ROLES.BEAR, ROLES.GRAVEKEEPER, ROLES.MEDIUM, ROLES.IDIOT, ROLES.SAGE, ROLES.DIVINER].includes(p.role)).length;
-                const villagers = alive.filter(p => !p.isDitto && [ROLES.VILLAGER, ROLES.SHADOW, ROLES.HALF_BLOOD].includes(p.role)).length;
+                
+                // 計算存活神職：需同時排除百變狼王 (isDitto) 以及已被轉化的神職 (p.id === transformedId)
+                const gods = alive.filter(p => 
+                    !p.isDitto && 
+                    p.id !== transformedId && 
+                    [ROLES.MAGICIAN, ROLES.BLACK_MERCHANT, ROLES.WITCH, ROLES.AWAKENED_WITCH, ROLES.SEER, ROLES.AWAKENED_SEER, ROLES.HUNTER, ROLES.AWAKENED_HUNTER, ROLES.GUARD, ROLES.KNIGHT, ROLES.DREAMER, ROLES.DEMON_HUNTER, ROLES.BEAR, ROLES.GRAVEKEEPER, ROLES.MEDIUM, ROLES.IDIOT, ROLES.SAGE, ROLES.DIVINER].includes(p.role)
+                ).length;
+                
+                // 計算存活平民：需同時排除百變狼王 (isDitto) 以及已被轉化的平民 (p.id === transformedId)
+                const villagers = alive.filter(p => 
+                    !p.isDitto && 
+                    p.id !== transformedId && 
+                    [ROLES.VILLAGER, ROLES.SHADOW, ROLES.HALF_BLOOD].includes(p.role)
+                ).length;
                 
                 if (gods === 0) return { faction: "<span style='color: var(--color-wolf); font-weight: bold;'>🐺 狼人陣營獲勝！</span>", reason: "(屠神)" };
                 if (villagers === 0) return { faction: "<span style='color: var(--color-wolf); font-weight: bold;'>🐺 狼人陣營獲勝！</span>", reason: "(屠民)" };
@@ -625,7 +655,8 @@
             wolfBrotherPhase: { id: 'wolfBrotherPhase', name: '狼兄狼弟', emoji: '🧑‍🤝‍🧑', type: FACTIONS.WOLF, selectable: false, executeOrder: 27, componentName: 'phase-wolf-brothers' },
             wolfYoungerBrotherPhase: { id: 'wolfYoungerBrotherPhase', name: '狼弟(復仇)', emoji: '🐺👦', type: FACTIONS.WOLF, selectable: false, executeOrder: 28, componentName: 'phase-wolf-younger' },
             diviner: { id: 'diviner', name: ROLES.DIVINER, emoji: '🧙‍♂️', type: FACTIONS.GOD, selectable: true, executeOrder: 29.8, componentName: 'phase-diviner' },
-            transformedWolfPhase: { id: 'transformedWolfPhase', name: '轉化者', emoji: '🐺👤', type: FACTIONS.WOLF, selectable: false, executeOrder: 29.1, componentName: 'phase-transformed-wolf' },
+            transformedWolfPhase: { id: 'transformedWolfPhase', name: '轉化者', emoji: '🐺👤', type: FACTIONS.WOLF, selectable: false, executeOrder: 19, componentName: 'phase-transformed-wolf' },
+
             mechWolf: { id: 'mechWolf', name: ROLES.MECH_WOLF, emoji: '🤖', type: FACTIONS.WOLF, selectable: true, executeOrder: 29, componentName: 'phase-mech-wolf' },
             scentPhantom: { id: 'scentPhantom', name: ROLES.SCENT_PHANTOM, emoji: '🥀', type: FACTIONS.WOLF, selectable: true, executeOrder: 29.5, componentName: 'phase-scent-phantom' },
             wolf: { id: 'wolf', name: ROLES.WOLF, emoji: '🐺', type: FACTIONS.WOLF, selectable: false, executeOrder: 30, componentName: 'phase-wolf' },
@@ -778,6 +809,9 @@ const PhaseTransformedWolf = defineComponent({
                         </select>
                     </div>
                     <div v-if="roleId && Helpers.isDead(roleId)" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ title }}已經死亡</h1></div>
+                     <div v-else-if="roleId && Helpers.isTransformedAndCanKill(roleId)" class="witch-alert-active" style="border-color: var(--color-wolf); background: #333;">
+                        <h1 style="margin:0; color:white; font-size: 18px;">🐺 已進入狼隊帶刀</h1>
+                    </div>
                     <div v-else-if="isFeared"><div class="witch-alert-active" style="color: white;">⚠️ 技能遭封印 / 被恐懼無法行動</div><div class="player-grid-container"><div class="player-grid-btn zero-btn selected">無法行動</div></div></div>
                     <div v-else>
                         <slot name="pre-grid"></slot>
@@ -1339,7 +1373,7 @@ const PhaseTransformedWolfResult = defineComponent({
                 <div class="witch-alert-active" style="border-color: var(--color-wolf); background: #333; padding: 20px 40px; margin-top: 15px;">
                     <h1 style="margin:0; color:white; font-size: 24px;" v-if="nightState.records.awakenedGargoyleTarget === 0">沒有轉化目標 (空轉)</h1>
                     <div v-else>
-                        <h1 style="margin:0; color:white; font-size: 24px;">轉化目標為：<span class="color-wolf">{{ nightState.records.awakenedGargoyleTarget }} 號</span></h1>
+                        <h1 style="margin:0; color:white; font-size: 24px;">轉化者為：<span class="color-wolf">{{ nightState.records.awakenedGargoyleTarget }} 號</span></h1>
                         <p style="margin:10px 0 0 0; color:#aaa; font-size: 16px;"> (確認轉化)</p>
                     </div>
                 </div>
@@ -1599,7 +1633,7 @@ const PhaseTransformedWolfResult = defineComponent({
             `
         });
 
-        const PhaseWitch = defineComponent({
+const PhaseWitch = defineComponent({
             emits: ['prev', 'next'],
             setup(props, { emit }) {
                 const alivePlayers = computed(() => gameState.players.filter(p => p.alive));
@@ -1634,6 +1668,11 @@ const PhaseTransformedWolfResult = defineComponent({
                     <h3 :class="[isDittoWitch ? CLASSES.WOLF : CLASSES.GOD]">🧙‍♀️ {{ ROLES.WITCH }}請睜眼</h3>
                     <div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.WITCH }}是幾號？</p><select v-model="setupState.initialRoleSetup.witch"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'witch')">{{ p.id }} 號</option></template></select></div>
                     <div v-if="Helpers.isDead('witch')" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.WITCH }}已經死亡</h1></div>
+                    <!-- [新增] 轉化者帶刀狀態精準攔截 -->
+                    <div v-else-if="Helpers.isTransformedAndCanKill('witch')" class="witch-alert-active" style="border-color: var(--color-wolf); background: #333;">
+                        <h1 style="margin:0; color:white; font-size: 18px;">🐺 已進入狼隊帶刀</h1>
+                    </div>
+                    <!-- 原封印狀態處理 -->
                     <div v-else-if="isFeared"><div class="witch-alert-active" style="color: white;">⚠️ 技能遭封印 / 被恐懼無法行動</div></div>
                     <div v-else>
                         <div class="witch-alert-active" style="margin-bottom:15px; color: white;" v-if="nightState.potions.heal">今晚被殺的是 <span style="font-size:24px;">{{ actualWolfKillForWitch === 0 ? '無人' : actualWolfKillForWitch + ' 號' }}</span></div>
@@ -1656,7 +1695,6 @@ const PhaseTransformedWolfResult = defineComponent({
                 </div>
             `
         });
-
         const PhaseAwakenedWitch = defineComponent({
             emits: ['prev', 'next'],
             setup(props, { emit }) {
@@ -1777,7 +1815,7 @@ const PhaseTransformedWolfResult = defineComponent({
             `
         });
 
-        const PhaseHunter = defineComponent({
+const PhaseHunter = defineComponent({
             emits: ['prev', 'next'],
             setup(props, { emit }) {
                 const onNext = () => { if (gameState.day === 1 && setupState.initialRoleSetup.hunter === 0) return alert(`請設定「${ROLES.HUNTER}」的號碼！`); emit('next'); };
@@ -1797,6 +1835,11 @@ const PhaseTransformedWolfResult = defineComponent({
                     <h3 :class="CLASSES.GOD">🔫 {{ ROLES.HUNTER }}請睜眼</h3>
                     <div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.HUNTER }}是幾號？</p><select v-model="setupState.initialRoleSetup.hunter"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'hunter')">{{ p.id }} 號</option></template></select></div>
                     <div v-if="Helpers.isDead('hunter')" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.HUNTER }}已經死亡</h1></div>
+                    <!-- [新增] 轉化者帶刀狀態精準攔截 -->
+                    <div v-else-if="Helpers.isTransformedAndCanKill('hunter')" class="witch-alert-active" style="border-color: var(--color-wolf); background: #333;">
+                        <h1 style="margin:0; color:white; font-size: 18px;">🐺 已進入狼隊帶刀</h1>
+                    </div>
+                    <!-- 原封印狀態處理 -->
                     <div v-else-if="isFeared"><div class="witch-alert-active" style="color: white;">⚠️ 技能遭封印 / 被恐懼無法行動</div><div class="witch-alert-active" style="border-color: var(--btn-danger); background: rgba(255, 77, 77, 0.2);"><h1 style="margin:0; color:white;">👎 不能開槍</h1><p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(技能遭封印)</p></div></div>
                     <div v-else><p>上帝請給予手勢：</p><div v-if="canShoot" class="witch-alert-active" style="border-color: var(--btn-success); background: rgba(76, 175, 80, 0.2);"><h1 style="margin:0; color:white;">👍 可以開槍</h1></div><div v-else class="witch-alert-active" style="border-color: var(--btn-danger); background: rgba(255, 77, 77, 0.2);"><h1 style="margin:0; color:white;">👎 不能開槍</h1><p style="margin:5px 0 0 0; font-size: 14px; color:#ddd;">(因毒殺/殉情/被雙夢而死)</p></div></div>
                     <div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div>
@@ -1825,7 +1868,30 @@ const PhaseTransformedWolfResult = defineComponent({
 
         const PhaseBear = defineComponent({ emits: ['prev', 'next'], setup(props, { emit }) { const onNext = () => { if (gameState.day === 1 && setupState.initialRoleSetup.bear === 0) return alert(`請設定「${ROLES.BEAR}」的號碼！`); emit('next'); }; const alivePlayers = computed(() => gameState.players.filter(p => p.alive)); return { setupState, gameState, nightState, Helpers, alivePlayers, onNext, ROLES, CLASSES }; }, template: `<div class="action-row"><h3 :class="[setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'bear' ? CLASSES.WOLF : CLASSES.GOD]">🐻 {{ ROLES.BEAR }}請睜眼</h3><div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.BEAR }}是幾號？</p><select v-model="setupState.initialRoleSetup.bear"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'bear')">{{ p.id }} 號</option></template></select></div><div v-if="Helpers.isDead('bear')" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.BEAR }}已經死亡</h1></div><div v-else-if="setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'bear'" style="margin-top: 15px; border-top: 1px dashed #555; padding-top: 15px;"><p style="color: #ff9800; font-weight: bold;">🎭 百變狼王({{ ROLES.BEAR }})請選擇魅惑目標：</p><div v-if="Helpers.checkFeared([ROLES.BEAR])" class="witch-alert-active" style="border-color: #555; background: #333; padding: 10px; margin-top: 10px;"><h2 style="margin:0; color:white; font-size:18px;">⚠️ 技能遭封印 / 被恐懼無法使用魅惑</h2></div><div v-else class="player-grid-container"><div :class="['player-grid-btn zero-btn', { 'danger-selected': nightState.records.bearCharmTarget === 0 }]" @click="nightState.records.bearCharmTarget = 0">不魅惑</div><div v-for="p in alivePlayers" :key="p.id" :class="['player-grid-btn', Helpers.getDisplayClass(p), { 'danger-selected': nightState.records.bearCharmTarget === p.id }]" @click="nightState.records.bearCharmTarget = p.id"><span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;">{{ Helpers.getDisplayRole(p) }}</span></span></div></div></div><div v-else><p style="color:#aaa;">(確認相鄰玩家陣營狀態，白天公佈結果)</p></div><div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div></div>` });
         const PhaseKnight = defineComponent({ emits: ['prev', 'next'], setup(props, { emit }) { const onNext = () => { if (gameState.day === 1 && setupState.initialRoleSetup.knight === 0) return alert(`請設定「${ROLES.KNIGHT}」的號碼！`); emit('next'); }; return { setupState, gameState, nightState, Helpers, onNext, ROLES, CLASSES }; }, template: `<div class="action-row"><h3 :class="CLASSES.GOD">⚔️ {{ ROLES.KNIGHT }}請睜眼</h3><div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.KNIGHT }}是幾號？</p><select v-model="setupState.initialRoleSetup.knight"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'knight')">{{ p.id }} 號</option></template></select></div><div v-if="Helpers.isDead('knight')" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.KNIGHT }}已經死亡</h1></div><div v-else><p style="color:#aaa;">(第一晚僅確認身分，白天可發動決鬥)</p></div><div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div></div>`});
-        const PhaseGravekeeper = defineComponent({ emits: ['prev', 'next'], setup(props, { emit }) { const onNext = () => { if (gameState.day === 1 && setupState.initialRoleSetup.gravekeeper === 0) return alert('請設定號碼！'); emit('next'); }; return { setupState, gameState, nightState, Helpers, onNext, ROLES, CLASSES }; }, template: `<div class="action-row"><h3 :class="CLASSES.GOD">🪦 {{ ROLES.GRAVEKEEPER }}請睜眼</h3><div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.GRAVEKEEPER }}是幾號？</p><select v-model="setupState.initialRoleSetup.gravekeeper"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'gravekeeper')">{{ p.id }} 號</option></template></select></div><div v-if="Helpers.isDead('gravekeeper')" class="witch-alert-active" style="border-color: #555; background: #333;"><h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.GRAVEKEEPER }}已經死亡</h1></div><div v-else-if="gameState.day > 1"><div v-if="!gameState.lastExiledRole" class="witch-alert-active" style="border-color: var(--btn-danger); background: #333;"><h1 style="margin:0; color:white;">❌ 昨日沒有人被放逐</h1></div><div v-else class="witch-alert-active" style="border-color: var(--color-good); background: #222;"><h1 style="margin:0; color:white;">昨日放逐玩家為：<span :class="[ROLES.WOLF, ROLES.BLACK_WOLF, ROLES.WOLF_BEAUTY, ROLES.NIGHTMARE, ROLES.GARGOYLE, ROLES.MECH_WOLF, ROLES.WOLF_BROTHER, ROLES.WOLF_YOUNGER, ROLES.EVIL_KNIGHT, ROLES.AWAKENED_WOLF_BEAUTY, ROLES.BLOOD_MOON, ROLES.SCENT_PHANTOM, ROLES.DITTO_WOLF_KING, ROLES.DEMON_EMPEROR, ROLES.BIG_BAD_WOLF, ROLES.AWAKENED_WOLF_KING, ROLES.WOLVERINE].includes(gameState.lastExiledRole) ? CLASSES.WOLF : CLASSES.GOOD">{{ [ROLES.WOLF, ROLES.BLACK_WOLF, ROLES.WOLF_BEAUTY, ROLES.NIGHTMARE, ROLES.GARGOYLE, ROLES.MECH_WOLF, ROLES.WOLF_BROTHER, ROLES.WOLF_YOUNGER, ROLES.EVIL_KNIGHT, ROLES.AWAKENED_WOLF_BEAUTY, ROLES.BLOOD_MOON, ROLES.SCENT_PHANTOM, ROLES.DITTO_WOLF_KING, ROLES.DEMON_EMPEROR, ROLES.BIG_BAD_WOLF, ROLES.AWAKENED_WOLF_KING, ROLES.WOLVERINE].includes(gameState.lastExiledRole) ? '🐺 狼陣營' : '💧 好人陣營' }}</span></h1></div></div><div v-else><p style="color: #aaa;">(第一晚僅確認身分，不需行動)</p></div><div class="nav-buttons"><button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button><button @click="onNext">確認 請閉眼 ➡️</button></div></div>`});
+        const PhaseGravekeeper = defineComponent({ emits: ['prev', 'next'], setup(props, { emit }) { const onNext = () => { if (gameState.day === 1 && setupState.initialRoleSetup.gravekeeper === 0) return alert('請設定號碼！'); emit('next'); }; return { setupState, gameState, nightState, Helpers, onNext, ROLES, CLASSES }; }, template: `<div class="action-row"><h3 :class="CLASSES.GOD">🪦 {{ ROLES.GRAVEKEEPER }}請睜眼</h3><div v-if="gameState.day === 1" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;"><p style="margin: 0 0 5px 0; color: #aaa;">首夜設定：{{ ROLES.GRAVEKEEPER }}是幾號？</p><select v-model="setupState.initialRoleSetup.gravekeeper"><option :value="0">請選擇</option><template v-for="p in gameState.players" :key="p.id"><option :value="p.id" v-if="!Helpers.isPlayerTaken(p.id, 'gravekeeper')">{{ p.id }} 號</option></template></select></div><div v-if="Helpers.isDead('gravekeeper')" class="witch-alert-active" style="border-color: #555; background: #333;">
+    <h1 style="margin:0; color:white; font-size: 18px;">🪦 {{ ROLES.GRAVEKEEPER }}已經死亡</h1>
+</div>
+<!-- [新增] 轉化者帶刀狀態攔截 -->
+<div v-else-if="Helpers.isTransformedAndCanKill('gravekeeper')" class="witch-alert-active" style="border-color: var(--color-wolf); background: #333;">
+    <h1 style="margin:0; color:white; font-size: 18px;">🐺 已進入狼隊帶刀</h1>
+</div>
+<!-- 原本的守墓人查驗邏輯 -->
+<div v-else-if="gameState.day > 1">
+    <div v-if="!gameState.lastExiledRole" class="witch-alert-active" style="border-color: var(--btn-danger); background: #333;">
+        <h1 style="margin:0; color:white;">❌ 昨日沒有人被放逐</h1>
+    </div>
+    <div v-else class="witch-alert-active" style="border-color: var(--color-good); background: #222;">
+        <h1 style="margin:0; color:white;">昨日放逐玩家為：<span :class="[ROLES.WOLF, ROLES.BLACK_WOLF, ROLES.WOLF_BEAUTY, ROLES.NIGHTMARE, ROLES.GARGOYLE, ROLES.MECH_WOLF, ROLES.WOLF_BROTHER, ROLES.WOLF_YOUNGER, ROLES.EVIL_KNIGHT, ROLES.AWAKENED_WOLF_BEAUTY, ROLES.BLOOD_MOON, ROLES.SCENT_PHANTOM, ROLES.DITTO_WOLF_KING, ROLES.DEMON_EMPEROR, ROLES.BIG_BAD_WOLF, ROLES.AWAKENED_WOLF_KING, ROLES.WOLVERINE].includes(gameState.lastExiledRole) ? CLASSES.WOLF : CLASSES.GOOD">{{ [ROLES.WOLF, ROLES.BLACK_WOLF, ROLES.WOLF_BEAUTY, ROLES.NIGHTMARE, ROLES.GARGOYLE, ROLES.MECH_WOLF, ROLES.WOLF_BROTHER, ROLES.WOLF_YOUNGER, ROLES.EVIL_KNIGHT, ROLES.AWAKENED_WOLF_BEAUTY, ROLES.BLOOD_MOON, ROLES.SCENT_PHANTOM, ROLES.DITTO_WOLF_KING, ROLES.DEMON_EMPEROR, ROLES.BIG_BAD_WOLF, ROLES.AWAKENED_WOLF_KING, ROLES.WOLVERINE].includes(gameState.lastExiledRole) ? '🐺 狼陣營' : '💧 好人陣營' }}</span></h1>
+    </div>
+</div>
+<div v-else>
+    <p style="color: #aaa;">(第一晚僅確認身分，不需行動)</p>
+</div>
+<div class="nav-buttons">
+    <button class="btn-prev" @click="$emit('prev')">⬅️ 上一階段</button>
+    <button @click="onNext">確認 請閉眼 ➡️</button>
+</div>
+</div>`});
         
         const PhaseIdiot = defineComponent({ 
             emits: ['prev', 'next'], 
@@ -2565,310 +2631,320 @@ const GameScreen = {
                     } else if (gameState.day === 1) { if (confirm('已經是第一晚。是否要回到設定畫面重新開始？')) window.location.reload(); }
                 };
 
-                const calculateMorning = () => {
-                    nightEndBackup = { players: JSON.parse(JSON.stringify(gameState.players)), history: [...gameState.history], potions: JSON.parse(JSON.stringify(nightState.potions)), mechWolfState: JSON.parse(JSON.stringify(nightState.mechWolfState)), giftedState: JSON.parse(JSON.stringify(nightState.giftedState)), awbUsed: nightState.awbUsed, ekUsed: nightState.ekUsed, scentPhantomUsed: nightState.scentPhantomUsed, divinerUsed: nightState.divinerUsed, bigBadWolfUsed: nightState.bigBadWolfUsed, records: JSON.parse(JSON.stringify(nightState.records)), currentPhaseIndex: nightState.currentPhaseIndex, bloodMoonSealed: gameState.bloodMoonSealed, bloodMoonLastStand: gameState.bloodMoonLastStand, idiotRevealed: gameState.idiotRevealed, activeYangIds: [...gameState.activeYangIds], activeYinIds: [...gameState.activeYinIds] };
+const calculateMorning = () => {
+    nightEndBackup = { players: JSON.parse(JSON.stringify(gameState.players)), history: [...gameState.history], potions: JSON.parse(JSON.stringify(nightState.potions)), mechWolfState: JSON.parse(JSON.stringify(nightState.mechWolfState)), giftedState: JSON.parse(JSON.stringify(nightState.giftedState)), awbUsed: nightState.awbUsed, ekUsed: nightState.ekUsed, scentPhantomUsed: nightState.scentPhantomUsed, divinerUsed: nightState.divinerUsed, bigBadWolfUsed: nightState.bigBadWolfUsed, records: JSON.parse(JSON.stringify(nightState.records)), currentPhaseIndex: nightState.currentPhaseIndex, bloodMoonSealed: gameState.bloodMoonSealed, bloodMoonLastStand: gameState.bloodMoonLastStand, idiotRevealed: gameState.idiotRevealed, activeYangIds: [...gameState.activeYangIds], activeYinIds: [...gameState.activeYinIds] };
 
-                    if (gameState.day === 1 && setupState.activeRoles.halfBlood && nightState.records.halfBloodTarget !== 0) {
-                        Helpers.addHistory(`🩸 ${Helpers.formatPlayerText(setupState.initialRoleSetup.halfBlood)} 選擇了 ${Helpers.formatPlayerText(nightState.records.halfBloodTarget)} 作為榜樣`);
-                    }
-
-                    if (gameState.day === 1 && setupState.activeRoles.mechWolf && nightState.records.mechWolfLearnTarget !== 0 && !nightState.mechWolfState.hasLearned) {
-                        nightState.mechWolfState.hasLearned = true;
-                        const targetId = Helpers.getActualTarget(nightState.records.mechWolfLearnTarget);
-                        const p = Helpers.getPlayer(targetId);
-                        nightState.mechWolfState.learnedRole = p ? p.role : ROLES.UNKNOWN;
-                    }
-
-                    if (nightState.records.magicianSwaps.length === 2) Helpers.addHistory(`🎩 ${Helpers.formatPlayerText(setupState.initialRoleSetup.magician)} 交換了 ${Helpers.formatPlayerText(nightState.records.magicianSwaps[0])} 與 ${Helpers.formatPlayerText(nightState.records.magicianSwaps[1])}`);
-                    
-                    // 🌟 陰陽抵消與效果註冊 🌟
-                    let deT = Helpers.getActualTarget(nightState.records.demonEmperorTarget);
-                    let sT = Helpers.getActualTarget(nightState.records.sageTarget);
-                    let deS = nightState.records.demonEmperorSkill;
-                    let sS = nightState.records.sageSkill;
-                    
-                    let yangIds = [], yinIds = [];
-                    if (deT && deS === 'YANG') yangIds.push(deT);
-                    if (deT && deS === 'YIN') yinIds.push(deT);
-                    if (sT && sS === 'YANG') yangIds.push(sT);
-                    if (sT && sS === 'YIN') yinIds.push(sT);
-                    
-                    gameState.activeYangIds = [];
-                    gameState.activeYinIds = [];
-                    
-                    let allT = [...new Set([deT, sT].filter(id => id !== 0))];
-                    allT.forEach(t => {
-                        let yC = yangIds.filter(id => id === t).length;
-                        let iC = yinIds.filter(id => id === t).length;
-                        if (yC === 1 && iC === 1) {
-                            Helpers.addHistory(`☯️ ${Helpers.formatPlayerText(t)} 同時接收[純陽]與[至陰]，陰陽抵消無效果`);
-                        } else if (yC === 1 && iC === 0) {
-                            gameState.activeYangIds.push(t);
-                            Helpers.addHistory(`☀️ ${Helpers.formatPlayerText(t)} 接收了[純陽]，白天免疫一切死亡`);
-                        } else if (yC === 0 && iC === 1) {
-                            gameState.activeYinIds.push(t);
-                            Helpers.addHistory(`🌙 ${Helpers.formatPlayerText(t)} 接收了[至陰]，夜晚免疫一切死亡`);
-                        } else if (yC === 2 || iC === 2) {
-                            Helpers.addHistory(`💥 ${Helpers.formatPlayerText(t)} 承受雙重${yC===2?'[純陽]':'[至陰]'}，爆體而亡`);
-                        }
-                    });
-
-                    // 記錄前一晚發動的技能
-                    nightState.records.lastDemonEmperorSkill = nightState.records.demonEmperorSkill;
-                    nightState.records.lastSageSkill = nightState.records.sageSkill;
-
-                    if (nightState.records.blackMerchantTarget) {
-                        let t = Helpers.getActualTarget(nightState.records.blackMerchantTarget);
-                        if (Helpers.isWolf(t)) {
-                            Helpers.addHistory(`💰 ${Helpers.formatPlayerText(setupState.initialRoleSetup.blackMerchant)} 嘗試送禮給 ${Helpers.formatPlayerText(t)}，但對方是狼陣營，交易失敗！`);
-                        } else {
-                            Helpers.addHistory(`💰 ${Helpers.formatPlayerText(setupState.initialRoleSetup.blackMerchant)} 送給了 ${Helpers.formatPlayerText(nightState.records.blackMerchantTarget)}`);
-                            nightState.giftedState = { hasGift: true, id: nightState.records.blackMerchantTarget, item: nightState.records.blackMerchantItem, isUsed: false };
-                        }
-                    }
-                    
-                    if (nightState.records.giftedActionTarget !== 0) {
-                        let t = Helpers.getActualTarget(nightState.records.giftedActionTarget);
-                        if (nightState.giftedState.item === ITEMS.VERIFY) {
-                            let isWolf = Helpers.isWolf(t, 'check');
-                            Helpers.addHistory(`🎁 幸運兒 ${Helpers.formatPlayerText(nightState.giftedState.id)} 使用放大鏡查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${isWolf ? '🐺 查殺' : '💧 金水'}`);
-                        } else if (nightState.giftedState.item === ITEMS.POISON) {
-                            Helpers.addHistory(`🎁 幸運兒 ${Helpers.formatPlayerText(nightState.giftedState.id)} 使用毒藥毒殺了 ${Helpers.formatPlayerText(t)}`);
-                        }
-                        nightState.giftedState.isUsed = true;
-                    }
-
-                    if (setupState.activeRoles.seer && nightState.records.seerTarget !== 0) {
-                        let t = Helpers.getActualTarget(nightState.records.seerTarget);
-                        if (setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'seer') Helpers.addHistory(`👁️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.seer)} 查驗了 ${Helpers.formatPlayerText(t)} (真實身分: ${Helpers.getPlayer(t)?.role})`);
-                        else Helpers.addHistory(`👁️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.seer)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${Helpers.isWolf(t, 'check') ? '🐺 查殺' : '💧 金水'}`);
-                    }
-                    if (setupState.activeRoles.awakenedSeer && nightState.records.awakenedSeerTargets.length === 2) {
-                        let t1 = Helpers.getActualTarget(nightState.records.awakenedSeerTargets[0]);
-                        let t2 = Helpers.getActualTarget(nightState.records.awakenedSeerTargets[1]);
-                        let hasWolf = Helpers.isWolf(t1, 'check') || Helpers.isWolf(t2, 'check');
-                        Helpers.addHistory(`👁️✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedSeer)} 查驗了 ${Helpers.formatPlayerText(t1)} 與 ${Helpers.formatPlayerText(t2)}，結果為 ${hasWolf ? '<span class="color-wolf">🐺 有狼</span>' : '<span class="color-good">💧 沒有狼</span>'}`);
-                    }
-                    if (setupState.activeRoles.gargoyle && nightState.records.gargoyleTarget !== 0) {
-                        let t = Helpers.getActualTarget(nightState.records.gargoyleTarget);
-                        let res = Helpers.getMediumCheckResult(t);
-                        Helpers.addHistory(`🗿 ${Helpers.formatPlayerText(setupState.initialRoleSetup.gargoyle)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 <span class="${Helpers.getRoleColorClass(res)}">${res}</span>`);
-                    }
-                    if (setupState.activeRoles.medium && nightState.records.mediumTarget !== 0) {
-                        let t = Helpers.getActualTarget(nightState.records.mediumTarget);
-                        let res = Helpers.getMediumCheckResult(t);
-                        Helpers.addHistory(`🔮 ${Helpers.formatPlayerText(setupState.initialRoleSetup.medium)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 <span class="${Helpers.getRoleColorClass(res)}">${res}</span>`);
-                    }
-                    if (setupState.activeRoles.shadow && nightState.records.shadowTarget !== 0) {
-                        let t = Helpers.getActualTarget(nightState.records.shadowTarget);
-                        Helpers.addHistory(`🏮 ${Helpers.formatPlayerText(setupState.initialRoleSetup.shadow)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${Helpers.isWolf(t, 'check') ? '💧 金水' : '🐺 查殺'}`);
-                    }
-                    if (setupState.activeRoles.mechWolf && nightState.mechWolfState.hasLearned && nightState.records.mechWolfActionTarget !== 0) {
-                        let t = Helpers.getActualTarget(nightState.records.mechWolfActionTarget);
-                        if ([ROLES.MEDIUM, ROLES.SEER, ROLES.AWAKENED_SEER, ROLES.SHADOW, ROLES.GARGOYLE].includes(nightState.mechWolfState.learnedRole)) {
-                            let res = '';
-                            if ([ROLES.SEER, ROLES.AWAKENED_SEER].includes(nightState.mechWolfState.learnedRole)) res = Helpers.isWolf(t, 'check') ? '🐺 查殺' : '💧 金水';
-                            else if (nightState.mechWolfState.learnedRole === ROLES.SHADOW) res = !Helpers.isWolf(t, 'check') ? '🐺 查殺' : '💧 金水';
-                            else res = `<span class="${Helpers.getRoleColorClass(Helpers.getMediumCheckResult(t))}">${Helpers.getMediumCheckResult(t)}</span>`;
-                            Helpers.addHistory(`🤖 ${Helpers.formatPlayerText(setupState.initialRoleSetup.mechWolf)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${res}`);
-                        } else if (nightState.mechWolfState.learnedRole === ROLES.WOLF && !Helpers.checkFeared([ROLES.MECH_WOLF])) {
-                            Helpers.addHistory(`🤖 ${Helpers.formatPlayerText(setupState.initialRoleSetup.mechWolf)} 擊殺了 ${Helpers.formatPlayerText(t)}`);
-                        } else if (nightState.mechWolfState.learnedRole === ROLES.WITCH && !nightState.mechWolfState.poisonUsed && !Helpers.checkFeared([ROLES.MECH_WOLF])) {
-                            Helpers.addHistory(`🤖 ${Helpers.formatPlayerText(setupState.initialRoleSetup.mechWolf)} 毒殺了 ${Helpers.formatPlayerText(t)}`);
-                            nightState.mechWolfState.poisonUsed = true;
-                        }
-                    }
-
-                    if (setupState.activeRoles.demonHunter && nightState.records.demonHunterTarget) {
-                        Helpers.addHistory(`🏹 ${Helpers.formatPlayerText(setupState.initialRoleSetup.demonHunter)} 選擇狩獵了 ${Helpers.formatPlayerText(nightState.records.demonHunterTarget)}`);
-                    }
-
-                    if (nightState.records.nightmareTarget) Helpers.addHistory(`👻 ${Helpers.formatPlayerText(setupState.initialRoleSetup.nightmare)} 恐懼了 ${Helpers.formatPlayerText(nightState.records.nightmareTarget)}`);
-                    
-                    // 🛡️ 守衛結算 (包含空守判斷)
-                    if (setupState.activeRoles.guard && !Helpers.isDead('guard') && !Helpers.checkFeared([ROLES.GUARD])) {
-                        if (nightState.records.guardTarget !== 0) {
-                            Helpers.addHistory(`🛡️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.guard)} 守護了 ${Helpers.formatPlayerText(nightState.records.guardTarget)}`);
-                        } else {
-                            Helpers.addHistory(`🛡️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.guard)} 選擇了空守`);
-                        }
-                    }
-
-                    if (nightState.records.dreamTarget) {
-                        const isDoubleDream = nightState.records.lastDreamTarget !== 0 && Helpers.getActualTarget(nightState.records.dreamTarget) === Helpers.getActualTarget(nightState.records.lastDreamTarget);
-                        Helpers.addHistory(`💤 ${Helpers.formatPlayerText(setupState.initialRoleSetup.dreamer)} 夢遊了 ${Helpers.formatPlayerText(nightState.records.dreamTarget)}${isDoubleDream ? ' <span style="color:#ff4d4d; font-size: 14px;">(第二夢直接封印技能夢死)</span>' : ''}`);
-                    }
-                    
-                    if (setupState.activeRoles.diviner && nightState.records.divinerTarget !== 0 && !nightState.divinerUsed) {
-                        Helpers.addHistory(`🧙‍♂️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.diviner)} 標記了 ${Helpers.formatPlayerText(nightState.records.divinerTarget)}`);
-                        nightState.divinerUsed = true;
-                    }
-                    
-                    // 🐺 狼人擊殺結算 (包含空刀判斷)
-                    const isWolfFeared = Helpers.checkFeared([ROLES.WOLF, ROLES.BLACK_WOLF, ROLES.WOLF_BEAUTY, ROLES.AWAKENED_WOLF_BEAUTY, ROLES.EVIL_KNIGHT, ROLES.NIGHTMARE, ROLES.GARGOYLE, ROLES.WOLF_BROTHER, ROLES.WOLF_YOUNGER, ROLES.BLOOD_MOON, ROLES.SCENT_PHANTOM, ROLES.DEMON_EMPEROR, ROLES.BIG_BAD_WOLF]);
-                    if (!isWolfFeared) {
-                        if (nightState.records.wolfKill !== 0) {
-                            if (nightState.records.divinerTarget !== 0) {
-                                Helpers.addHistory(`<span class="color-wolf">🐺 狼陣營</span> 受占卜師標記限制，只能擊殺 ${Helpers.formatPlayerText(nightState.records.wolfKill)}`);
-                            } else {
-                                Helpers.addHistory(`<span class="color-wolf">🐺 狼陣營</span> 擊殺了 ${Helpers.formatPlayerText(nightState.records.wolfKill)}`);
-                            }
-                        } else {
-                            Helpers.addHistory(`<span class="color-wolf">🐺 狼陣營</span> 選擇了空刀`);
-                        }
-                    }
-
-                    if (nightState.records.bigBadWolfActivated && nightState.records.bigBadWolfTarget !== 0) {
-                        if (nightState.records.divinerTarget !== 0) {
-                            Helpers.addHistory(`⚪️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.bigBadWolf)} 受占卜師標記限制，只能擊殺 ${Helpers.formatPlayerText(nightState.records.bigBadWolfTarget)}`);
-                        } else {
-                            Helpers.addHistory(`⚪️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.bigBadWolf)} 發動技能擊殺了 ${Helpers.formatPlayerText(nightState.records.bigBadWolfTarget)}`);
-                        }
-                        nightState.bigBadWolfUsed = true;
-                    }
-
-                    if (nightState.records.wolfBrotherRevengeTarget) { 
-                        Helpers.addHistory(`🐺👦 ${Helpers.formatPlayerText(setupState.initialRoleSetup.wolfYoungerBrother)} 復仇擊殺了 ${Helpers.formatPlayerText(nightState.records.wolfBrotherRevengeTarget)}`);
-                        nightState.wolfBrotherRevengeUsed = true;
-                    }
-
-                    // 👉 補齊：覺醒狼王轉移狼槍之戰報紀錄
-                    if (setupState.activeRoles.awakenedWolfKing && nightState.records.awkGunTarget !== 0) {
-                        Helpers.addHistory(`👑✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWolfKing)} 將狼槍轉移給了 ${Helpers.formatPlayerText(nightState.records.awkGunTarget)}`);
-                    }
-                    
-                    if (setupState.activeRoles.wolfBeauty && nightState.records.charmTarget) {
-                        Helpers.addHistory(`💃 ${Helpers.formatPlayerText(setupState.initialRoleSetup.wolfBeauty)} 魅惑了 ${Helpers.formatPlayerText(nightState.records.charmTarget)}`);
-                    }
-                    if (setupState.activeRoles.awakenedWolfBeauty && nightState.records.awbCharmTarget) {
-                        Helpers.addHistory(`💃✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWolfBeauty)} 魅惑了 ${Helpers.formatPlayerText(nightState.records.awbCharmTarget)}`);
-                    }
-                    if (setupState.activeRoles.scentPhantom && nightState.records.scentPhantomTargets.length === 2 && !nightState.scentPhantomUsed) {
-                        Helpers.addHistory(`🥀 ${Helpers.formatPlayerText(setupState.initialRoleSetup.scentPhantom)} 發動連結指定了 ${Helpers.formatPlayerText(nightState.records.scentPhantomTargets[0])} 與 ${Helpers.formatPlayerText(nightState.records.scentPhantomTargets[1])}`);
-                    }
-
-                    if (setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'bear' && nightState.records.bearCharmTarget) {
-                        Helpers.addHistory(`🎭 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bear)} 魅惑了 ${Helpers.formatPlayerText(nightState.records.bearCharmTarget)}`);
-                    }
-                    
-// 🧙‍♀️ 女巫藥水結算 (包含有藥卻不使用的判斷)
-if (setupState.activeRoles.witch && !Helpers.isDead('witch') && !Helpers.checkFeared([ROLES.WITCH])) {
-    if (nightState.records.witchAction === ACTIONS.HEAL) {
-        Helpers.addHistory(`🧙‍♀️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 使用了解藥`);
-        nightState.potions.heal = false;
-    } else if (nightState.records.witchAction === ACTIONS.POISON) {
-        // 取得中毒目標物件以進行身分判定[cite: 1]
-        const poisonTarget = Helpers.getPlayer(nightState.records.witchPoison);
-        
-        // 針對金鋼狼進行特判，並修改標準毒殺字眼[cite: 1]
-        if (poisonTarget && poisonTarget.role === ROLES.WOLVERINE) {
-            Helpers.addHistory(`🧪 ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 毒了 ${Helpers.formatPlayerText(nightState.records.witchPoison)}沒有死亡`);
-        } else {
-            Helpers.addHistory(`🧪 ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 毒了 ${Helpers.formatPlayerText(nightState.records.witchPoison)}`);
-        }
-        nightState.potions.poison = false;
-    } else if (nightState.potions.heal || nightState.potions.poison) {
-        Helpers.addHistory(`🧙‍♀️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 選擇不使用藥水`);
+    // [新增] 記錄第一晚覺醒石像鬼的轉化目標
+    if (gameState.day === 1 && setupState.activeRoles.awakenedGargoyle && nightState.records.awakenedGargoyleTarget !== 0) {
+        Helpers.addHistory(`🗿✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedGargoyle)} 第一晚轉化了 ${Helpers.formatPlayerText(nightState.records.awakenedGargoyleTarget)} 成為轉化者`);
     }
-}      
-              // 🧙‍♀️✨ 覺醒女巫藥水結算 (新增區塊)
-if (setupState.activeRoles.awakenedWitch && !Helpers.isDead('awakenedWitch') && !Helpers.checkFeared([ROLES.AWAKENED_WITCH])) {
-    if (nightState.records.awakenedWitchAction === ACTIONS.HEAL) {
-        Helpers.addHistory(`🧙‍♀️✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWitch)} 使用了解藥`);
-        nightState.awakenedWitchState.heal--;
-    } else if (nightState.records.awakenedWitchAction === ACTIONS.POISON) {
-        const targetFormat = Helpers.formatPlayerText(nightState.records.awakenedWitchPoisonTarget);
-        if (nightState.records.awakenedWitchAgreed) {
-            Helpers.addHistory(`🧪✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWitch)} 成功毒殺了 ${targetFormat}`);
-        } else {
-            Helpers.addHistory(`🧪✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWitch)} 試圖毒殺 ${targetFormat}，但協助者不同意，毒藥消耗。`);
-        }
-        
-        // 核心修正：無論協助者是否同意，皆消耗一瓶毒藥
-        nightState.awakenedWitchState.poison--;
-        
-        // 核心修正：將本次選中的協助者寫入 usedAssistants，配合現有 UI 邏輯達成「下次無法選擇」
-        if (nightState.records.awakenedWitchAssistants && nightState.records.awakenedWitchAssistants.length > 0) {
-            nightState.awakenedWitchState.usedAssistants.push(...nightState.records.awakenedWitchAssistants);
-        }
-    } else if (nightState.awakenedWitchState.heal > 0 || nightState.awakenedWitchState.poison > 0) {
-        Helpers.addHistory(`🧙‍♀️✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWitch)} 選擇不使用藥水`);
+
+    if (gameState.day === 1 && setupState.activeRoles.halfBlood && nightState.records.halfBloodTarget !== 0) {
+        Helpers.addHistory(`🩸 ${Helpers.formatPlayerText(setupState.initialRoleSetup.halfBlood)} 選擇了 ${Helpers.formatPlayerText(nightState.records.halfBloodTarget)} 作為榜樣`);
     }
-}
-                    // 🌟 透過 SettlementEngine 結算夜晚死亡
-                    let intents = SettlementEngine.evaluateNightDeaths();
-                    let resolution = SettlementEngine.resolveDeaths(intents, 'night');
-                    SettlementEngine.applyDeaths(resolution);
 
-                    const uniqueDiedIds = Array.from(resolution.pendingDeadIds);
-                    if (uniqueDiedIds.length === 0) {
-                        morningState.resultHtml = "<h3 style='color:var(--btn-success); margin: 0;'>平安夜👏</h3>";
-                        Helpers.addHistory(`🌙 夜晚結算：平安夜 (無人死亡)`);
-                    } else {
-                        const diedStrHtml = uniqueDiedIds.sort((a,b)=>a-b).map(id => Helpers.formatPlayerText(id)).join('、');
-                        morningState.resultHtml = `<h3 style='margin: 0;'>昨晚 ${diedStrHtml} 死亡</h3>`;
-                        Helpers.addHistory(`🌙 夜晚結算：${diedStrHtml} 死亡`);
-                    }
+    if (gameState.day === 1 && setupState.activeRoles.mechWolf && nightState.records.mechWolfLearnTarget !== 0 && !nightState.mechWolfState.hasLearned) {
+        nightState.mechWolfState.hasLearned = true;
+        const targetId = Helpers.getActualTarget(nightState.records.mechWolfLearnTarget);
+        const p = Helpers.getPlayer(targetId);
+        nightState.mechWolfState.learnedRole = p ? p.role : ROLES.UNKNOWN;
+    }
 
-                    // ==========================================
-                    // 🐻 熊爺早晨咆哮判定自動化引擎
-                    // ==========================================
-                    if (setupState.activeRoles.bear) {
-                        const bearId = setupState.initialRoleSetup.bear;
-                        const aliveIds = gameState.players.filter(p => p.alive).map(p => p.id);
-                        const bearIdx = aliveIds.indexOf(bearId);
+    if (nightState.records.magicianSwaps.length === 2) Helpers.addHistory(`🎩 ${Helpers.formatPlayerText(setupState.initialRoleSetup.magician)} 交換了 ${Helpers.formatPlayerText(nightState.records.magicianSwaps[0])} 與 ${Helpers.formatPlayerText(nightState.records.magicianSwaps[1])}`);
+    
+    // 🌟 陰陽抵消與效果註冊 🌟
+    let deT = Helpers.getActualTarget(nightState.records.demonEmperorTarget);
+    let sT = Helpers.getActualTarget(nightState.records.sageTarget);
+    let deS = nightState.records.demonEmperorSkill;
+    let sS = nightState.records.sageSkill;
+    
+    let yangIds = [], yinIds = [];
+    if (deT && deS === 'YANG') yangIds.push(deT);
+    if (deT && deS === 'YIN') yinIds.push(deT);
+    if (sT && sS === 'YANG') yangIds.push(sT);
+    if (sT && sS === 'YIN') yinIds.push(sT);
+    
+    gameState.activeYangIds = [];
+    gameState.activeYinIds = [];
+    
+    let allT = [...new Set([deT, sT].filter(id => id !== 0))];
+    allT.forEach(t => {
+        let yC = yangIds.filter(id => id === t).length;
+        let iC = yinIds.filter(id => id === t).length;
+        if (yC === 1 && iC === 1) {
+            Helpers.addHistory(`☯️ ${Helpers.formatPlayerText(t)} 同時接收[純陽]與[至陰]，陰陽抵消無效果`);
+        } else if (yC === 1 && iC === 0) {
+            gameState.activeYangIds.push(t);
+            Helpers.addHistory(`☀️ ${Helpers.formatPlayerText(t)} 接收了[純陽]，白天免疫一切死亡`);
+        } else if (yC === 0 && iC === 1) {
+            gameState.activeYinIds.push(t);
+            Helpers.addHistory(`🌙 ${Helpers.formatPlayerText(t)} 接收了[至陰]，夜晚免疫一切死亡`);
+        } else if (yC === 2 || iC === 2) {
+            Helpers.addHistory(`💥 ${Helpers.formatPlayerText(t)} 承受雙重${yC===2?'[純陽]':'[至陰]'}，爆體而亡`);
+        }
+    });
 
-                        if (bearIdx !== -1) { 
-                            if (Helpers.checkFeared([ROLES.BEAR])) {
-                                morningState.resultHtml += `
-                                    <div style="margin-top: 15px; padding: 10px; border-radius: 8px; border: 2px dashed #555; background: #222;">
-                                        <h3 style="margin: 0; color: #ccc;">⚠️ 熊爺被封印/恐懼，無法咆哮</h3>
-                                    </div>`;
-                                Helpers.addHistory(`🐻 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bear)} 判定：遭封印或被恐懼，技能失效`);
-                            } else if (aliveIds.length >= 3) {
-                                const leftId = aliveIds[(bearIdx - 1 + aliveIds.length) % aliveIds.length];
-                                const rightId = aliveIds[(bearIdx + 1) % aliveIds.length];
-                                
-                                const isGrowling = Helpers.isWolf(leftId, 'check') || Helpers.isWolf(rightId, 'check');
-                                
-                                morningState.resultHtml += `
-                                    <div style="margin-top: 15px; padding: 10px; border-radius: 8px; border: 2px solid ${isGrowling ? 'var(--color-wolf)' : 'var(--btn-success)'}; background: #222;">
-                                        <h3 style="margin: 0; color: ${isGrowling ? 'var(--color-wolf)' : 'var(--btn-success)'};">
-                                            ${isGrowling ? '🐻 熊咆哮了！' : '🐻 熊沒有叫'}
-                                        </h3>
-                                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #aaa;">(相鄰存活：${leftId}號、${rightId}號)</p>
-                                    </div>`;
-                                Helpers.addHistory(`🐻 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bear)} 判定：相鄰活人為 ${Helpers.formatPlayerText(leftId)} 與 ${Helpers.formatPlayerText(rightId)}，結果：${isGrowling ? '咆哮' : '沒叫'}`);
-                            }
-                        }
-                    }
+    // 記錄前一晚發動的技能
+    nightState.records.lastDemonEmperorSkill = nightState.records.demonEmperorSkill;
+    nightState.records.lastSageSkill = nightState.records.sageSkill;
 
-                    Helpers.addHistory(`<br><span style="color:#fff; font-weight:bold;">=== 第${gameState.day}天 白天 ===</span>`);
+    if (nightState.records.blackMerchantTarget) {
+        let t = Helpers.getActualTarget(nightState.records.blackMerchantTarget);
+        if (Helpers.isWolf(t)) {
+            Helpers.addHistory(`💰 ${Helpers.formatPlayerText(setupState.initialRoleSetup.blackMerchant)} 嘗試送禮給 ${Helpers.formatPlayerText(t)}，但對方是狼陣營，交易失敗！`);
+        } else {
+            Helpers.addHistory(`💰 ${Helpers.formatPlayerText(setupState.initialRoleSetup.blackMerchant)} 送給了 ${Helpers.formatPlayerText(nightState.records.blackMerchantTarget)}`);
+            nightState.giftedState = { hasGift: true, id: nightState.records.blackMerchantTarget, item: nightState.records.blackMerchantItem, isUsed: false };
+        }
+    }
+    
+    if (nightState.records.giftedActionTarget !== 0) {
+        let t = Helpers.getActualTarget(nightState.records.giftedActionTarget);
+        if (nightState.giftedState.item === ITEMS.VERIFY) {
+            let isWolf = Helpers.isWolf(t, 'check');
+            Helpers.addHistory(`🎁 幸運兒 ${Helpers.formatPlayerText(nightState.giftedState.id)} 使用放大鏡查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${isWolf ? '🐺 查殺' : '💧 金水'}`);
+        } else if (nightState.giftedState.item === ITEMS.POISON) {
+            Helpers.addHistory(`🎁 幸運兒 ${Helpers.formatPlayerText(nightState.giftedState.id)} 使用毒藥毒殺了 ${Helpers.formatPlayerText(t)}`);
+        }
+        nightState.giftedState.isUsed = true;
+    }
 
-                    // 血月使徒殘局血脈結算
-                    if (gameState.bloodMoonLastStand) {
-                        const tempWin = Helpers.checkWinCondition();
-                        if (!(tempWin && tempWin.faction.includes("狼人"))) {
-                            const bm = gameState.players.find(p => p.role === ROLES.BLOOD_MOON);
-                            if (bm && bm.alive) {
-                                bm.alive = false;
-                                Helpers.addHistory(`🌕 結算：血月使徒未能達成屠邊，血脈耗盡死亡！`);
-                            }
-                        }
-                        gameState.bloodMoonLastStand = false;
-                    }
+    if (setupState.activeRoles.seer && nightState.records.seerTarget !== 0) {
+        let t = Helpers.getActualTarget(nightState.records.seerTarget);
+        if (setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'seer') Helpers.addHistory(`👁️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.seer)} 查驗了 ${Helpers.formatPlayerText(t)} (真實身分: ${Helpers.getPlayer(t)?.role})`);
+        else Helpers.addHistory(`👁️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.seer)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${Helpers.isWolf(t, 'check') ? '🐺 查殺' : '💧 金水'}`);
+    }
+    if (setupState.activeRoles.awakenedSeer && nightState.records.awakenedSeerTargets.length === 2) {
+        let t1 = Helpers.getActualTarget(nightState.records.awakenedSeerTargets[0]);
+        let t2 = Helpers.getActualTarget(nightState.records.awakenedSeerTargets[1]);
+        let hasWolf = Helpers.isWolf(t1, 'check') || Helpers.isWolf(t2, 'check');
+        Helpers.addHistory(`👁️✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedSeer)} 查驗了 ${Helpers.formatPlayerText(t1)} 與 ${Helpers.formatPlayerText(t2)}，結果為 ${hasWolf ? '<span class="color-wolf">🐺 有狼</span>' : '<span class="color-good">💧 沒有狼</span>'}`);
+    }
+    if (setupState.activeRoles.gargoyle && nightState.records.gargoyleTarget !== 0) {
+        let t = Helpers.getActualTarget(nightState.records.gargoyleTarget);
+        let res = Helpers.getMediumCheckResult(t);
+        Helpers.addHistory(`🗿 ${Helpers.formatPlayerText(setupState.initialRoleSetup.gargoyle)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 <span class="${Helpers.getRoleColorClass(res)}">${res}</span>`);
+    }
+    if (setupState.activeRoles.medium && nightState.records.mediumTarget !== 0) {
+        let t = Helpers.getActualTarget(nightState.records.mediumTarget);
+        let res = Helpers.getMediumCheckResult(t);
+        Helpers.addHistory(`🔮 ${Helpers.formatPlayerText(setupState.initialRoleSetup.medium)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 <span class="${Helpers.getRoleColorClass(res)}">${res}</span>`);
+    }
+    if (setupState.activeRoles.shadow && nightState.records.shadowTarget !== 0) {
+        let t = Helpers.getActualTarget(nightState.records.shadowTarget);
+        Helpers.addHistory(`🏮 ${Helpers.formatPlayerText(setupState.initialRoleSetup.shadow)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${Helpers.isWolf(t, 'check') ? '💧 金水' : '🐺 查殺'}`);
+    }
+    if (setupState.activeRoles.mechWolf && nightState.mechWolfState.hasLearned && nightState.records.mechWolfActionTarget !== 0) {
+        let t = Helpers.getActualTarget(nightState.records.mechWolfActionTarget);
+        if ([ROLES.MEDIUM, ROLES.SEER, ROLES.AWAKENED_SEER, ROLES.SHADOW, ROLES.GARGOYLE].includes(nightState.mechWolfState.learnedRole)) {
+            let res = '';
+            if ([ROLES.SEER, ROLES.AWAKENED_SEER].includes(nightState.mechWolfState.learnedRole)) res = Helpers.isWolf(t, 'check') ? '🐺 查殺' : '💧 金水';
+            else if (nightState.mechWolfState.learnedRole === ROLES.SHADOW) res = !Helpers.isWolf(t, 'check') ? '🐺 查殺' : '💧 金水';
+            else res = `<span class="${Helpers.getRoleColorClass(Helpers.getMediumCheckResult(t))}">${Helpers.getMediumCheckResult(t)}</span>`;
+            Helpers.addHistory(`🤖 ${Helpers.formatPlayerText(setupState.initialRoleSetup.mechWolf)} 查驗了 ${Helpers.formatPlayerText(t)}，結果為 ${res}`);
+        } else if (nightState.mechWolfState.learnedRole === ROLES.WOLF && !Helpers.checkFeared([ROLES.MECH_WOLF])) {
+            Helpers.addHistory(`🤖 ${Helpers.formatPlayerText(setupState.initialRoleSetup.mechWolf)} 擊殺了 ${Helpers.formatPlayerText(t)}`);
+        } else if (nightState.mechWolfState.learnedRole === ROLES.WITCH && !nightState.mechWolfState.poisonUsed && !Helpers.checkFeared([ROLES.MECH_WOLF])) {
+            Helpers.addHistory(`🤖 ${Helpers.formatPlayerText(setupState.initialRoleSetup.mechWolf)} 毒殺了 ${Helpers.formatPlayerText(t)}`);
+            nightState.mechWolfState.poisonUsed = true;
+        }
+    }
 
-                    const win = Helpers.checkWinCondition();
-                    if (win) { gameState.pendingGameOver = win; triggerGameOver(); return; }
+    if (setupState.activeRoles.demonHunter && nightState.records.demonHunterTarget) {
+        Helpers.addHistory(`🏹 ${Helpers.formatPlayerText(setupState.initialRoleSetup.demonHunter)} 選擇狩獵了 ${Helpers.formatPlayerText(nightState.records.demonHunterTarget)}`);
+    }
 
-                    nightState.records.lastGuardTarget = nightState.records.guardTarget; nightState.records.lastDreamTarget = nightState.records.dreamTarget; nightState.records.lastAwbCharmTarget = nightState.records.awbCharmTarget; nightState.records.lastBearCharmTarget = nightState.records.bearCharmTarget; nightState.records.lastNightmareTarget = nightState.records.nightmareTarget;
-                    
-                    gameState.bloodMoonSealed = false; // 解除血月封印
-                    gameState.isNight = false; morningState.step = STEPS.MORNING_REVEAL; morningState.voteTarget = 0; morningState.explodeTarget = 0; morningState.knightDuelTarget = 0; morningState.isVotingDone = false; morningState.daytimeCharmDeaths = [];
-                    morningState.shootQueue = resolution.gunQueue;
-                    morningState.dayStartAliveIds = gameState.players.filter(p => p.alive).map(p => p.id);
-                };
+    if (nightState.records.nightmareTarget) Helpers.addHistory(`👻 ${Helpers.formatPlayerText(setupState.initialRoleSetup.nightmare)} 恐懼了 ${Helpers.formatPlayerText(nightState.records.nightmareTarget)}`);
+    
+    // 🛡️ 守衛結算 (包含空守判斷)
+    if (setupState.activeRoles.guard && !Helpers.isDead('guard') && !Helpers.checkFeared([ROLES.GUARD])) {
+        if (nightState.records.guardTarget !== 0) {
+            Helpers.addHistory(`🛡️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.guard)} 守護了 ${Helpers.formatPlayerText(nightState.records.guardTarget)}`);
+        } else {
+            Helpers.addHistory(`🛡️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.guard)} 選擇了空守`);
+        }
+    }
 
+    if (nightState.records.dreamTarget) {
+        const isDoubleDream = nightState.records.lastDreamTarget !== 0 && Helpers.getActualTarget(nightState.records.dreamTarget) === Helpers.getActualTarget(nightState.records.lastDreamTarget);
+        Helpers.addHistory(`💤 ${Helpers.formatPlayerText(setupState.initialRoleSetup.dreamer)} 夢遊了 ${Helpers.formatPlayerText(nightState.records.dreamTarget)}${isDoubleDream ? ' <span style="color:#ff4d4d; font-size: 14px;">(第二夢直接封印技能夢死)</span>' : ''}`);
+    }
+    
+    if (setupState.activeRoles.diviner && nightState.records.divinerTarget !== 0 && !nightState.divinerUsed) {
+        Helpers.addHistory(`🧙‍♂️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.diviner)} 標記了 ${Helpers.formatPlayerText(nightState.records.divinerTarget)}`);
+        nightState.divinerUsed = true;
+    }
+    
+// 🐺 狼人擊殺結算 (包含空刀判斷)
+    const isWolfFeared = Helpers.checkFeared([ROLES.WOLF, ROLES.BLACK_WOLF, ROLES.WOLF_BEAUTY, ROLES.AWAKENED_WOLF_BEAUTY, ROLES.EVIL_KNIGHT, ROLES.NIGHTMARE, ROLES.GARGOYLE, ROLES.AWAKENED_GARGOYLE, ROLES.WOLF_BROTHER, ROLES.WOLF_YOUNGER, ROLES.BLOOD_MOON, ROLES.SCENT_PHANTOM, ROLES.DEMON_EMPEROR, ROLES.BIG_BAD_WOLF, ROLES.WOLVERINE]);
+    if (!isWolfFeared) {
+        // 判斷轉化者是否進入狼隊帶刀
+        let wolfFactionName = `<span class="color-wolf">🐺 狼陣營</span>`;
+        if (nightState.records.awakenedGargoyleTarget !== 0) {
+            const agTarget = nightState.records.awakenedGargoyleTarget;
+            const aliveWolves = gameState.players.filter(p => p.alive && Helpers.isWolf(p.id) && p.id !== agTarget);
+            if (aliveWolves.length === 0 && Helpers.getPlayer(agTarget)?.alive) {
+                // 移除外層贅字，直接依賴 formatPlayerText 輸出的精確格式
+                wolfFactionName = `${Helpers.formatPlayerText(agTarget)} 進入狼隊帶刀`;
+            }
+        }
+
+        if (nightState.records.wolfKill !== 0) {
+            if (nightState.records.divinerTarget !== 0) {
+                Helpers.addHistory(`${wolfFactionName} 受占卜師標記限制，只能擊殺 ${Helpers.formatPlayerText(nightState.records.wolfKill)}`);
+            } else {
+                Helpers.addHistory(`${wolfFactionName} 擊殺了 ${Helpers.formatPlayerText(nightState.records.wolfKill)}`);
+            }
+        } else {
+            Helpers.addHistory(`${wolfFactionName} 選擇了空刀`);
+        }
+    }
+
+    if (nightState.records.bigBadWolfActivated && nightState.records.bigBadWolfTarget !== 0) {
+        if (nightState.records.divinerTarget !== 0) {
+            Helpers.addHistory(`⚪️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.bigBadWolf)} 受占卜師標記限制，只能擊殺 ${Helpers.formatPlayerText(nightState.records.bigBadWolfTarget)}`);
+        } else {
+            Helpers.addHistory(`⚪️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.bigBadWolf)} 發動技能擊殺了 ${Helpers.formatPlayerText(nightState.records.bigBadWolfTarget)}`);
+        }
+        nightState.bigBadWolfUsed = true;
+    }
+
+    if (nightState.records.wolfBrotherRevengeTarget) { 
+        Helpers.addHistory(`🐺👦 ${Helpers.formatPlayerText(setupState.initialRoleSetup.wolfYoungerBrother)} 復仇擊殺了 ${Helpers.formatPlayerText(nightState.records.wolfBrotherRevengeTarget)}`);
+        nightState.wolfBrotherRevengeUsed = true;
+    }
+
+    if (setupState.activeRoles.awakenedWolfKing && nightState.records.awkGunTarget !== 0) {
+        Helpers.addHistory(`👑✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWolfKing)} 將狼槍轉移給了 ${Helpers.formatPlayerText(nightState.records.awkGunTarget)}`);
+    }
+    
+    if (setupState.activeRoles.wolfBeauty && nightState.records.charmTarget) {
+        Helpers.addHistory(`💃 ${Helpers.formatPlayerText(setupState.initialRoleSetup.wolfBeauty)} 魅惑了 ${Helpers.formatPlayerText(nightState.records.charmTarget)}`);
+    }
+    if (setupState.activeRoles.awakenedWolfBeauty && nightState.records.awbCharmTarget) {
+        Helpers.addHistory(`💃✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWolfBeauty)} 魅惑了 ${Helpers.formatPlayerText(nightState.records.awbCharmTarget)}`);
+    }
+    if (setupState.activeRoles.scentPhantom && nightState.records.scentPhantomTargets.length === 2 && !nightState.scentPhantomUsed) {
+        Helpers.addHistory(`🥀 ${Helpers.formatPlayerText(setupState.initialRoleSetup.scentPhantom)} 發動連結指定了 ${Helpers.formatPlayerText(nightState.records.scentPhantomTargets[0])} 與 ${Helpers.formatPlayerText(nightState.records.scentPhantomTargets[1])}`);
+    }
+
+    if (setupState.isDittoWolfKingMode && setupState.dittoWolfKingRole === 'bear' && nightState.records.bearCharmTarget) {
+        Helpers.addHistory(`🎭 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bear)} 魅惑了 ${Helpers.formatPlayerText(nightState.records.bearCharmTarget)}`);
+    }
+    
+    // 🧙‍♀️ 女巫藥水結算
+    if (setupState.activeRoles.witch && !Helpers.isDead('witch') && !Helpers.checkFeared([ROLES.WITCH])) {
+        if (nightState.records.witchAction === ACTIONS.HEAL) {
+            Helpers.addHistory(`🧙‍♀️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 使用了解藥`);
+            nightState.potions.heal = false;
+        } else if (nightState.records.witchAction === ACTIONS.POISON) {
+            const poisonTarget = Helpers.getPlayer(nightState.records.witchPoison);
+            if (poisonTarget && poisonTarget.role === ROLES.WOLVERINE) {
+                Helpers.addHistory(`🧪 ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 毒了 ${Helpers.formatPlayerText(nightState.records.witchPoison)}沒有死亡`);
+            } else {
+                Helpers.addHistory(`🧪 ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 毒了 ${Helpers.formatPlayerText(nightState.records.witchPoison)}`);
+            }
+            nightState.potions.poison = false;
+        } else if (nightState.potions.heal || nightState.potions.poison) {
+            Helpers.addHistory(`🧙‍♀️ ${Helpers.formatPlayerText(setupState.initialRoleSetup.witch)} 選擇不使用藥水`);
+        }
+    }      
+
+    // 🧙‍♀️✨ 覺醒女巫藥水結算
+    if (setupState.activeRoles.awakenedWitch && !Helpers.isDead('awakenedWitch') && !Helpers.checkFeared([ROLES.AWAKENED_WITCH])) {
+        if (nightState.records.awakenedWitchAction === ACTIONS.HEAL) {
+            Helpers.addHistory(`🧙‍♀️✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWitch)} 使用了解藥`);
+            nightState.awakenedWitchState.heal--;
+        } else if (nightState.records.awakenedWitchAction === ACTIONS.POISON) {
+            const targetFormat = Helpers.formatPlayerText(nightState.records.awakenedWitchPoisonTarget);
+            if (nightState.records.awakenedWitchAgreed) {
+                Helpers.addHistory(`🧪✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWitch)} 成功毒殺了 ${targetFormat}`);
+            } else {
+                Helpers.addHistory(`🧪✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWitch)} 試圖毒殺 ${targetFormat}，但協助者不同意，毒藥消耗。`);
+            }
+            nightState.awakenedWitchState.poison--;
+            
+            if (nightState.records.awakenedWitchAssistants && nightState.records.awakenedWitchAssistants.length > 0) {
+                nightState.awakenedWitchState.usedAssistants.push(...nightState.records.awakenedWitchAssistants);
+            }
+        } else if (nightState.awakenedWitchState.heal > 0 || nightState.awakenedWitchState.poison > 0) {
+            Helpers.addHistory(`🧙‍♀️✨ ${Helpers.formatPlayerText(setupState.initialRoleSetup.awakenedWitch)} 選擇不使用藥水`);
+        }
+    }
+
+    // 🌟 透過 SettlementEngine 結算夜晚死亡
+    let intents = SettlementEngine.evaluateNightDeaths();
+    let resolution = SettlementEngine.resolveDeaths(intents, 'night');
+    SettlementEngine.applyDeaths(resolution);
+
+    const uniqueDiedIds = Array.from(resolution.pendingDeadIds);
+    if (uniqueDiedIds.length === 0) {
+        morningState.resultHtml = "<h3 style='color:var(--btn-success); margin: 0;'>平安夜👏</h3>";
+        Helpers.addHistory(`🌙 夜晚結算：平安夜 (無人死亡)`);
+    } else {
+        const diedStrHtml = uniqueDiedIds.sort((a,b)=>a-b).map(id => Helpers.formatPlayerText(id)).join('、');
+        morningState.resultHtml = `<h3 style='margin: 0;'>昨晚 ${diedStrHtml} 死亡</h3>`;
+        Helpers.addHistory(`🌙 夜晚結算：${diedStrHtml} 死亡`);
+    }
+
+    // ==========================================
+    // 🐻 熊爺早晨咆哮判定自動化引擎
+    // ==========================================
+    if (setupState.activeRoles.bear) {
+        const bearId = setupState.initialRoleSetup.bear;
+        const aliveIds = gameState.players.filter(p => p.alive).map(p => p.id);
+        const bearIdx = aliveIds.indexOf(bearId);
+
+        if (bearIdx !== -1) { 
+            if (Helpers.checkFeared([ROLES.BEAR])) {
+                morningState.resultHtml += `
+                    <div style="margin-top: 15px; padding: 10px; border-radius: 8px; border: 2px dashed #555; background: #222;">
+                        <h3 style="margin: 0; color: #ccc;">⚠️ 熊爺被封印/恐懼，無法咆哮</h3>
+                    </div>`;
+                Helpers.addHistory(`🐻 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bear)} 判定：遭封印或被恐懼，技能失效`);
+            } else if (aliveIds.length >= 3) {
+                const leftId = aliveIds[(bearIdx - 1 + aliveIds.length) % aliveIds.length];
+                const rightId = aliveIds[(bearIdx + 1) % aliveIds.length];
+                
+                const isGrowling = Helpers.isWolf(leftId, 'check') || Helpers.isWolf(rightId, 'check');
+                
+                morningState.resultHtml += `
+                    <div style="margin-top: 15px; padding: 10px; border-radius: 8px; border: 2px solid ${isGrowling ? 'var(--color-wolf)' : 'var(--btn-success)'}; background: #222;">
+                        <h3 style="margin: 0; color: ${isGrowling ? 'var(--color-wolf)' : 'var(--btn-success)'};">
+                            ${isGrowling ? '🐻 熊咆哮了！' : '🐻 熊沒有叫'}
+                        </h3>
+                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #aaa;">(相鄰存活：${leftId}號、${rightId}號)</p>
+                    </div>`;
+                Helpers.addHistory(`🐻 ${Helpers.formatPlayerText(setupState.initialRoleSetup.bear)} 判定：相鄰活人為 ${Helpers.formatPlayerText(leftId)} 與 ${Helpers.formatPlayerText(rightId)}，結果：${isGrowling ? '咆哮' : '沒叫'}`);
+            }
+        }
+    }
+
+    Helpers.addHistory(`<br><span style="color:#fff; font-weight:bold;">=== 第${gameState.day}天 白天 ===</span>`);
+
+    // 血月使徒殘局血脈結算
+    if (gameState.bloodMoonLastStand) {
+        const tempWin = Helpers.checkWinCondition();
+        if (!(tempWin && tempWin.faction.includes("狼人"))) {
+            const bm = gameState.players.find(p => p.role === ROLES.BLOOD_MOON);
+            if (bm && bm.alive) {
+                bm.alive = false;
+                Helpers.addHistory(`🌕 結算：血月使徒未能達成屠邊，血脈耗盡死亡！`);
+            }
+        }
+        gameState.bloodMoonLastStand = false;
+    }
+
+    const win = Helpers.checkWinCondition();
+    if (win) { gameState.pendingGameOver = win; triggerGameOver(); return; }
+
+    nightState.records.lastGuardTarget = nightState.records.guardTarget; nightState.records.lastDreamTarget = nightState.records.dreamTarget; nightState.records.lastAwbCharmTarget = nightState.records.awbCharmTarget; nightState.records.lastBearCharmTarget = nightState.records.bearCharmTarget; nightState.records.lastNightmareTarget = nightState.records.nightmareTarget;
+    
+    gameState.bloodMoonSealed = false; // 解除血月封印
+    gameState.isNight = false; morningState.step = STEPS.MORNING_REVEAL; morningState.voteTarget = 0; morningState.explodeTarget = 0; morningState.knightDuelTarget = 0; morningState.isVotingDone = false; morningState.daytimeCharmDeaths = [];
+    morningState.shootQueue = resolution.gunQueue;
+    morningState.dayStartAliveIds = gameState.players.filter(p => p.alive).map(p => p.id);
+};
                 const undoMorning = () => {
                     if (!nightEndBackup) return;
                     if (confirm('確定要退回到昨晚最後一個階段嗎？\n(這將撤銷今早包含開槍、殉情等所有傷亡結算)')) {
