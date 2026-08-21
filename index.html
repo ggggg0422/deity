@@ -507,7 +507,7 @@ _evaluateWin: (alive) => {
                 return intents;
             },
 
-            resolveDeaths: (initialDeathIntents, context) => {
+resolveDeaths: (initialDeathIntents, context) => {
                 let pendingDeadIds = new Set();
                 let finalEvents = [];
                 let gunQueue = [];
@@ -570,6 +570,9 @@ _evaluateWin: (alive) => {
                         }
                     }
 
+                    // 核心修正區段開始：綁定當下日夜 Context 到每一個子彈
+                    const isNightContext = context.includes('night');
+                    
                     let sealed = false;
                     let isHunterType = p.role === ROLES.HUNTER || (nightState.giftedState.hasGift && !nightState.giftedState.isUsed && nightState.giftedState.id === p.id && nightState.giftedState.item === ITEMS.GUN);
                     
@@ -582,7 +585,7 @@ _evaluateWin: (alive) => {
                     if (isAwkTeammate && gameState.awkGuns > 0) {
                         let teammateSealed = [CAUSES.POISON, CAUSES.CHARM, CAUSES.AWB_SUB, CAUSES.AH_SHOT, CAUSES.EXPLODE, CAUSES.DREAM_DEATH, CAUSES.DREAM_LINK, CAUSES.DUEL_WOLF, CAUSES.SCENT_LINK, CAUSES.YIN_YANG_DEATH].includes(cause) || isFearedByNightmare;
                         if (!teammateSealed) {
-                            gunQueue.push({ id: p.id, role: `隊友狼槍(${p.role})`, cause: cause, awkGun: true });
+                            gunQueue.push({ id: p.id, role: `隊友狼槍(${p.role})`, cause: cause, awkGun: true, isNight: isNightContext });
                         }
                     }
 
@@ -593,21 +596,21 @@ _evaluateWin: (alive) => {
                     }
                     
                     if (!sealed) {
-                        if (p.role === ROLES.HUNTER) gunQueue.push({ id: p.id, role: ROLES.HUNTER, cause: cause });
-                        else if (p.role === ROLES.BLACK_WOLF) gunQueue.push({ id: p.id, role: ROLES.BLACK_WOLF, cause: cause });
+                        if (p.role === ROLES.HUNTER) gunQueue.push({ id: p.id, role: ROLES.HUNTER, cause: cause, isNight: isNightContext });
+                        else if (p.role === ROLES.BLACK_WOLF) gunQueue.push({ id: p.id, role: ROLES.BLACK_WOLF, cause: cause, isNight: isNightContext });
                         else if (p.role === ROLES.AWAKENED_WOLF_KING) {
                             let gunsToQueue = gameState.awkGuns;
                             if (nightState.records.awkGunTarget !== 0 && nightState.records.awkGunTarget !== p.id && Helpers.getPlayer(nightState.records.awkGunTarget)?.alive) {
                                 gunsToQueue -= 1;
                             }
                             for (let i = 0; i < Math.max(0, gunsToQueue); i++) {
-                                gunQueue.push({ id: p.id, role: ROLES.AWAKENED_WOLF_KING, cause: cause, awkGun: true });
+                                gunQueue.push({ id: p.id, role: ROLES.AWAKENED_WOLF_KING, cause: cause, awkGun: true, isNight: isNightContext });
                             }
                         }
-                        else if (p.role === ROLES.AWAKENED_HUNTER) gunQueue.push({ id: p.id, role: ROLES.AWAKENED_HUNTER, cause: cause });
-                        else if (p.role === ROLES.MECH_WOLF && nightState.mechWolfState.learnedRole === ROLES.HUNTER) gunQueue.push({ id: p.id, role: ROLES.MECH_WOLF, cause: cause });
+                        else if (p.role === ROLES.AWAKENED_HUNTER) gunQueue.push({ id: p.id, role: ROLES.AWAKENED_HUNTER, cause: cause, isNight: isNightContext });
+                        else if (p.role === ROLES.MECH_WOLF && nightState.mechWolfState.learnedRole === ROLES.HUNTER) gunQueue.push({ id: p.id, role: ROLES.MECH_WOLF, cause: cause, isNight: isNightContext });
                         else if (nightState.giftedState.hasGift && !nightState.giftedState.isUsed && nightState.giftedState.item === ITEMS.GUN && nightState.giftedState.id === p.id) {
-                            gunQueue.push({ id: p.id, role: `幸運兒(${p.role})`, cause: cause });
+                            gunQueue.push({ id: p.id, role: `幸運兒(${p.role})`, cause: cause, isNight: isNightContext });
                             if(!context.startsWith('dryRun')) nightState.giftedState.isUsed = true;
                         }
                     }
@@ -2214,7 +2217,7 @@ const PhaseHunter = defineComponent({
                     morningState.explodeTarget = 0; morningState.voteTarget = 0; morningState.knightDuelTarget = 0; morningState.isVotingDone = true; popShooter();
                 };
                 
-                const confirmShoot = () => {
+const confirmShoot = () => {
                     const target = morningState.shootTarget;
                     const shooter = morningState.currentShooter;
                     
@@ -2222,7 +2225,8 @@ const PhaseHunter = defineComponent({
                         gameState.awkGuns--;
                     }
                     
-                    let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
+                    // 核心修正：優先採用 shooter 物件內含的日夜狀態
+                    let isNightDeath = shooter.isNight !== undefined ? shooter.isNight : ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
                     
                     if (target !== 0) {
                         const targetInfo = Helpers.getPlayer(target);
@@ -2261,10 +2265,11 @@ const PhaseHunter = defineComponent({
                     }
                     morningState.shootTarget = 0;
                 };
-
-                const confirmAhShoot = () => {
+const confirmAhShoot = () => {
                     let dir = morningState.ahDirection; let shooter = morningState.currentShooter;
-                    let isNightDeath = ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
+                    
+                    // 核心修正：同步修正覺醒獵人的日夜判定
+                    let isNightDeath = shooter.isNight !== undefined ? shooter.isNight : ![CAUSES.VOTE, CAUSES.EXPLODE, CAUSES.DUEL_WOLF, CAUSES.DUEL_KNIGHT, CAUSES.AH_SHOT_DAY].includes(shooter.cause);
 
                     if (dir === 0) {
                         if (isNightDeath) Helpers.isNightLogging = true;
