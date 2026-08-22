@@ -1527,21 +1527,26 @@ const PhaseTransformedWolfResult = defineComponent({
                     return Array.from(adj).filter(id => !validWolves.includes(id) && id !== 0);
                 });
 
-                const onNext = () => {
-                    if (gameState.day === 1) {
-                        const s = setupState;
-                        if (s.activeRoles.evilKnight && s.initialRoleSetup.evilKnight === 0) return alert(`請設定「${ROLES.EVIL_KNIGHT}」的號碼！`);
-                        if (s.activeRoles.blackWolf && s.initialRoleSetup.blackWolf === 0) return alert(`請設定「${ROLES.BLACK_WOLF}」的號碼！`);
-                        if (s.activeRoles.awakenedWolfKing && s.initialRoleSetup.awakenedWolfKing === 0) return alert(`請設定「${ROLES.AWAKENED_WOLF_KING}」的號碼！`);
-                        if (s.activeRoles.wolfBeauty && s.initialRoleSetup.wolfBeauty === 0) return alert(`請設定「${ROLES.WOLF_BEAUTY}」的號碼！`);
-                        if (s.activeRoles.awakenedWolfBeauty && s.initialRoleSetup.awakenedWolfBeauty === 0) return alert(`請設定「${ROLES.AWAKENED_WOLF_BEAUTY}」的號碼！`);
-                        if (s.activeRoles.bloodMoon && s.initialRoleSetup.bloodMoon === 0) return alert(`請設定「${ROLES.BLOOD_MOON}」的號碼！`);
-                        if (s.activeRoles.bigBadWolf && s.initialRoleSetup.bigBadWolf === 0) return alert(`請設定「${ROLES.BIG_BAD_WOLF}」的號碼！`);
-                        if (s.activeRoles.awakenedGargoyle && s.initialRoleSetup.awakenedGargoyle === 0) return alert(`請設定「${ROLES.AWAKENED_GARGOYLE}」的號碼！`);
-                        for (let i = 0; i < normalW.value; i++) { if (!s.initialRoleSetup.wolves[i]) return alert(`請設定第 ${i + 1} 名普通狼人的號碼！`); }
-                    }
-                    emit('next');
-                };
+const onNext = () => {
+    if (gameState.day === 1) {
+        const s = setupState;
+        if (s.activeRoles.evilKnight && s.initialRoleSetup.evilKnight === 0) return alert(`請設定「${ROLES.EVIL_KNIGHT}」的號碼！`);
+        if (s.activeRoles.blackWolf && s.initialRoleSetup.blackWolf === 0) return alert(`請設定「${ROLES.BLACK_WOLF}」的號碼！`);
+        if (s.activeRoles.awakenedWolfKing && s.initialRoleSetup.awakenedWolfKing === 0) return alert(`請設定「${ROLES.AWAKENED_WOLF_KING}」的號碼！`);
+        if (s.activeRoles.wolfBeauty && s.initialRoleSetup.wolfBeauty === 0) return alert(`請設定「${ROLES.WOLF_BEAUTY}」的號碼！`);
+        if (s.activeRoles.awakenedWolfBeauty && s.initialRoleSetup.awakenedWolfBeauty === 0) return alert(`請設定「${ROLES.AWAKENED_WOLF_BEAUTY}」的號碼！`);
+        if (s.activeRoles.bloodMoon && s.initialRoleSetup.bloodMoon === 0) return alert(`請設定「${ROLES.BLOOD_MOON}」的號碼！`);
+        if (s.activeRoles.bigBadWolf && s.initialRoleSetup.bigBadWolf === 0) return alert(`請設定「${ROLES.BIG_BAD_WOLF}」的號碼！`);
+        if (s.activeRoles.awakenedGargoyle && s.initialRoleSetup.awakenedGargoyle === 0) return alert(`請設定「${ROLES.AWAKENED_GARGOYLE}」的號碼！`);
+        for (let i = 0; i < normalW.value; i++) { if (!s.initialRoleSetup.wolves[i]) return alert(`請設定第 ${i + 1} 名普通狼人的號碼！`); }
+        
+        // 增強防呆：若場上配置覺醒石像鬼，且首夜 target 仍為 0，則阻擋流程進行
+        if (s.activeRoles.awakenedGargoyle && nightState.records.awakenedGargoyleTarget === 0) {
+            return alert(`請選擇「${ROLES.AWAKENED_GARGOYLE}」的轉化目標（首夜不可空轉）！`);
+        }
+    }
+    emit('next');
+};
                 return { setupState, gameState, nightState, Helpers, alivePlayers, isFeared, normalW, allowedWolfKills, allowedAgTargets, onNext, ROLES, CLASSES };
             },
             template: `
@@ -1601,18 +1606,18 @@ const PhaseTransformedWolfResult = defineComponent({
                             </div>
                         </div>
 
-                        <div v-if="gameState.day === 1 && setupState.activeRoles.awakenedGargoyle" style="margin-top: 15px; border-top: 1px dashed #555; padding-top: 15px;">
-                            <p style="color: #ff9800; font-weight: bold;">🗿✨ {{ ROLES.AWAKENED_GARGOYLE }}請選擇轉化目標 (需與狼隊相鄰)：</p>
-                            <div class="player-grid-container">
-                                <div :class="['player-grid-btn zero-btn', { 'danger-selected': nightState.records.awakenedGargoyleTarget === 0 }]" @click="nightState.records.awakenedGargoyleTarget = 0">不轉化</div>
-                                <div v-for="p in alivePlayers" :key="'ag'+p.id" 
-                                     :class="['player-grid-btn', Helpers.getDisplayClass(p), { 'danger-selected': nightState.records.awakenedGargoyleTarget === p.id, disabled: !allowedAgTargets.includes(p.id) }]" 
-                                     @click="allowedAgTargets.includes(p.id) && (nightState.records.awakenedGargoyleTarget = p.id)">
-                                    <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;">{{ Helpers.getDisplayRole(p) }}</span></span>
-                                </div>
-                            </div>
-                        </div>
-                        
+<div v-if="gameState.day === 1 && setupState.activeRoles.awakenedGargoyle" style="margin-top: 15px; border-top: 1px dashed #555; padding-top: 15px;">
+    <!-- 更新提示文字，強調不可空轉 -->
+    <p style="color: #ff9800; font-weight: bold;">🗿✨ {{ ROLES.AWAKENED_GARGOYLE }}請選擇轉化目標 (需與狼隊相鄰，不可空轉)：</p>
+    <div class="player-grid-container">
+        <!-- 已移除「不轉化」按鈕區塊 -->
+        <div v-for="p in alivePlayers" :key="'ag'+p.id" 
+             :class="['player-grid-btn', Helpers.getDisplayClass(p), { 'danger-selected': nightState.records.awakenedGargoyleTarget === p.id, disabled: !allowedAgTargets.includes(p.id) }]" 
+             @click="allowedAgTargets.includes(p.id) && (nightState.records.awakenedGargoyleTarget = p.id)">
+            <span class="num">{{ p.id }} <span style="font-size: 14px; font-weight: normal; margin-left: 2px;">{{ Helpers.getDisplayRole(p) }}</span></span>
+        </div>
+    </div>
+</div>                        
                         <div v-if="setupState.activeRoles.wolfBeauty" style="margin-top: 15px; border-top: 1px dashed #555; padding-top: 15px;">
                             <p style="color: #ff9800; font-weight: bold;">💃 {{ ROLES.WOLF_BEAUTY }}請選擇魅惑目標：</p>
                             <div v-if="Helpers.isDead('wolfBeauty')" class="witch-alert-active" style="border-color: #555; background: #333;"><h2 style="margin:0; color:white; font-size:18px;">🪦 {{ ROLES.WOLF_BEAUTY }}已經死亡</h2></div>
